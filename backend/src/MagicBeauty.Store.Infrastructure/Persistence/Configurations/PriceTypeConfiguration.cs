@@ -30,9 +30,10 @@ public sealed class PriceTypeConfiguration : IEntityTypeConfiguration<PriceType>
             .HasDatabaseName("UX_PriceTypes_Default");
 
         // Catalogo sembrado por migracion: evita tener que insertarlo a mano.
+        // IsPublic es la politica de precios publicos: DISTRIBUTOR queda oculto.
         builder.HasData(
-            new PriceType { Id = 1, Code = "RETAIL", Name = "Detal", IsDefault = true, IsActive = true },
-            new PriceType { Id = 2, Code = "WHOLESALE", Name = "Por mayor", IsDefault = false, IsActive = true },
-            new PriceType { Id = 3, Code = "DISTRIBUTOR", Name = "Distribuidor", IsDefault = false, IsActive = true });
+            new PriceType { Id = 1, Code = "RETAIL", Name = "Detal", IsDefault = true, IsPublic = true, DisplayOrder = 1, IsActive = true },
+            new PriceType { Id = 2, Code = "WHOLESALE", Name = "Por mayor", IsDefault = false, IsPublic = true, DisplayOrder = 2, IsActive = true },
+            new PriceType { Id = 3, Code = "DISTRIBUTOR", Name = "Distribuidor", IsDefault = false, IsPublic = false, DisplayOrder = 3, IsActive = true });
     }
 }

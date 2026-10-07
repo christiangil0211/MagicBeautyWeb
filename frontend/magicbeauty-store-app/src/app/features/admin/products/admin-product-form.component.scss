@@ -468,3 +468,35 @@
     color: var(--mb-primary);
   }
 }
+
+/* El input nativo queda oculto: lo abre el botón "Elegir foto". */
+.image-form__file-input {
+  display: none;
+}
+
+.image-form__file {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+}
+
+.image-form__file-name {
+  overflow: hidden;
+  font-size: 0.82rem;
+  color: var(--mb-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.muted {
+    color: var(--mb-text-muted);
+  }
+}
+
+.image-form .field--file {
+  flex: 2 1 300px;
+}
+
+:host ::ng-deep .image-form__file .p-button {
+  white-space: nowrap;
+}

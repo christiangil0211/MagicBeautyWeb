@@ -8,7 +8,13 @@ public sealed class PriceTypeDto
 
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>Precio de referencia obligatorio en todo producto.</summary>
     public bool IsDefault { get; set; }
+
+    /// <summary>Visible para usuarios no autenticados.</summary>
+    public bool IsPublic { get; set; }
+
+    public int DisplayOrder { get; set; }
 
     public bool IsActive { get; set; }
 }

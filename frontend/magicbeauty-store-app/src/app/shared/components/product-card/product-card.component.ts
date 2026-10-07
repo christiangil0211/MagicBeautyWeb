@@ -2,19 +2,19 @@ import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { ProductCardModel } from '../../models/product.model';
+import { PriceListComponent } from '../price-list/price-list.component';
 
 /**
  * Tarjeta pública de producto. Es genérica a propósito: no sabe si la pintan el
  * home, una categoría, una búsqueda o una lista de relacionados. La página padre
  * decide qué productos mostrar y qué hacer con los eventos.
  *
- * Solo recibe `price` ya resuelto: la tienda nunca debe conocer el desglose de
- * precios comerciales, para que la misma tarjeta sirva cuando existan clientes
- * mayoristas o distribuidores.
+ * Recibe los precios ya filtrados por el backend y los delega a PriceList: la
+ * misma tarjeta sirve para el público, mayoristas o distribuidores.
  */
 @Component({
   selector: 'app-product-card',
-  imports: [RouterLink],
+  imports: [RouterLink, PriceListComponent],
   templateUrl: './product-card.component.html',
   styleUrl: './product-card.component.scss'
 })
@@ -54,20 +54,6 @@ export class ProductCardComponent {
     }
 
     return this.product().hasVariants ? 'pi pi-palette' : 'pi pi-shopping-cart';
-  });
-
-  readonly formattedPrice = computed(() => {
-    const price = this.product().price;
-
-    if (price === null || price === undefined) {
-      return 'Precio no disponible';
-    }
-
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      maximumFractionDigits: 0
-    }).format(price);
   });
 
   onAction(): void {

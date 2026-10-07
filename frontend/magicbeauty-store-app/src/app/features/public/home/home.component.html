@@ -42,14 +42,18 @@
       }
     </div>
   } @else if (loaded()) {
-    <div class="tiles-empty">
-      <i class="pi pi-inbox"></i>
-      <strong>Todavía no hay categorías destacadas</strong>
-      <span>
-        Marca una categoría como <em>Destacar en el inicio</em> desde
-        <a routerLink="/admin/categories">el administrador</a> y aparecerá aquí.
-      </span>
-    </div>
+    <app-empty-state
+      class="tiles-empty"
+      icon="pi-th-large"
+      title="Todavía no hay categorías destacadas"
+      [boxed]="true"
+      [message]="canManageStore()
+        ? 'Marca una categoría como «Destacar en el inicio» y aparecerá aquí.'
+        : 'Muy pronto encontrarás aquí nuestras categorías.'">
+      @if (canManageStore()) {
+        <a class="mb-btn mb-btn--outline mb-btn--sm" routerLink="/admin/categories">Ir a categorías</a>
+      }
+    </app-empty-state>
   }
 </section>
 
@@ -70,7 +74,7 @@
   </header>
 
   @if (productsLoading()) {
-    <p class="favorites__state">Cargando productos…</p>
+    <app-loader message="Cargando productos…" [compact]="true" />
   } @else if (favoriteCards().length > 0) {
     <div class="favorites__grid">
       @for (product of favoriteCards(); track product.id) {
@@ -83,7 +87,7 @@
       }
     </div>
   } @else {
-    <p class="favorites__state">Todavía no hay productos publicados en la tienda.</p>
+    <app-empty-state icon="pi-shopping-bag" title="Todavía no hay productos publicados en la tienda" />
   }
 </section>
 

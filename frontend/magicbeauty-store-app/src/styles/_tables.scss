@@ -1,0 +1,112 @@
+// Tabla de MagicCuadre (Etiquetas): encabezado rosado con texto vino, cuadrícula rosada,
+// filas altas y hover muy suave. Sirve para p-table (styleClass="mb-table") y para <table class="mb-table">.
+@layer app {
+  .mb-table {
+    --mb-table-line: var(--mb-border-pink);
+
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--mb-table-line);
+    border-radius: var(--mb-radius-sm);
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--mb-surface);
+    font-size: 0.86rem;
+    color: var(--mb-text);
+
+    /* Encabezado */
+    th,
+    .p-datatable-thead > tr > th {
+      padding: 0.7rem 0.75rem;
+      border-right: 1px solid var(--mb-table-line);
+      border-bottom: 1px solid var(--mb-table-line);
+      background: var(--mb-pink-100);
+      color: var(--mb-accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    /* Celdas */
+    td,
+    .p-datatable-tbody > tr > td {
+      height: 58px;
+      padding: 0.45rem 0.75rem;
+      border-right: 1px solid var(--mb-table-line);
+      border-bottom: 1px solid var(--mb-table-line);
+      background: transparent;
+      color: var(--mb-text);
+      vertical-align: middle;
+    }
+
+    th:last-child,
+    td:last-child,
+    .p-datatable-thead > tr > th:last-child,
+    .p-datatable-tbody > tr > td:last-child {
+      border-right: none;
+    }
+
+    tbody > tr:last-child > td,
+    .p-datatable-tbody > tr:last-child > td {
+      border-bottom: none;
+    }
+
+    /* Filas */
+    tbody > tr,
+    .p-datatable-tbody > tr {
+      background: var(--mb-surface);
+      transition: background 0.12s ease;
+    }
+
+    tbody > tr:hover,
+    .p-datatable-tbody > tr:hover {
+      background: var(--mb-pink-50);
+    }
+
+    tr.is-selected,
+    .p-datatable-tbody > tr.p-datatable-row-selected {
+      background: var(--mb-pink-150);
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .right {
+      text-align: right;
+    }
+  }
+
+  /* PrimeNG envuelve la tabla: el borde y el radio van en el contenedor. */
+  .p-datatable.mb-table {
+    border: 1px solid var(--mb-border-pink);
+    border-radius: var(--mb-radius-sm);
+
+    .p-datatable-table {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+  }
+
+  /* Miniatura de producto dentro de una celda. */
+  .mb-table-thumb {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--mb-border-soft);
+    border-radius: var(--mb-radius-sm);
+    background: var(--mb-surface-2);
+    object-fit: cover;
+  }
+}
+
+@layer app {
+  /* Contenedor de tabla: permite superponer el loader mientras carga. */
+  .mb-table-wrap {
+    position: relative;
+
+    &.is-loading {
+      min-height: 320px;
+    }
+  }
+}

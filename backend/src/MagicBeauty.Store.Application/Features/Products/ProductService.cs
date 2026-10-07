@@ -12,7 +12,8 @@ public sealed partial class ProductService(
     IProductRepository productRepository,
     IBrandRepository brandRepository,
     ICategoryRepository categoryRepository,
-    IPriceTypeRepository priceTypeRepository) : IProductService
+    IPriceTypeRepository priceTypeRepository,
+    IFileStorage fileStorage) : IProductService
 {
     /// <summary>
     /// Nombre de la variante interna de los productos sin tonos. Nunca se muestra
@@ -81,81 +82,6 @@ public sealed partial class ProductService(
         }
 
         return MapToDto(product);
-    }
-
-    public async Task<ProductDetailDto> GetPublicDetailAsync(
-        string reference,
-        CancellationToken cancellationToken)
-    {
-        var product = await productRepository.GetDetailByReferenceAsync(
-            NormalizeReference(reference),
-            cancellationToken);
-
-        // Un producto desactivado no existe para la tienda.
-        if (product is null || !product.IsActive)
-        {
-            throw new KeyNotFoundException("El producto no existe.");
-        }
-
-        var activeVariants = product.Variants
-            .Where(variant => variant.IsActive)
-            .OrderBy(variant => variant.DisplayOrder)
-            .ThenBy(variant => variant.Name)
-            .ToList();
-
-        var defaultPrice = product.Prices
-            .FirstOrDefault(price => price.IsActive && price.PriceType is not null && price.PriceType.IsDefault);
-
-        return new ProductDetailDto
-        {
-            Id = product.Id,
-            Reference = product.Reference,
-            Name = product.Name,
-            Description = product.Description,
-            BrandName = product.Brand?.Name ?? string.Empty,
-            Price = defaultPrice?.Amount,
-            HasVariants = product.HasVariants,
-            AvailableQuantity = activeVariants.Sum(variant => variant.Quantity),
-            Categories = product.ProductCategories
-                .Where(link => link.Category is not null)
-                .Select(link => new ProductDetailCategoryDto
-                {
-                    Id = link.CategoryId,
-                    Name = link.Category!.Name,
-                    Slug = link.Category.Slug
-                })
-                .OrderBy(category => category.Name)
-                .ToList(),
-            Images = product.Images
-                .Where(image => image.IsActive)
-                .OrderByDescending(image => image.IsMain)
-                .ThenBy(image => image.DisplayOrder)
-                .Select(image => new ProductDetailImageDto
-                {
-                    Id = image.Id,
-                    ProductVariantId = image.ProductVariantId,
-                    Url = image.Url,
-                    AltText = image.AltText,
-                    DisplayOrder = image.DisplayOrder,
-                    IsMain = image.IsMain
-                })
-                .ToList(),
-            // La variante interna nunca se expone: solo existe para el inventario.
-            Variants = product.HasVariants
-                ? activeVariants
-                    .Where(variant => !variant.IsDefault)
-                    .Select(variant => new ProductDetailVariantDto
-                    {
-                        Id = variant.Id,
-                        Name = variant.Name,
-                        Code = variant.Code,
-                        ColorHex = variant.ColorHex,
-                        Quantity = variant.Quantity,
-                        DisplayOrder = variant.DisplayOrder
-                    })
-                    .ToList()
-                : []
-        };
     }
 
     public async Task<ProductDto> CreateAsync(
@@ -508,11 +434,91 @@ public sealed partial class ProductService(
 
         var url = RequireText(request.Url, "La URL de la imagen es obligatoria.");
 
-        await EnsureVariantBelongsToProductAsync(request.ProductVariantId, productId, cancellationToken);
+        return await CreateImageAsync(
+            productId,
+            url,
+            request.AltText,
+            request.ProductVariantId,
+            request.DisplayOrder,
+            request.IsMain,
+            request.IsActive,
+            cancellationToken);
+    }
 
-        if (request.IsMain)
+    public async Task<ProductImageDto> UploadImageAsync(
+        int productId,
+        ProductImageUpload upload,
+        CancellationToken cancellationToken)
+    {
+        var product = await RequireProductAsync(productId, cancellationToken);
+
+        if (upload.Length <= 0)
         {
-            await ClearMainImageAsync(productId, request.ProductVariantId, null, cancellationToken);
+            throw new ArgumentException("El archivo esta vacio.");
+        }
+
+        if (upload.Length > ImageUploadRules.MaxBytes)
+        {
+            throw new ArgumentException(
+                "La imagen pesa mas de " + ImageUploadRules.MaxBytes / (1024 * 1024) + " MB.");
+        }
+
+        // Se copia a memoria para validar la firma antes de guardar nada.
+        using var buffer = new MemoryStream();
+        await upload.Content.CopyToAsync(buffer, cancellationToken);
+
+        if (buffer.Length > ImageUploadRules.MaxBytes)
+        {
+            throw new ArgumentException(
+                "La imagen pesa mas de " + ImageUploadRules.MaxBytes / (1024 * 1024) + " MB.");
+        }
+
+        var format = ImageUploadRules.Detect(buffer.GetBuffer().AsSpan(0, (int)Math.Min(buffer.Length, 16)));
+
+        await EnsureVariantBelongsToProductAsync(upload.ProductVariantId, productId, cancellationToken);
+
+        buffer.Position = 0;
+
+        // Nombre aleatorio: evita colisiones y que una imagen reemplazada quede en cache.
+        var path = "products/" + product.Reference.ToLowerInvariant() + "/" +
+                   Guid.NewGuid().ToString("N") + format.Extension;
+        var url = await fileStorage.SaveAsync(path, buffer, format.ContentType, cancellationToken);
+
+        try
+        {
+            return await CreateImageAsync(
+                productId,
+                url,
+                upload.AltText,
+                upload.ProductVariantId,
+                upload.DisplayOrder,
+                upload.IsMain,
+                isActive: true,
+                cancellationToken);
+        }
+        catch
+        {
+            // Si no se pudo registrar, el archivo no debe quedar huerfano.
+            await fileStorage.DeleteByUrlAsync(url, CancellationToken.None);
+            throw;
+        }
+    }
+
+    private async Task<ProductImageDto> CreateImageAsync(
+        int productId,
+        string url,
+        string? altText,
+        int? productVariantId,
+        int displayOrder,
+        bool isMain,
+        bool isActive,
+        CancellationToken cancellationToken)
+    {
+        await EnsureVariantBelongsToProductAsync(productVariantId, productId, cancellationToken);
+
+        if (isMain)
+        {
+            await ClearMainImageAsync(productId, productVariantId, null, cancellationToken);
         }
 
         var now = DateTime.UtcNow;
@@ -520,12 +526,12 @@ public sealed partial class ProductService(
         var image = new ProductImage
         {
             ProductId = productId,
-            ProductVariantId = request.ProductVariantId,
+            ProductVariantId = productVariantId,
             Url = url,
-            AltText = Normalize(request.AltText),
-            DisplayOrder = request.DisplayOrder,
-            IsMain = request.IsMain,
-            IsActive = request.IsActive,
+            AltText = Normalize(altText),
+            DisplayOrder = displayOrder,
+            IsMain = isMain,
+            IsActive = isActive,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -587,6 +593,10 @@ public sealed partial class ProductService(
         // Las imagenes no guardan historico, asi que aqui si aplica borrado fisico.
         productRepository.RemoveImage(image);
         await productRepository.SaveChangesAsync(cancellationToken);
+
+        // Despues de confirmar en base: si el archivo no se pudiera borrar, solo queda
+        // un archivo sin uso, nunca un registro apuntando a nada.
+        await fileStorage.DeleteByUrlAsync(image.Url, cancellationToken);
     }
 
     private async Task<Product> RequireProductAsync(int id, CancellationToken cancellationToken)
@@ -733,11 +743,11 @@ public sealed partial class ProductService(
                 "No hay un tipo de precio predeterminado configurado.");
         }
 
-        // Sin el precio predeterminado el producto no tendria que mostrarle al cliente.
+        // El precio de referencia es obligatorio; quien ve cada precio lo decide la politica de visibilidad.
         if (prices.All(price => price.PriceTypeId != defaultPriceType.Id))
         {
             throw new InvalidOperationException(
-                "Falta el precio " + defaultPriceType.Code + ", que es el que ve el cliente.");
+                "Falta el precio " + defaultPriceType.Code + ", que es el precio de referencia obligatorio.");
         }
 
         return prices;

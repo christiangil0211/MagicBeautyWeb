@@ -145,17 +145,41 @@ export interface ProductImageRequest {
   isActive: boolean;
 }
 
+/* ===== Tienda ===== */
+
+/**
+ * Precio que la audiencia actual puede ver. El backend decide cuáles llegan y en
+ * qué orden: la tienda los pinta tal cual, sin conocer los códigos de antemano.
+ */
+export interface CatalogPrice {
+  priceTypeCode: string;
+  priceTypeName: string;
+  amount: number;
+}
+
+/** Fila del listado público de catálogo. */
+export interface CatalogProductListItem {
+  id: number;
+  reference: string;
+  name: string;
+  brandName: string;
+  hasVariants: boolean;
+  availableQuantity: number;
+  mainImageUrl?: string | null;
+  prices: CatalogPrice[];
+}
+
 /**
  * Contrato de presentación de la tarjeta pública. Es deliberadamente distinto de
- * `ProductListItem`: la tienda no debe recibir conceptos de administración como
- * `isActive` o el desglose de precios comerciales, solo el precio que le aplica.
+ * `ProductListItem`: la tienda no recibe conceptos de administración como
+ * `isActive`, y sus precios son solo los autorizados para quien navega.
  */
 export interface ProductCardModel {
   id: number;
   reference: string;
   name: string;
   brandName: string;
-  price?: number | null;
+  prices: CatalogPrice[];
   mainImageUrl?: string | null;
   inStock: boolean;
   hasVariants: boolean;
@@ -164,19 +188,18 @@ export interface ProductCardModel {
 }
 
 /**
- * Recorta una fila del listado de administración a lo que la tienda puede conocer.
- * Vive aquí para que el Home y la vitrina compartan exactamente la misma regla:
- * cuando exista el endpoint público de catálogo, solo cambia el origen de los datos.
+ * Adapta una fila del catálogo público a la tarjeta. Vive aquí para que el Home,
+ * la vitrina y los relacionados compartan exactamente la misma regla.
  */
-export function toProductCard(product: ProductListItem): ProductCardModel {
+export function toProductCard(product: CatalogProductListItem): ProductCardModel {
   return {
     id: product.id,
     reference: product.reference,
     name: product.name,
     brandName: product.brandName,
-    price: product.defaultPrice,
+    prices: product.prices,
     mainImageUrl: product.mainImageUrl,
-    inStock: product.totalQuantity > 0,
+    inStock: product.availableQuantity > 0,
     hasVariants: product.hasVariants,
     badge: product.hasVariants ? 'Tonos' : null
   };
@@ -210,8 +233,8 @@ export interface ProductDetailVariant {
 }
 
 /**
- * Lo que la tienda recibe de un producto. Nunca incluye el desglose de precios
- * comerciales ni la variante interna: eso solo existe en administración.
+ * Lo que la tienda recibe de un producto. Nunca incluye la variante interna ni
+ * precios que quien consulta no tenga autorizados.
  */
 export interface ProductDetail {
   id: number;
@@ -219,7 +242,7 @@ export interface ProductDetail {
   name: string;
   description?: string | null;
   brandName: string;
-  price?: number | null;
+  prices: CatalogPrice[];
   hasVariants: boolean;
   availableQuantity: number;
   categories: ProductDetailCategory[];

@@ -1,10 +1,14 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
+import { AuthService } from '../../../core/services/auth.service';
 import { CategoryService } from '../../../core/services/category.service';
-import { ProductService } from '../../../core/services/product.service';
+import { CatalogService } from '../../../core/services/catalog.service';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { ProductCardComponent } from '../../../shared/components/product-card/product-card.component';
 import { CategoryTile } from '../../../shared/models/category.model';
 import { ProductCardModel, toProductCard } from '../../../shared/models/product.model';
@@ -14,15 +18,18 @@ const FAVORITES_LIMIT = 5;
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, ProductCardComponent, ToastModule],
+  imports: [RouterLink, ProductCardComponent, LoaderComponent, EmptyStateComponent, ToastModule],
   providers: [MessageService],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
 export class HomeComponent {
   private readonly categoryService = inject(CategoryService);
-  private readonly productService = inject(ProductService);
+  private readonly catalogService = inject(CatalogService);
   private readonly messageService = inject(MessageService);
+
+  /** Las pistas de administración solo se muestran a quien puede administrar. */
+  readonly canManageStore = inject(AuthService).canManageStore;
 
   readonly tiles = signal<CategoryTile[]>([]);
   readonly loaded = signal(false);
@@ -47,9 +54,15 @@ export class HomeComponent {
       error: () => this.loaded.set(true)
     });
 
+    // Los productos se piden solo en el navegador: el inicio llega de inmediato
+    // con el loader en la sección, sin esperar a que el servidor consulte el catálogo.
+    if (!isPlatformBrowser(inject(PLATFORM_ID))) {
+      return;
+    }
+
     // Todavía no hay un campo "destacado" en el catálogo: por ahora la sección
     // muestra los primeros productos activos disponibles.
-    this.productService.getAll({ isActive: true }).subscribe({
+    this.catalogService.getProducts().subscribe({
       next: products => {
         this.favoriteProducts.set(products.slice(0, FAVORITES_LIMIT).map(toProductCard));
         this.productsLoading.set(false);

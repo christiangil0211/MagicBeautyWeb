@@ -20,6 +20,8 @@ public sealed class PriceTypeService(IPriceTypeRepository priceTypeRepository) :
                 Code = priceType.Code,
                 Name = priceType.Name,
                 IsDefault = priceType.IsDefault,
+                IsPublic = priceType.IsPublic,
+                DisplayOrder = priceType.DisplayOrder,
                 IsActive = priceType.IsActive
             })
             .ToList();

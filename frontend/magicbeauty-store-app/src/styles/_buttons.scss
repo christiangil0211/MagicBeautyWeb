@@ -1,0 +1,111 @@
+// Botones nativos con el aspecto de MagicCuadre (PrimaryButtonStyle, OutlineButtonStyle,
+// IconButtonStyle). Los p-button de PrimeNG toman lo mismo desde el preset.
+@layer app {
+  .mb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: var(--mb-button-h);
+    padding: 0 1.35rem;
+    border: 1px solid var(--mb-primary);
+    border-radius: var(--mb-radius-sm);
+    background: var(--mb-primary);
+    color: var(--mb-primary-contrast);
+    font-family: var(--mb-font-body);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    i {
+      font-size: 0.9rem;
+    }
+
+    &:hover:not(:disabled) {
+      background: var(--mb-primary-hover);
+      border-color: var(--mb-primary-hover);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: var(--mb-focus-ring);
+    }
+
+    &:disabled {
+      border-color: #e5e5e5;
+      background: #e5e5e5;
+      color: var(--mb-zinc-400);
+      cursor: not-allowed;
+    }
+  }
+
+  .mb-btn--outline {
+    background: var(--mb-surface);
+    color: var(--mb-primary);
+
+    &:hover:not(:disabled) {
+      background: var(--mb-primary-soft);
+      border-color: var(--mb-primary);
+    }
+
+    &:disabled {
+      background: var(--mb-surface);
+      border-color: var(--mb-border);
+      color: var(--mb-text-disabled);
+    }
+  }
+
+  /* Neutro: acciones secundarias que no deben competir con el fucsia. */
+  .mb-btn--ghost {
+    border-color: var(--mb-border);
+    background: var(--mb-surface);
+    color: var(--mb-text);
+
+    &:hover:not(:disabled) {
+      border-color: var(--mb-primary);
+      background: var(--mb-primary-soft);
+      color: var(--mb-primary);
+    }
+  }
+
+  .mb-btn--sm {
+    min-height: 34px;
+    padding: 0 0.9rem;
+    font-size: 0.82rem;
+  }
+
+  .mb-btn--lg {
+    min-height: 48px;
+    padding: 0 1.6rem;
+  }
+
+  .mb-btn--block {
+    width: 100%;
+  }
+
+  /* Cuadrado con icono (IconButtonStyle: fondo rosado, icono fucsia). */
+  .mb-icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: var(--mb-radius-sm);
+    background: var(--mb-primary-soft);
+    color: var(--mb-primary);
+    cursor: pointer;
+    transition: background 0.15s ease;
+
+    &:hover:not(:disabled) {
+      background: var(--mb-primary-soft-hover);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

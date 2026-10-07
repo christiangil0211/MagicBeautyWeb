@@ -24,6 +24,16 @@ public sealed class MagicBeautyDbContext(DbContextOptions<MagicBeautyDbContext> 
 
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
 
+    public DbSet<Role> Roles => Set<Role>();
+
+    public DbSet<RolePriceType> RolePriceTypes => Set<RolePriceType>();
+
+    public DbSet<User> Users => Set<User>();
+
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+
+    public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MagicBeautyDbContext).Assembly);

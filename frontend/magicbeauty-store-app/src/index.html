@@ -6,8 +6,88 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!--
+    Loader de arranque: misma pieza que <app-loader>, en HTML y CSS puro porque se
+    ve antes de que Angular cargue. Angular reemplaza el contenido de <app-root>
+    al iniciar, así que desaparece solo.
+  -->
+  <style>
+    .boot-loader {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: #fffdfe;
+      font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+    }
+
+    .boot-loader__content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 240px;
+    }
+
+    .boot-loader__mark {
+      width: 132px;
+      aspect-ratio: 1;
+      background: #ec1c79;
+      -webkit-mask: url('/images/loader-mark.png') center / contain no-repeat;
+      mask: url('/images/loader-mark.png') center / contain no-repeat;
+      animation: boot-pulse 0.6s ease-in-out infinite alternate;
+    }
+
+    .boot-loader__bar {
+      position: relative;
+      width: 100%;
+      height: 6px;
+      margin-bottom: 0.9rem;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #fce4ef;
+    }
+
+    .boot-loader__bar span {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 40%;
+      border-radius: inherit;
+      background: #ec1c79;
+      animation: boot-progress 1.2s ease-in-out infinite;
+    }
+
+    .boot-loader p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #2d2430;
+    }
+
+    @keyframes boot-pulse {
+      from { opacity: 0.65; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1.05); }
+    }
+
+    @keyframes boot-progress {
+      from { left: -40%; }
+      to { left: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .boot-loader__mark,
+      .boot-loader__bar span { animation: none; }
+    }
+  </style>
 </head>
 <body>
-  <app-root></app-root>
+  <app-root>
+    <div class="boot-loader" role="status" aria-live="polite">
+      <div class="boot-loader__content">
+        <span class="boot-loader__mark" aria-hidden="true"></span>
+        <span class="boot-loader__bar" aria-hidden="true"><span></span></span>
+        <p>Cargando…</p>
+      </div>
+    </div>
+  </app-root>
 </body>
 </html>

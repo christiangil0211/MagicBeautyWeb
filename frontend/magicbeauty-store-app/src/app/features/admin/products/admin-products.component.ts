@@ -12,6 +12,8 @@ import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 
 import { BrandService } from '../../../core/services/brand.service';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ProductService } from '../../../core/services/product.service';
 import { Brand } from '../../../shared/models/brand.model';
 import { ProductListItem } from '../../../shared/models/product.model';
@@ -33,7 +35,10 @@ interface StatusOption {
     SelectModule,
     TagModule,
     ToastModule,
-    ConfirmDialogModule
+    ConfirmDialogModule,
+    PageHeaderComponent,
+    LoaderComponent,
+
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './admin-products.component.html',

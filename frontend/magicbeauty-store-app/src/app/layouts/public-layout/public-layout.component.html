@@ -33,16 +33,7 @@
         <img src="/images/logo-header.png" alt="Magic Beauty Cosmetics" />
       </a>
 
-      <div class="search-box desktop-search">
-        <input type="text" placeholder="Buscar producto..." />
-
-        <button type="button" aria-label="Buscar producto">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="7"></circle>
-            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
-          </svg>
-        </button>
-      </div>
+      <app-search-box class="desktop-search" inputId="desktop-search" [value]="searchTerm()" />
 
       <div class="header-actions">
         <button
@@ -56,6 +47,13 @@
           </svg>
         </button>
 
+        <button type="button" class="mobile-header-button mobile-only" (click)="openAccount()" aria-label="Cuenta">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 21c1.6-4.2 14.4-4.2 16 0"></path>
+          </svg>
+        </button>
+
         <a class="mobile-header-button mobile-only" href="javascript:void(0)" aria-label="Carrito">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 7H6"></path>
@@ -64,13 +62,17 @@
           </svg>
         </a>
 
-        <a class="header-action desktop-only" href="javascript:void(0)">
+        <button
+          type="button"
+          class="header-action header-action--button desktop-only"
+          [class.active]="isAuthenticated()"
+          (click)="openAccount()">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="8" r="4"></circle>
             <path d="M4 21c1.6-4.2 14.4-4.2 16 0"></path>
           </svg>
-          <span>Cuenta</span>
-        </a>
+          <span>{{ isAuthenticated() ? 'Mi cuenta' : 'Cuenta' }}</span>
+        </button>
 
         <a class="header-action desktop-only" href="javascript:void(0)">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -90,90 +92,96 @@
       </div>
     </div>
 
-    <!-- El menú se arma con lo que se configura en el administrador de categorías. -->
-    <nav class="store-menu" (mouseleave)="closeMegaMenu()">
-      <a class="store-menu__link" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-        Inicio
-      </a>
+    <!--
+      Solo categorías configuradas en el administrador y, con permiso, el back office.
+      Al inicio se vuelve desde el logo.
+    -->
+    @if (menu().length > 0 || canManageStore()) {
+      <nav class="store-menu" (mouseleave)="closeMegaMenu()">
 
-      @for (item of menu(); track item.id) {
-        <div class="store-menu__item" (mouseenter)="openMegaMenu(item.id)">
-          <a class="store-menu__link" [routerLink]="categoryPath(item.slug)" routerLinkActive="active">
-            {{ item.name }}
-            @if (item.children.length > 0) {
-              <i class="pi pi-angle-down"></i>
-            }
-          </a>
+        @for (item of menu(); track item.id) {
+          <div class="store-menu__item" (mouseenter)="openMegaMenu(item.id)">
+            <a class="store-menu__link" [routerLink]="categoryPath(item.slug)" routerLinkActive="active">
+              {{ item.name }}
+              @if (item.children.length > 0) {
+                <i class="pi pi-angle-down"></i>
+              }
+            </a>
 
-          @if (item.children.length > 0 && openMenuId() === item.id) {
-            <div class="nav-dropdown">
-              @for (child of item.children; track child.id) {
-                <div class="nav-dropdown__row">
-                  <a class="nav-dropdown__link" [routerLink]="categoryPath(child.slug)" (click)="closeMegaMenu()">
-                    {{ child.name }}
-                  </a>
+            @if (item.children.length > 0 && openMenuId() === item.id) {
+              <div class="nav-dropdown">
+                @for (child of item.children; track child.id) {
+                  <div class="nav-dropdown__row">
+                    <a class="nav-dropdown__link" [routerLink]="categoryPath(child.slug)" (click)="closeMegaMenu()">
+                      {{ child.name }}
+                    </a>
 
-                  @if (child.children.length > 0) {
-                    <button
-                      type="button"
-                      class="nav-dropdown__toggle"
-                      [attr.aria-expanded]="isChildExpanded(child.id)"
-                      [attr.aria-label]="'Ver subcategorías de ' + child.name"
-                      (click)="toggleChild(child.id, $event)">
-                      <i class="pi" [class.pi-angle-down]="!isChildExpanded(child.id)"
-                         [class.pi-angle-up]="isChildExpanded(child.id)"></i>
-                    </button>
-                  }
-                </div>
-
-                @if (child.children.length > 0 && isChildExpanded(child.id)) {
-                  <div class="nav-dropdown__sublist">
-                    @for (grandChild of child.children; track grandChild.id) {
-                      <a
-                        class="nav-dropdown__sublink"
-                        [routerLink]="categoryPath(grandChild.slug)"
-                        (click)="closeMegaMenu()">
-                        {{ grandChild.name }}
-                      </a>
+                    @if (child.children.length > 0) {
+                      <button
+                        type="button"
+                        class="nav-dropdown__toggle"
+                        [attr.aria-expanded]="isChildExpanded(child.id)"
+                        [attr.aria-label]="'Ver subcategorías de ' + child.name"
+                        (click)="toggleChild(child.id, $event)">
+                        <i class="pi" [class.pi-angle-down]="!isChildExpanded(child.id)"
+                           [class.pi-angle-up]="isChildExpanded(child.id)"></i>
+                      </button>
                     }
                   </div>
+
+                  @if (child.children.length > 0 && isChildExpanded(child.id)) {
+                    <div class="nav-dropdown__sublist">
+                      @for (grandChild of child.children; track grandChild.id) {
+                        <a
+                          class="nav-dropdown__sublink"
+                          [routerLink]="categoryPath(grandChild.slug)"
+                          (click)="closeMegaMenu()">
+                          {{ grandChild.name }}
+                        </a>
+                      }
+                    </div>
+                  }
                 }
-              }
-            </div>
-          }
-        </div>
-      }
-
-      @for (link of dynamicLinks; track link.path) {
-        <a class="store-menu__link" [routerLink]="link.path" routerLinkActive="active">{{ link.label }}</a>
-      }
-
-      <!-- Back office. Debe quedar detrás del rol Administrator cuando exista autenticación. -->
-      <div class="store-menu__item store-menu__item--admin" (mouseenter)="openAdminMenu()">
-        <button type="button" class="store-menu__link store-menu__link--admin">
-          <i class="pi pi-cog"></i>
-          Gestionar y administrar
-          <i class="pi pi-angle-down"></i>
-        </button>
-
-        @if (isAdminMenuOpen()) {
-          <div class="nav-dropdown nav-dropdown--right">
-            @for (link of adminLinks; track link.path) {
-              <div class="nav-dropdown__row">
-                <a
-                  class="nav-dropdown__link"
-                  [routerLink]="link.path"
-                  routerLinkActive="active"
-                  (click)="closeMegaMenu()">
-                  <i [class]="link.icon"></i>
-                  {{ link.label }}
-                </a>
               </div>
             }
           </div>
         }
-      </div>
-    </nav>
+
+        <!-- Back office: solo si el backend confirma que la sesión puede administrar. -->
+        @if (canManageStore()) {
+          <div class="store-menu__item store-menu__item--admin" (mouseenter)="openAdminMenu()">
+            <button type="button" class="store-menu__link store-menu__link--admin">
+              <i class="pi pi-cog"></i>
+              Gestionar y administrar
+              <i class="pi pi-angle-down"></i>
+            </button>
+
+            @if (isAdminMenuOpen()) {
+              <div class="nav-dropdown nav-dropdown--right">
+                @for (link of adminLinks; track link.path) {
+                  <div class="nav-dropdown__row">
+                    <a
+                      class="nav-dropdown__link"
+                      [routerLink]="link.path"
+                      routerLinkActive="active"
+                      (click)="closeMegaMenu()">
+                      <i [class]="link.icon"></i>
+                      {{ link.label }}
+                    </a>
+                  </div>
+                }
+                <div class="nav-dropdown__row">
+                  <button type="button" class="nav-dropdown__link nav-dropdown__link--button" (click)="logout()">
+                    <i class="pi pi-sign-out"></i>
+                    Cerrar sesión
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </nav>
+    }
   </header>
 
   <main class="store-content">
@@ -206,7 +214,9 @@
         <h3>Contáctanos</h3>
         <span>+57 301 166 3303</span>
         <span>cliente.magicbeauty&#64;gmail.com</span>
-        <a routerLink="/admin/categories">Administrar tienda</a>
+        @if (canManageStore()) {
+          <a routerLink="/admin/categories">Administrar tienda</a>
+        }
       </div>
     </div>
 
@@ -224,20 +234,15 @@
     </div>
 
     <div class="mobile-search-body">
-      <div class="mobile-search-input">
-        <input type="text" placeholder="Buscar producto..." />
-
-        <button type="button" aria-label="Buscar producto">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="7"></circle>
-            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
-          </svg>
-        </button>
-      </div>
+      <app-search-box
+        inputId="mobile-search"
+        placeholder="Nombre, referencia o marca"
+        [value]="searchTerm()"
+        (done)="closeMobileSearch()" />
 
       <div class="quick-search">
-        <strong>Búsqueda rápida</strong>
-        <span>Labios, cuidado facial, maquillaje</span>
+        <strong>Puedes buscar por</strong>
+        <span>Nombre (labial), referencia (ACO011) o marca (Milagros)</span>
       </div>
     </div>
   </section>
@@ -263,17 +268,19 @@
         }
       }
 
-      @for (link of dynamicLinks; track link.path) {
-        <a [routerLink]="link.path" (click)="closeMobileMenu()">{{ link.label }}</a>
+      @if (canManageStore()) {
+        <span class="mobile-menu-links__heading">Gestionar y administrar</span>
+
+        @for (link of adminLinks; track link.path) {
+          <a class="mobile-menu-links__child" [routerLink]="link.path" (click)="closeMobileMenu()">
+            {{ link.label }}
+          </a>
+        }
       }
 
-      <span class="mobile-menu-links__heading">Gestionar y administrar</span>
-
-      @for (link of adminLinks; track link.path) {
-        <a class="mobile-menu-links__child" [routerLink]="link.path" (click)="closeMobileMenu()">
-          {{ link.label }}
-        </a>
-      }
+      <a href="javascript:void(0)" (click)="closeMobileMenu(); openAccount()">
+        {{ isAuthenticated() ? 'Mi cuenta' : 'Iniciar sesión' }}
+      </a>
     </nav>
 
     <div class="mobile-help">
@@ -282,4 +289,10 @@
       <span>cliente.magicbeauty&#64;gmail.com</span>
     </div>
   </aside>
+
+  <app-account-panel
+    [open]="isAccountOpen()"
+    [adminLinks]="adminLinks"
+    [returnUrl]="loginReturnUrl()"
+    (closed)="closeAccount()" />
 </div>

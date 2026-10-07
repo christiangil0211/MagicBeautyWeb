@@ -1,5 +1,7 @@
 using MagicBeauty.Store.Application.Features.PriceTypes;
 using MagicBeauty.Store.Contracts.PriceTypes.Responses;
+using MagicBeauty.Store.Api.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MagicBeauty.Store.Api.Controllers;
@@ -9,6 +11,7 @@ namespace MagicBeauty.Store.Api.Controllers;
 /// tipos de precio hasta que exista el requerimiento.
 /// </summary>
 [ApiController]
+[Authorize(Policy = AuthorizationPolicies.StoreAdmin)]
 [Route("api/price-types")]
 public sealed class PriceTypesController(IPriceTypeService priceTypeService) : ControllerBase
 {

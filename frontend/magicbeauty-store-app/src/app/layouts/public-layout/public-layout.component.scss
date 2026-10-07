@@ -94,70 +94,6 @@
   object-fit: contain;
 }
 
-.search-box {
-  height: 44px;
-  max-width: 520px;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr 48px;
-  border: 1px solid var(--mb-border);
-  border-radius: var(--mb-radius-pill);
-  overflow: hidden;
-  background: var(--mb-surface-2);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.search-box:focus-within {
-  border-color: var(--mb-primary);
-  box-shadow: 0 0 0 3px rgba(230, 57, 139, 0.12);
-  background: var(--mb-surface);
-}
-
-.search-box input,
-.mobile-search-input input,
-.mobile-search-body select {
-  border: 0;
-  outline: 0;
-  font: inherit;
-}
-
-.search-box input {
-  padding: 0 20px;
-  background: transparent;
-  color: var(--mb-text);
-}
-
-.search-box input::placeholder {
-  color: var(--mb-text-muted);
-}
-
-.search-box button,
-.mobile-search-input button {
-  border: 0;
-  background: transparent;
-  color: var(--mb-primary);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: color 0.2s ease;
-}
-
-.search-box button:hover,
-.mobile-search-input button:hover {
-  color: #ff8fab;
-}
-
-.search-box button svg,
-.mobile-search-input button svg,
-.mobile-search-button svg {
-  width: 22px;
-  height: 22px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-}
-
 .header-actions {
   display: flex;
   align-items: center;
@@ -191,8 +127,17 @@
   margin-top: 2px;
 }
 
-.header-action:hover {
+.header-action:hover,
+.header-action.active {
   color: var(--mb-primary);
+}
+
+.header-action--button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .store-menu {
@@ -366,33 +311,6 @@
   padding: 18px 20px 24px;
   display: grid;
   gap: 16px;
-}
-
-.mobile-search-body select {
-  height: 42px;
-  border: 1px solid var(--mb-border);
-  border-radius: var(--mb-radius-sm);
-  padding: 0 14px;
-  color: var(--mb-text);
-  background: var(--mb-surface);
-}
-
-.mobile-search-input {
-  height: 48px;
-  display: grid;
-  grid-template-columns: 1fr 52px;
-  border: 1px solid var(--mb-border);
-  border-radius: var(--mb-radius-sm);
-  overflow: hidden;
-}
-
-.mobile-search-input input {
-  padding: 0 14px;
-  color: var(--mb-text);
-}
-
-.mobile-search-input button {
-  color: var(--mb-primary);
 }
 
 .quick-search {
@@ -694,6 +612,14 @@
 }
 
 /* Nivel 2 y enlaces del panel de administración */
+.nav-dropdown__link--button {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .nav-dropdown__link {
   flex: 1;
   display: flex;

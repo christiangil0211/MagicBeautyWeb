@@ -1,0 +1,154 @@
+:host {
+  display: block;
+}
+
+.users {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.users__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.panel {
+  background: var(--mb-surface);
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius);
+  padding: 1.25rem;
+  box-shadow: var(--mb-shadow-sm);
+}
+
+.email {
+  font-weight: 600;
+  color: var(--mb-heading);
+  word-break: break-all;
+}
+
+.muted {
+  color: var(--mb-text-muted);
+}
+
+.center {
+  text-align: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  label {
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--mb-text-secondary);
+  }
+
+  input {
+    width: 100%;
+  }
+
+  p-button {
+    margin-top: 1rem;
+  }
+}
+
+:host ::ng-deep .form .p-button {
+  width: 100%;
+}
+
+.form__hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--mb-text-secondary);
+}
+
+.form__error {
+  color: var(--mb-danger);
+  font-size: 0.76rem;
+}
+
+@media (max-width: 1100px) {
+  .users__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.access-hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.74rem;
+  color: var(--mb-text-muted);
+}
+
+.form__ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--mb-success);
+  font-size: 0.76rem;
+}
+
+/* Modal de confirmación del correo antes de crear el administrador. */
+.confirm-email {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+
+  p {
+    margin: 0;
+    color: var(--mb-text-secondary);
+  }
+}
+
+.confirm-email__icon {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background: var(--mb-primary-soft, #fce4ef);
+  color: var(--mb-primary);
+  font-size: 1.35rem;
+}
+
+.confirm-email__address {
+  max-width: 100%;
+  padding: 0.65rem 1rem;
+  border: 1px dashed var(--mb-primary);
+  border-radius: var(--mb-radius-sm);
+  background: var(--mb-surface-2);
+  color: var(--mb-text);
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+.confirm-email__warning {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+  font-size: 0.8rem;
+  text-align: left;
+
+  i {
+    margin-top: 0.15rem;
+    color: var(--mb-warning, #d97706);
+  }
+}
+
+input.is-invalid {
+  border-color: var(--mb-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mb-danger) 12%, transparent);
+}

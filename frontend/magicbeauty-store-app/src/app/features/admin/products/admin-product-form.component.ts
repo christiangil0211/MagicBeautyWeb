@@ -20,6 +20,7 @@ import { BrandService } from '../../../core/services/brand.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { PriceTypeService } from '../../../core/services/price-type.service';
 import { ProductService } from '../../../core/services/product.service';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { Brand } from '../../../shared/models/brand.model';
 import { Category } from '../../../shared/models/category.model';
 import { PriceType } from '../../../shared/models/price-type.model';
@@ -33,6 +34,9 @@ import {
 
 const REFERENCE_PATTERN = /^[A-Za-z]{3}[0-9]{3}$/;
 
+/** Mismo límite que valida el API (ImageUploadRules.MaxBytes). */
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
 interface MovementOption {
   label: string;
   value: InventoryMovementCode;
@@ -42,6 +46,7 @@ interface MovementOption {
   selector: 'app-admin-product-form',
   imports: [
     ReactiveFormsModule,
+    LoaderComponent,
     RouterLink,
     PrimeTemplate,
     ButtonModule,
@@ -155,8 +160,12 @@ export class AdminProductFormComponent {
     displayOrder: [0, [Validators.required, Validators.min(0)]]
   });
 
+  /** Archivo elegido para subir; si hay uno, la URL se ignora. */
+  readonly selectedFile = signal<File | null>(null);
+  readonly uploadingImage = signal(false);
+
   readonly imageForm = this.formBuilder.nonNullable.group({
-    url: ['', Validators.required],
+    url: [''],
     altText: [''],
     productVariantId: [null as number | null],
     displayOrder: [0, [Validators.required, Validators.min(0)]],
@@ -340,41 +349,84 @@ export class AdminProductFormComponent {
       });
   }
 
-  addImage(): void {
-    const product = this.product();
+  onFileSelected(input: HTMLInputElement): void {
+    const file = input.files?.[0] ?? null;
 
-    if (!product || this.imageForm.invalid) {
+    if (file && file.size > MAX_IMAGE_BYTES) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Imagen muy pesada',
+        detail: 'El máximo es 8 MB. Reduce el tamaño de la foto e inténtalo de nuevo.'
+      });
+      input.value = '';
+      this.selectedFile.set(null);
+
+      return;
+    }
+
+    this.selectedFile.set(file);
+  }
+
+  clearSelectedFile(input: HTMLInputElement): void {
+    input.value = '';
+    this.selectedFile.set(null);
+  }
+
+  /** Sube el archivo elegido o, si no hay, registra la URL escrita. */
+  addImage(fileInput: HTMLInputElement): void {
+    const product = this.product();
+    const file = this.selectedFile();
+    const value = this.imageForm.getRawValue();
+
+    if (!product || this.imageForm.invalid || this.uploadingImage()) {
       this.imageForm.markAllAsTouched();
 
       return;
     }
 
-    const value = this.imageForm.getRawValue();
-
-    this.productService
-      .addImage(product.id, {
-        url: value.url.trim(),
-        altText: value.altText.trim() || null,
-        productVariantId: value.productVariantId,
-        displayOrder: value.displayOrder,
-        isMain: value.isMain,
-        isActive: value.isActive
-      })
-      .subscribe({
-        next: () => {
-          this.imageForm.reset({
-            url: '',
-            altText: '',
-            productVariantId: null,
-            displayOrder: 0,
-            isMain: false,
-            isActive: true
-          });
-          this.reloadImages(product.id);
-          this.notify('Imagen agregada', 'Ya aparece en la galería del producto.');
-        },
-        error: error => this.showError('No se pudo agregar la imagen', error)
+    if (!file && !value.url.trim()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Falta la imagen',
+        detail: 'Elige una foto de tu equipo o escribe una URL.'
       });
+
+      return;
+    }
+
+    const options = {
+      altText: value.altText.trim() || null,
+      productVariantId: value.productVariantId,
+      displayOrder: value.displayOrder,
+      isMain: value.isMain
+    };
+
+    const request$ = file
+      ? this.productService.uploadImage(product.id, file, options)
+      : this.productService.addImage(product.id, { ...options, url: value.url.trim(), isActive: value.isActive });
+
+    this.uploadingImage.set(true);
+
+    request$.subscribe({
+      next: () => {
+        this.uploadingImage.set(false);
+        this.clearSelectedFile(fileInput);
+        this.imageForm.reset({
+          url: '',
+          altText: '',
+          productVariantId: null,
+          displayOrder: 0,
+          isMain: false,
+          isActive: true
+        });
+        this.reloadImages(product.id);
+        this.notify('Imagen agregada', 'Ya aparece en la galería del producto.');
+      },
+      error: error => {
+        this.uploadingImage.set(false);
+        this.showError('No se pudo agregar la imagen', error);
+      }
+    });
   }
 
   deleteImage(image: ProductImage): void {
@@ -474,6 +526,7 @@ export class AdminProductFormComponent {
       code: [priceType.code],
       name: [priceType.name],
       isDefault: [priceType.isDefault],
+      isPublic: [priceType.isPublic],
       amount: [null as number | null],
       isActive: [true]
     });

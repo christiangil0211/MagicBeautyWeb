@@ -48,9 +48,7 @@
       <span class="product-card__name">{{ product().name }}</span>
     }
 
-    <span class="product-card__price" [class.unavailable]="product().price == null">
-      {{ formattedPrice() }}
-    </span>
+    <app-price-list class="product-card__prices" [prices]="product().prices" />
 
     <button
       type="button"

@@ -16,9 +16,6 @@ public interface IProductService
 
     Task<ProductDto> GetByReferenceAsync(string reference, CancellationToken cancellationToken);
 
-    /// <summary>Ficha publica: solo el precio aplicable y sin la variante interna.</summary>
-    Task<ProductDetailDto> GetPublicDetailAsync(string reference, CancellationToken cancellationToken);
-
     Task<ProductDto> CreateAsync(CreateProductRequest request, CancellationToken cancellationToken);
 
     Task UpdateAsync(int id, UpdateProductRequest request, CancellationToken cancellationToken);
@@ -62,6 +59,12 @@ public interface IProductService
     Task UpdateImageAsync(
         int imageId,
         UpdateProductImageRequest request,
+        CancellationToken cancellationToken);
+
+    /// <summary>Sube el archivo al almacenamiento y lo registra como imagen del producto.</summary>
+    Task<ProductImageDto> UploadImageAsync(
+        int productId,
+        ProductImageUpload upload,
         CancellationToken cancellationToken);
 
     Task DeleteImageAsync(int imageId, CancellationToken cancellationToken);

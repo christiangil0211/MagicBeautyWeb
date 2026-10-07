@@ -1,14 +1,20 @@
 using MagicBeauty.Store.Application.Features.Products;
 using MagicBeauty.Store.Contracts.Products.Requests;
 using MagicBeauty.Store.Contracts.Products.Responses;
+using MagicBeauty.Store.Api.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MagicBeauty.Store.Api.Controllers;
 
 [ApiController]
+[Authorize(Policy = AuthorizationPolicies.StoreAdmin)]
 [Route("api/products")]
 public sealed class ProductsController(IProductService productService) : ControllerBase
 {
+    /// <summary>Limite de la imagen (8 MB) mas margen para los campos del formulario.</summary>
+    private const long UploadRequestLimit = 9 * 1024 * 1024;
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ProductListItemDto>>> GetAll(
         [FromQuery] int? brandId,
@@ -174,6 +180,29 @@ public sealed class ProductsController(IProductService productService) : Control
         CancellationToken cancellationToken)
     {
         var image = await productService.AddImageAsync(id, request, cancellationToken);
+
+        return CreatedAtAction(nameof(GetImages), new { id }, image);
+    }
+
+    /// <summary>Sube una imagen desde el equipo (multipart/form-data, campo "file").</summary>
+    [HttpPost("{id:int}/images/upload")]
+    [RequestSizeLimit(UploadRequestLimit)]
+    [RequestFormLimits(MultipartBodyLengthLimit = UploadRequestLimit)]
+    public async Task<ActionResult<ProductImageDto>> UploadImage(
+        int id,
+        IFormFile file,
+        [FromForm] string? altText,
+        [FromForm] int? productVariantId,
+        [FromForm] int displayOrder,
+        [FromForm] bool isMain,
+        CancellationToken cancellationToken)
+    {
+        await using var content = file.OpenReadStream();
+
+        var image = await productService.UploadImageAsync(
+            id,
+            new ProductImageUpload(content, file.Length, altText, productVariantId, displayOrder, isMain),
+            cancellationToken);
 
         return CreatedAtAction(nameof(GetImages), new { id }, image);
     }

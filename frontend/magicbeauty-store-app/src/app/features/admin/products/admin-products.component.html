@@ -2,38 +2,31 @@
 <p-confirmdialog />
 
 <section class="products">
-  <header class="products__head">
-    <div>
-      <p class="eyebrow">Catálogo</p>
-      <h1>Productos</h1>
-      <p class="subtitle">Referencias, precios y existencias de la tienda.</p>
+  <app-page-header
+    eyebrow="Catálogo"
+    title="Productos"
+    subtitle="Referencias, precios y existencias de la tienda.">
+    <div class="mb-stat">
+      <strong>{{ products().length }}</strong>
+      <span>en total</span>
+    </div>
+    <div class="mb-stat">
+      <strong>{{ activeCount() }}</strong>
+      <span>activos</span>
+    </div>
+    <div class="mb-stat">
+      <strong>{{ totalStock() }}</strong>
+      <span>unidades</span>
     </div>
 
-    <div class="products__head-right">
-      <div class="products__stats">
-        <div class="stat">
-          <strong>{{ products().length }}</strong>
-          <span>en total</span>
-        </div>
-        <div class="stat">
-          <strong>{{ activeCount() }}</strong>
-          <span>activos</span>
-        </div>
-        <div class="stat">
-          <strong>{{ totalStock() }}</strong>
-          <span>unidades</span>
-        </div>
-      </div>
-
-      <p-button
-        label="Crear producto"
-        icon="pi pi-plus"
-        routerLink="/admin/products/nuevo" />
-    </div>
-  </header>
+    <p-button
+      label="Crear producto"
+      icon="pi pi-plus"
+      routerLink="/admin/products/nuevo" />
+  </app-page-header>
 
   @if (withoutPrice() > 0) {
-    <div class="notice">
+    <div class="mb-notice">
       <i class="pi pi-info-circle"></i>
       {{ withoutPrice() }} producto(s) sin precio Detal cargado: no podrán mostrarse en la tienda.
     </div>
@@ -80,104 +73,111 @@
         (onClick)="clearFilters()" />
     </div>
 
-    <p-table
-      [value]="products()"
-      [loading]="loading()"
-      styleClass="mb-table"
-      dataKey="id"
-      [rowHover]="true">
-      <ng-template pTemplate="header">
-        <tr>
-          <th style="width: 7rem">Referencia</th>
-          <th>Producto</th>
-          <th style="width: 9rem">Marca</th>
-          <th style="width: 14rem">Categorías</th>
-          <th style="width: 8rem" class="right">Detal</th>
-          <th style="width: 6rem" class="center">Stock</th>
-          <th style="width: 7rem" class="center">Estado</th>
-          <th style="width: 6.5rem" class="center">Acciones</th>
-        </tr>
-      </ng-template>
+    <div class="mb-table-wrap" [class.is-loading]="loading()">
+      @if (loading()) {
+        <app-loader mode="overlay" message="Cargando productos…" />
+      }
 
-      <ng-template pTemplate="body" let-product>
-        <tr>
-          <td><span class="reference">{{ product.reference }}</span></td>
+      <p-table
+        [value]="products()"
+        styleClass="mb-table"
+        dataKey="id"
+        [rowHover]="true">
+        <ng-template pTemplate="header">
+          <tr>
+            <th style="width: 7rem">Referencia</th>
+            <th>Producto</th>
+            <th style="width: 9rem">Marca</th>
+            <th style="width: 14rem">Categorías</th>
+            <th style="width: 8rem" class="right">Detal</th>
+            <th style="width: 6rem" class="center">Stock</th>
+            <th style="width: 7rem" class="center">Estado</th>
+            <th style="width: 6.5rem" class="center">Acciones</th>
+          </tr>
+        </ng-template>
 
-          <td>
-            <div class="product-cell">
-              <span class="product-cell__name">{{ product.name }}</span>
-              @if (product.hasVariants) {
-                <span class="product-cell__tag"><i class="pi pi-palette"></i> Con tonos</span>
-              }
-            </div>
-          </td>
+        <ng-template pTemplate="body" let-product>
+          <tr>
+            <td><span class="reference">{{ product.reference }}</span></td>
 
-          <td>{{ product.brandName }}</td>
-
-          <td>
-            @if (product.categories.length > 0) {
-              <div class="chips">
-                @for (category of product.categories; track category) {
-                  <span class="chip">{{ category }}</span>
+            <td>
+              <div class="product-cell">
+                <span class="product-cell__name">{{ product.name }}</span>
+                @if (product.hasVariants) {
+                  <span class="product-cell__tag"><i class="pi pi-palette"></i> Con tonos</span>
                 }
               </div>
-            } @else {
-              <span class="muted">Sin categorías</span>
-            }
-          </td>
+            </td>
 
-          <td class="right">
-            <span [class.muted]="product.defaultPrice == null">
-              {{ formatPrice(product.defaultPrice) }}
-            </span>
-          </td>
+            <td>{{ product.brandName }}</td>
 
-          <td class="center">
-            <span class="stock" [class.stock--empty]="product.totalQuantity === 0">
-              {{ product.totalQuantity }}
-            </span>
-          </td>
+            <td>
+              @if (product.categories.length > 0) {
+                <div class="chips">
+                  @for (category of product.categories; track category) {
+                    <span class="chip">{{ category }}</span>
+                  }
+                </div>
+              } @else {
+                <span class="muted">Sin categorías</span>
+              }
+            </td>
 
-          <td class="center">
-            @if (product.isActive) {
-              <p-tag value="Activo" severity="success" />
-            } @else {
-              <p-tag value="Inactivo" severity="secondary" />
-            }
-          </td>
+            <td class="right">
+              <span [class.muted]="product.defaultPrice == null">
+                {{ formatPrice(product.defaultPrice) }}
+              </span>
+            </td>
 
-          <td class="center">
-            <div class="row-actions">
-              <p-button
-                icon="pi pi-pencil"
-                severity="secondary"
-                [text]="true"
-                size="small"
-                (onClick)="edit(product)" />
+            <td class="center">
+              <span class="stock" [class.stock--empty]="product.totalQuantity === 0">
+                {{ product.totalQuantity }}
+              </span>
+            </td>
+
+            <td class="center">
               @if (product.isActive) {
+                <p-tag value="Activo" severity="success" />
+              } @else {
+                <p-tag value="Inactivo" severity="secondary" />
+              }
+            </td>
+
+            <td class="center">
+              <div class="row-actions">
                 <p-button
-                  icon="pi pi-ban"
-                  severity="danger"
+                  icon="pi pi-pencil"
+                  severity="secondary"
                   [text]="true"
                   size="small"
-                  (onClick)="confirmDeactivate(product)" />
-              }
-            </div>
-          </td>
-        </tr>
-      </ng-template>
+                  (onClick)="edit(product)" />
+                @if (product.isActive) {
+                  <p-button
+                    icon="pi pi-ban"
+                    severity="danger"
+                    [text]="true"
+                    size="small"
+                    (onClick)="confirmDeactivate(product)" />
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
 
-      <ng-template pTemplate="emptymessage">
-        <tr>
-          <td colspan="8">
-            <div class="panel__empty">
-              <i class="pi pi-shopping-bag"></i>
-              <strong>Aún no hay productos</strong>
-              <span>Crea el primero para empezar a armar el catálogo.</span>
-            </div>
-          </td>
-        </tr>
-      </ng-template>
-    </p-table>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="8">
+              @if (!loading()) {
+                <div class="panel__empty">
+                  <i class="pi pi-shopping-bag"></i>
+                  <strong>Aún no hay productos</strong>
+                  <span>Crea el primero para empezar a armar el catálogo.</span>
+                </div>
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
   </div>
 </section>

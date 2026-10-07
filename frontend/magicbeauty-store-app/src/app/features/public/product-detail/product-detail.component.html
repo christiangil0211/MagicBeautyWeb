@@ -1,14 +1,16 @@
 <p-toast position="top-right" />
 
 @if (loading()) {
-  <p class="detail-state">Cargando producto…</p>
+  <app-loader message="Cargando producto…" />
 } @else if (notFound()) {
-  <div class="detail-state detail-state--empty">
-    <i class="pi pi-inbox"></i>
-    <strong>No encontramos este producto</strong>
-    <span>Puede que ya no esté disponible en la tienda.</span>
-    <a class="btn btn--solid" routerLink="/productos">Ver todos los productos</a>
-  </div>
+  <app-empty-state
+    class="detail-empty"
+    icon="pi-search"
+    title="No encontramos este producto"
+    message="Puede que ya no esté disponible en la tienda."
+    [boxed]="true">
+    <a class="mb-btn" routerLink="/productos">Ver todos los productos</a>
+  </app-empty-state>
 } @else if (product(); as item) {
   <nav class="breadcrumb" aria-label="Ruta de navegación">
     <a routerLink="/">Inicio</a>
@@ -24,7 +26,7 @@
 
   <section class="detail">
     <!-- Galería -->
-    <div class="gallery">
+    <div class="gallery" [class.gallery--single]="gallery().length <= 1">
       @if (gallery().length > 1) {
         <div class="gallery__thumbs">
           @for (image of gallery(); track image.id) {
@@ -58,7 +60,7 @@
       <h1 class="info__name">{{ item.name }}</h1>
       <span class="info__reference">Ref. {{ item.reference }}</span>
 
-      <p class="info__price" [class.unavailable]="item.price == null">{{ formattedPrice() }}</p>
+      <app-price-list class="info__prices" size="large" [prices]="item.prices" />
 
       @if (isSoldOut()) {
         <p class="info__stock info__stock--out"><i class="pi pi-ban"></i> Agotado</p>

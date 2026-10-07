@@ -13,6 +13,8 @@ import { ToastModule } from 'primeng/toast';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TreeModule } from 'primeng/tree';
 
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { CategoryService } from '../../../core/services/category.service';
 import { Category } from '../../../shared/models/category.model';
 
@@ -35,7 +37,9 @@ interface ParentOption {
     ToggleSwitchModule,
     TagModule,
     ToastModule,
-    ConfirmDialogModule
+    ConfirmDialogModule,
+    PageHeaderComponent,
+    LoaderComponent
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './admin-categories.component.html',

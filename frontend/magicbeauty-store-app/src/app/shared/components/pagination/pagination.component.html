@@ -1,0 +1,40 @@
+<nav class="pagination" aria-label="Paginación">
+  <span class="pagination__range">{{ rangeLabel() }}</span>
+
+  @if (pageCount() > 1) {
+    <div class="pagination__pages">
+      <button
+        type="button"
+        class="pagination__button"
+        aria-label="Página anterior"
+        [disabled]="page() <= 1"
+        (click)="go(page() - 1)">
+        <i class="pi pi-angle-left"></i>
+      </button>
+
+      @for (item of items(); track $index) {
+        @if (item === null) {
+          <span class="pagination__gap">…</span>
+        } @else {
+          <button
+            type="button"
+            class="pagination__button"
+            [class.active]="item === page()"
+            [attr.aria-current]="item === page() ? 'page' : null"
+            (click)="go(item)">
+            {{ item }}
+          </button>
+        }
+      }
+
+      <button
+        type="button"
+        class="pagination__button"
+        aria-label="Página siguiente"
+        [disabled]="page() >= pageCount()"
+        (click)="go(page() + 1)">
+        <i class="pi pi-angle-right"></i>
+      </button>
+    </div>
+  }
+</nav>

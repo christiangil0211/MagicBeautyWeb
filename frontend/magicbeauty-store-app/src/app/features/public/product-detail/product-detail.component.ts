@@ -1,9 +1,13 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
-import { ProductService } from '../../../core/services/product.service';
+import { CatalogService } from '../../../core/services/catalog.service';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
+import { PriceListComponent } from '../../../shared/components/price-list/price-list.component';
 import { ProductCardComponent } from '../../../shared/components/product-card/product-card.component';
 import {
   ProductCardModel,
@@ -18,13 +22,14 @@ const RELATED_LIMIT = 5;
 
 @Component({
   selector: 'app-product-detail',
-  imports: [RouterLink, ProductCardComponent, ToastModule],
+  imports: [RouterLink, PriceListComponent, ProductCardComponent, LoaderComponent, EmptyStateComponent, ToastModule],
   providers: [MessageService],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.scss'
 })
 export class ProductDetailComponent {
-  private readonly productService = inject(ProductService);
+  private readonly catalogService = inject(CatalogService);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly messageService = inject(MessageService);
 
   /** Referencia que llega de la ruta /productos/:reference (withComponentInputBinding). */
@@ -110,20 +115,6 @@ export class ProductDetailComponent {
 
   /** Categoría del breadcrumb: la primera por nombre, para que sea estable. */
   readonly breadcrumbCategory = computed(() => this.product()?.categories[0] ?? null);
-
-  readonly formattedPrice = computed(() => {
-    const price = this.product()?.price;
-
-    if (price === null || price === undefined) {
-      return 'Precio no disponible';
-    }
-
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      maximumFractionDigits: 0
-    }).format(price);
-  });
 
   constructor() {
     effect(() => {
@@ -211,7 +202,7 @@ export class ProductDetailComponent {
     this.selectedImageId.set(null);
     this.quantity.set(1);
 
-    this.productService.getPublicDetail(reference).subscribe({
+    this.catalogService.getProductDetail(reference).subscribe({
       next: product => {
         this.product.set(product);
         this.loading.set(false);
@@ -230,7 +221,13 @@ export class ProductDetailComponent {
    * el catálogo activo y se excluye el producto que se está viendo.
    */
   private loadRelated(product: ProductDetail): void {
-    this.productService.getAll({ isActive: true }).subscribe({
+    // Solo en el navegador: el servidor no debe esperar el catálogo completo para
+    // entregar la ficha, que es lo que importa para el SEO.
+    if (!this.isBrowser) {
+      return;
+    }
+
+    this.catalogService.getProducts().subscribe({
       next: products => {
         this.related.set(
           products

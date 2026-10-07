@@ -1,0 +1,48 @@
+// Tarjetas (CardStyle / SummaryCardStyle de MagicCuadre).
+@layer app {
+  .mb-card {
+    padding: 18px;
+    border: 1px solid var(--mb-border-soft);
+    border-radius: var(--mb-radius);
+    background: var(--mb-surface);
+    box-shadow: var(--mb-shadow-sm);
+  }
+
+  /* Indicador: número grande con su rótulo. */
+  .mb-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 96px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--mb-border-soft);
+    border-radius: var(--mb-radius);
+    background: var(--mb-surface);
+    box-shadow: var(--mb-shadow-xs);
+
+    strong {
+      font-size: 1.35rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--mb-primary);
+    }
+
+    span {
+      font-size: 0.75rem;
+      color: var(--mb-text-muted);
+    }
+  }
+
+  /* Aviso informativo dentro de una página. */
+  .mb-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--mb-warning-border);
+    border-radius: var(--mb-radius-sm);
+    background: var(--mb-warning-soft);
+    color: var(--mb-warning);
+    font-size: 0.85rem;
+  }
+}

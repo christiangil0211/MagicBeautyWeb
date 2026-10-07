@@ -8,62 +8,6 @@
   gap: 1.5rem;
 }
 
-.categories__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.25rem;
-
-  h1 {
-    margin: 0.2rem 0 0;
-    font-size: 2rem;
-  }
-
-  .eyebrow {
-    margin: 0;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--mb-primary);
-  }
-
-  .subtitle {
-    margin: 0.35rem 0 0;
-    color: var(--mb-text-secondary);
-    font-size: 0.9rem;
-  }
-}
-
-.categories__stats {
-  display: flex;
-  gap: 0.75rem;
-
-  .stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 88px;
-    padding: 0.7rem 1rem;
-    border: 1px solid var(--mb-border);
-    border-radius: var(--mb-radius);
-    background: var(--mb-surface);
-
-    strong {
-      font-family: var(--mb-font-display);
-      color: var(--mb-heading);
-      font-size: 1.4rem;
-      color: var(--mb-primary);
-    }
-
-    span {
-      font-size: 0.72rem;
-      color: var(--mb-text-secondary);
-    }
-  }
-}
-
 .categories__workspace {
   display: grid;
   grid-template-columns: minmax(280px, 340px) 1fr;

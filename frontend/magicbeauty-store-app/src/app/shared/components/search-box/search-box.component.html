@@ -1,0 +1,87 @@
+<form class="search" role="search" (submit)="submit($event)">
+  <input
+    #input
+    type="text"
+    name="q"
+    role="combobox"
+    aria-autocomplete="list"
+    aria-label="Buscar productos"
+    autocomplete="off"
+    maxlength="100"
+    [id]="inputId()"
+    [placeholder]="placeholder()"
+    [value]="term()"
+    [attr.aria-expanded]="showPanel()"
+    [attr.aria-controls]="listId()"
+    [attr.aria-activedescendant]="activeIndex() >= 0 ? listId() + '-' + activeIndex() : null"
+    (input)="onInput(input.value)"
+    (focus)="onFocus()"
+    (keydown)="onKeydown($event)" />
+
+  @if (term()) {
+    <button type="button" class="search__clear" aria-label="Borrar búsqueda" (click)="clear()">
+      <i class="pi pi-times"></i>
+    </button>
+  }
+
+  <button type="submit" class="search__submit" aria-label="Buscar">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"></circle>
+      <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+    </svg>
+  </button>
+</form>
+
+@if (showPanel()) {
+  <div class="suggestions" [id]="listId()" role="listbox" aria-label="Sugerencias">
+    @if (loading() && suggestions().length === 0) {
+      <div class="suggestions__status">
+        <span class="suggestions__spinner" aria-hidden="true"></span>
+        Buscando…
+      </div>
+    } @else if (suggestions().length === 0) {
+      <div class="suggestions__status">
+        <i class="pi pi-search"></i>
+        No encontramos productos para «{{ term().trim() }}»
+      </div>
+    } @else {
+      <ul [class.is-refreshing]="loading()">
+        @for (item of suggestions(); track item.product.id; let index = $index) {
+          <li
+            role="option"
+            class="suggestion"
+            [id]="listId() + '-' + index"
+            [class.active]="index === activeIndex()"
+            [attr.aria-selected]="index === activeIndex()"
+            (mouseenter)="activeIndex.set(index)"
+            (mousedown)="$event.preventDefault()"
+            (click)="openProduct(item.product)">
+            <span class="suggestion__thumb">
+              @if (item.product.mainImageUrl) {
+                <img [src]="item.product.mainImageUrl" alt="" loading="lazy" />
+              } @else {
+                <i class="pi pi-image"></i>
+              }
+            </span>
+
+            <span class="suggestion__text">
+              <span class="suggestion__name">
+                @for (part of item.nameParts; track $index) {<span [class.hl]="part.match">{{ part.text }}</span>}
+              </span>
+              <span class="suggestion__meta">{{ item.product.brandName }} · {{ item.product.reference }}</span>
+            </span>
+
+            @if (item.price) {
+              <span class="suggestion__price">{{ item.price }}</span>
+            }
+          </li>
+        }
+      </ul>
+
+      <button type="button" class="suggestions__all" (mousedown)="$event.preventDefault()" (click)="searchAll()">
+        Ver {{ total() === 1 ? 'el resultado' : 'los ' + total() + ' resultados' }} para «{{ term().trim() }}»
+        <i class="pi pi-arrow-right"></i>
+      </button>
+    }
+  </div>
+}

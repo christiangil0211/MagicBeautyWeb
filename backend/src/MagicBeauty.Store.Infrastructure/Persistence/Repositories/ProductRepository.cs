@@ -6,6 +6,22 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Repositories;
 
 public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProductRepository
 {
+    /// <summary>Insensible a mayusculas y a tildes, solo para comparar en la busqueda.</summary>
+    private const string SearchCollation = "Latin1_General_CI_AI";
+
+    /// <summary>Evita consultas desmedidas si alguien pega un texto largo.</summary>
+    private const int MaxSearchTerms = 6;
+
+    private static IEnumerable<string> SplitSearchTerms(string? search)
+    {
+        return string.IsNullOrWhiteSpace(search)
+            ? []
+            : search
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(MaxSearchTerms);
+    }
+
     public async Task<IReadOnlyList<Product>> GetAllAsync(
         int? brandId,
         int? categoryId,
@@ -40,11 +56,15 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
             query = query.Where(product => product.IsActive == isActive.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(search))
+        // Cada palabra debe aparecer en el nombre, la referencia o la marca, sin
+        // importar mayusculas ni tildes: "rimel milagros" encuentra "RÍMEL ... MILAGROS".
+        foreach (var term in SplitSearchTerms(search))
         {
             query = query.Where(product =>
-                product.Name.Contains(search) ||
-                product.Reference.Contains(search));
+                EF.Functions.Collate(product.Name, SearchCollation).Contains(term) ||
+                EF.Functions.Collate(product.Reference, SearchCollation).Contains(term) ||
+                (product.Brand != null &&
+                    EF.Functions.Collate(product.Brand.Name, SearchCollation).Contains(term)));
         }
 
         return await query

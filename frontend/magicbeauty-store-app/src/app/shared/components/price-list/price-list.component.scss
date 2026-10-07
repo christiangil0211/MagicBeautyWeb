@@ -1,0 +1,84 @@
+:host {
+  display: block;
+}
+
+.price-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+}
+
+.price-list__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+
+  dt {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mb-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-family: var(--mb-font-body);
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--mb-text-secondary);
+    white-space: nowrap;
+  }
+}
+
+/* El primero lo define el orden del backend, no un código concreto. */
+.price-list__row--lead dd {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--mb-heading);
+}
+
+.price-list__empty {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--mb-text-muted);
+}
+
+/* ===== Ficha del producto ===== */
+:host(.price-list--large) {
+  .price-list {
+    gap: 0.4rem;
+  }
+
+  .price-list__row {
+    justify-content: flex-start;
+    gap: 0.85rem;
+
+    dt {
+      min-width: 6.5rem;
+      font-size: 0.74rem;
+    }
+
+    dd {
+      font-size: 1.1rem;
+    }
+  }
+
+  .price-list__row--lead dd {
+    font-size: 2.1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .price-list__empty {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  :host(.price-list--large) .price-list__row--lead dd {
+    font-size: 1.8rem;
+  }
+}

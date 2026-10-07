@@ -11,10 +11,24 @@ public sealed class PriceType
 
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>Tipo que ve un usuario no autenticado. Solo uno puede estar marcado.</summary>
+    /// <summary>
+    /// Precio de referencia: todo producto debe tenerlo cargado. Solo uno puede estar
+    /// marcado. No decide quien lo ve: eso lo resuelven IsPublic y RolePriceTypes.
+    /// </summary>
     public bool IsDefault { get; set; }
+
+    /// <summary>
+    /// Politica de precios publicos: si un usuario no autenticado puede ver este tipo.
+    /// Un tipo nuevo nace oculto y solo se publica de forma explicita.
+    /// </summary>
+    public bool IsPublic { get; set; }
+
+    /// <summary>Orden en que la tienda presenta los precios.</summary>
+    public int DisplayOrder { get; set; }
 
     public bool IsActive { get; set; } = true;
 
     public ICollection<ProductPrice> ProductPrices { get; set; } = new List<ProductPrice>();
+
+    public ICollection<RolePriceType> RolePriceTypes { get; set; } = new List<RolePriceType>();
 }

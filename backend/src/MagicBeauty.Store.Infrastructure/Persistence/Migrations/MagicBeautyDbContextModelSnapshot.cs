@@ -120,6 +120,41 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.ToTable("Categories", (string)null);
                 });
 
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.EmailVerificationCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ConsumedAt");
+
+                    b.ToTable("EmailVerificationCodes", (string)null);
+                });
+
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.InventoryMovement", b =>
                 {
                     b.Property<int>("Id")
@@ -172,10 +207,16 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPublic")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -200,24 +241,30 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                         {
                             Id = 1,
                             Code = "RETAIL",
+                            DisplayOrder = 1,
                             IsActive = true,
                             IsDefault = true,
+                            IsPublic = true,
                             Name = "Detal"
                         },
                         new
                         {
                             Id = 2,
                             Code = "WHOLESALE",
+                            DisplayOrder = 2,
                             IsActive = true,
                             IsDefault = false,
+                            IsPublic = true,
                             Name = "Por mayor"
                         },
                         new
                         {
                             Id = 3,
                             Code = "DISTRIBUTOR",
+                            DisplayOrder = 3,
                             IsActive = true,
                             IsDefault = false,
+                            IsPublic = false,
                             Name = "Distribuidor"
                         });
                 });
@@ -442,6 +489,173 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.Role", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Roles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "ADMIN",
+                            IsActive = true,
+                            Name = "Administrador"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "CUSTOMER_RETAIL",
+                            IsActive = true,
+                            Name = "Cliente detal"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "CUSTOMER_WHOLESALE",
+                            IsActive = true,
+                            Name = "Cliente mayorista"
+                        });
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.RolePriceType", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PriceTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RoleId", "PriceTypeId");
+
+                    b.HasIndex("PriceTypeId");
+
+                    b.ToTable("RolePriceTypes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            RoleId = 1,
+                            PriceTypeId = 1
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PriceTypeId = 2
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PriceTypeId = 3
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PriceTypeId = 1
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PriceTypeId = 2
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PriceTypeId = 2
+                        });
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.User", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<DateTime?>("EmailConfirmedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FailedLoginCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LockoutEndsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("TemporaryPasswordExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.UserRole", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("UserRoles", (string)null);
+                });
+
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.Category", b =>
                 {
                     b.HasOne("MagicBeauty.Store.Domain.Entities.Category", "ParentCategory")
@@ -450,6 +664,17 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ParentCategory");
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.EmailVerificationCode", b =>
+                {
+                    b.HasOne("MagicBeauty.Store.Domain.Entities.User", "User")
+                        .WithMany("VerificationCodes")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.InventoryMovement", b =>
@@ -541,6 +766,44 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.RolePriceType", b =>
+                {
+                    b.HasOne("MagicBeauty.Store.Domain.Entities.PriceType", "PriceType")
+                        .WithMany("RolePriceTypes")
+                        .HasForeignKey("PriceTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MagicBeauty.Store.Domain.Entities.Role", "Role")
+                        .WithMany("RolePriceTypes")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PriceType");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.UserRole", b =>
+                {
+                    b.HasOne("MagicBeauty.Store.Domain.Entities.Role", "Role")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MagicBeauty.Store.Domain.Entities.User", "User")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.Category", b =>
                 {
                     b.Navigation("Children");
@@ -549,6 +812,8 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.PriceType", b =>
                 {
                     b.Navigation("ProductPrices");
+
+                    b.Navigation("RolePriceTypes");
                 });
 
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.Product", b =>
@@ -567,6 +832,20 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.Navigation("Images");
 
                     b.Navigation("Movements");
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.Role", b =>
+                {
+                    b.Navigation("RolePriceTypes");
+
+                    b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.User", b =>
+                {
+                    b.Navigation("UserRoles");
+
+                    b.Navigation("VerificationCodes");
                 });
 #pragma warning restore 612, 618
         }

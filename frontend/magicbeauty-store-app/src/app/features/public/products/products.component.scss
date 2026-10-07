@@ -3,7 +3,7 @@
 }
 
 .showcase {
-  max-width: 1280px;
+  max-width: var(--mb-container);
   margin: 0 auto;
   padding: 2.5rem 1.5rem 4rem;
 }
@@ -14,22 +14,12 @@
 
   h1 {
     margin: 0.3rem 0 0.4rem;
-    font-size: clamp(1.9rem, 4vw, 2.6rem);
-    color: var(--mb-heading);
-  }
-
-  .eyebrow {
-    margin: 0;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--mb-primary);
+    font-size: clamp(1.7rem, 3.5vw, 2.2rem);
   }
 
   .subtitle {
     margin: 0;
-    color: var(--mb-text-secondary);
+    color: var(--mb-text-muted);
     font-size: 0.92rem;
   }
 }
@@ -40,28 +30,8 @@
   gap: 1.25rem;
 }
 
-.showcase__state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 4rem 1rem;
-  text-align: center;
-  color: var(--mb-text-secondary);
-
-  i {
-    font-size: 1.8rem;
-    color: var(--mb-primary);
-    opacity: 0.6;
-  }
-
-  strong {
-    color: var(--mb-heading);
-  }
-
-  span {
-    font-size: 0.85rem;
-  }
+.showcase__pagination {
+  margin-top: 2rem;
 }
 
 @media (max-width: 520px) {
@@ -69,4 +39,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.85rem;
   }
+}
+
+.showcase__head .subtitle a {
+  color: var(--mb-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.showcase__head .subtitle a:hover {
+  text-decoration: underline;
 }

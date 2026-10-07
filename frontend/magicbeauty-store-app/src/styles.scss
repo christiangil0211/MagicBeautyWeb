@@ -1,87 +1,126 @@
 // Fuentes autohospedadas: Google Fonts no es alcanzable desde la red corporativa.
+// Segoe UI (la de MagicCuadre) es del sistema en Windows; Inter es el respaldo en el resto.
 @use '@fontsource/inter/400.css' as *;
 @use '@fontsource/inter/500.css' as *;
 @use '@fontsource/inter/600.css' as *;
 @use '@fontsource/inter/700.css' as *;
-@use '@fontsource/playfair-display/500.css' as *;
-@use '@fontsource/playfair-display/600.css' as *;
-@use '@fontsource/playfair-display/700.css' as *;
-@use '@fontsource/playfair-display/500-italic.css' as *;
 @use 'primeicons/primeicons.css';
+
+// Piezas reutilizables: tipografÃ­a, botones, tarjetas, insignias, tablas y formularios.
+@use 'styles/layers';
+@use 'styles/typography';
+@use 'styles/buttons';
+@use 'styles/cards';
+@use 'styles/badges';
+@use 'styles/tables';
+@use 'styles/forms';
 
 @layer theme, base, primeng, app;
 
+/*
+ * Sistema visual tomado de MagicCuadre (escritorio): blanco y grises frÃ­os, fucsia
+ * como Ãºnico acento, rosados muy suaves para estados y tablas, radios cortos y
+ * sombras discretas. Los nombres de los tokens se conservan: cambiar sus valores
+ * reviste toda la aplicaciÃ³n sin tocar la estructura de los componentes.
+ */
 :root {
-  /* ---- Paleta base ---------------------------------------------------- */
+  /* ---- Paleta base (MagicCuadre) --------------------------------------- */
   --mb-white: #ffffff;
-  --mb-blush-50: #fff5fa;
-  --mb-blush-100: #fde4ef;
-  --mb-blush-200: #fbd0e2;
-  --mb-blush-300: #f7b3ce;
-  --mb-blush-400: #f48cb6;
-  --mb-fuchsia: #ec3d92;
-  --mb-fuchsia-dark: #d12b7c;
-  --mb-wine: #5c1030;
-  --mb-plum: #3f2b36;
+  --mb-fuchsia: #ec1c79;
+  --mb-fuchsia-dark: #cf1467;
+  --mb-pink-50: #fffafc;
+  --mb-pink-100: #fff3f7;
+  --mb-pink-150: #fff0f6;
+  --mb-pink-200: #fce4ef;
+  --mb-pink-300: #f3dce6;
+  --mb-pink-400: #e4b5ca;
+  --mb-wine: #8a3e5d;
+  --mb-ink: #171717;
+  --mb-ink-soft: #2d2430;
+  --mb-zinc-700: #3f3f46;
+  --mb-zinc-600: #52525b;
+  --mb-zinc-500: #71717a;
+  --mb-zinc-400: #9b9b9b;
+  --mb-zinc-300: #b5b5bd;
+  --mb-zinc-200: #e1e1e7;
+  --mb-zinc-150: #ececf1;
+  --mb-zinc-100: #f5f6f8;
+  --mb-zinc-50: #fafafb;
+
+  /* Compatibilidad con los nombres anteriores de la paleta. */
+  --mb-blush-50: var(--mb-pink-50);
+  --mb-blush-100: var(--mb-pink-150);
+  --mb-blush-200: var(--mb-pink-200);
+  --mb-blush-300: var(--mb-pink-300);
+  --mb-blush-400: var(--mb-pink-400);
+  --mb-plum: var(--mb-ink-soft);
 
   /* ---- Tokens de interfaz --------------------------------------------- */
-  /*
-   * Dos fondos distintos a propósito: la tienda necesita el rosa saturado del
-   * mockup para que las tarjetas blancas resalten, y el administrador debe
-   * quedarse en rosa muy pálido para no cansar en jornadas largas de trabajo.
-   */
-  --mb-bg: var(--mb-blush-100);           /* fondo del administrador */
-  --mb-bg-store: #f9c9dc;                 /* fondo de la tienda */
-  --mb-surface: var(--mb-white);          /* cards, formularios, tablas */
-  --mb-surface-2: var(--mb-blush-50);     /* secciones secundarias */
-  --mb-surface-3: var(--mb-blush-200);    /* ambientación, chips */
+  --mb-bg: #fffdfe;                        /* fondo del administrador (ventana de MagicCuadre) */
+  --mb-bg-store: #fff5f9;                  /* fondo de la tienda */
+  --mb-surface: var(--mb-white);           /* tarjetas, formularios, tablas */
+  --mb-surface-2: var(--mb-zinc-50);       /* secciones secundarias, deshabilitados */
+  --mb-surface-3: var(--mb-pink-150);      /* ambientaciÃ³n, chips */
 
-  --mb-primary: var(--mb-fuchsia);        /* CTA y acentos */
+  --mb-primary: var(--mb-fuchsia);
   --mb-primary-hover: var(--mb-fuchsia-dark);
-  --mb-primary-soft: var(--mb-blush-200);
+  --mb-primary-soft: var(--mb-pink-150);   /* fondo de seleccionado y hover */
+  --mb-primary-soft-hover: var(--mb-pink-200);
   --mb-primary-contrast: var(--mb-white);
+  --mb-accent: var(--mb-wine);             /* encabezados de tabla, etiquetas */
 
-  --mb-heading: var(--mb-wine);           /* títulos de identidad */
-  --mb-text: var(--mb-plum);              /* texto principal */
-  --mb-text-secondary: #7b6470;           /* texto de apoyo */
-  --mb-text-muted: #a18e99;
+  --mb-heading: var(--mb-ink);
+  --mb-text: var(--mb-ink-soft);
+  --mb-text-secondary: var(--mb-zinc-600);
+  --mb-text-muted: var(--mb-zinc-500);
+  --mb-text-disabled: var(--mb-zinc-300);
 
-  --mb-border: var(--mb-blush-300);       /* borde visible */
-  --mb-border-soft: var(--mb-blush-200);  /* divisores */
-  --mb-border-strong: var(--mb-blush-400);
+  --mb-border: var(--mb-zinc-200);         /* campos y bordes visibles */
+  --mb-border-soft: var(--mb-zinc-150);    /* tarjetas y divisores */
+  --mb-border-strong: #d9dde3;
+  --mb-border-pink: var(--mb-pink-300);    /* lÃ­neas de tabla, paginaciÃ³n */
 
-  --mb-success: #2f9e6b;
-  --mb-danger: #d23f5e;
-  --mb-danger-soft: #fdeef1;
+  --mb-success: #16a34a;
+  --mb-success-soft: #f0fdf4;
+  --mb-success-border: #bbf7d0;
+  --mb-warning: #92400e;
+  --mb-warning-soft: #fffbeb;
+  --mb-warning-border: #fde68a;
+  --mb-danger: #dc2626;
+  --mb-danger-soft: #fef2f2;
+  --mb-danger-border: #fecaca;
 
-  --mb-radius-sm: 10px;
-  --mb-radius: 16px;
-  --mb-radius-lg: 24px;
-  --mb-radius-pill: 999px;
+  --mb-focus-ring: 0 0 0 3px rgba(236, 28, 121, 0.14);
 
-  --mb-shadow-xs: 0 1px 3px rgba(92, 16, 48, 0.06);
-  --mb-shadow-sm: 0 3px 12px rgba(92, 16, 48, 0.08);
-  --mb-shadow: 0 10px 30px rgba(92, 16, 48, 0.12);
-  --mb-shadow-lg: 0 20px 55px rgba(92, 16, 48, 0.16);
+  --mb-radius-xs: 5px;
+  --mb-radius-sm: 7px;                     /* botones, campos (MagicCuadre) */
+  --mb-radius: 12px;                       /* tarjetas */
+  --mb-radius-lg: 16px;
+  --mb-radius-pill: 999px;                 /* insignias, chips, avatares */
+  --mb-control-h: 38px;                    /* alto de campos */
+  --mb-button-h: 44px;
+
+  --mb-shadow-xs: 0 1px 2px rgba(23, 23, 23, 0.05);
+  --mb-shadow-sm: 0 2px 16px rgba(23, 23, 23, 0.08);   /* CardShadow de MagicCuadre */
+  --mb-shadow: 0 8px 24px rgba(23, 23, 23, 0.1);
+  --mb-shadow-lg: 0 18px 48px rgba(23, 23, 23, 0.14);
 
   --mb-container: 1280px;
   --mb-gutter: 24px;
   --mb-announcement-h: 34px;
 
-  --mb-font-body: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --mb-font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --mb-font-body: 'Segoe UI', Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* MagicCuadre no usa tipografÃ­a decorativa: los tÃ­tulos van en la misma familia, en negrita. */
+  --mb-font-display: var(--mb-font-body);
 
-  /*
-   * Alias heredados. Los componentes existentes los siguen consumiendo, así que
-   * reapuntarlos aquí cambia la identidad en toda la aplicación sin reescribirlos.
-   */
+  /* Alias heredados que algunos componentes siguen consumiendo. */
   --mb-black: var(--mb-text);
   --mb-raspberry: var(--mb-primary);
-  --mb-raspberry-bright: #f45ba5;
+  --mb-raspberry-bright: var(--mb-primary);
   --mb-rose-gold: var(--mb-text-secondary);
-  --mb-pink-soft: var(--mb-blush-200);
-  --mb-pink-softer: var(--mb-blush-50);
-  --mb-white-warm: var(--mb-blush-50);
+  --mb-pink-soft: var(--mb-pink-200);
+  --mb-pink-softer: var(--mb-pink-50);
+  --mb-white-warm: var(--mb-pink-50);
   --mb-shadow-soft: var(--mb-shadow);
   --mb-shadow-card: var(--mb-shadow-sm);
 }
@@ -92,8 +131,8 @@
     margin: 0;
     min-height: 100%;
     font-family: var(--mb-font-body);
-    font-size: 15px;
-    line-height: 1.55;
+    font-size: 14px;
+    line-height: 1.5;
     color: var(--mb-text);
     background: var(--mb-bg);
     -webkit-font-smoothing: antialiased;
@@ -107,36 +146,12 @@
   h2,
   h3 {
     font-family: var(--mb-font-display);
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.01em;
     color: var(--mb-heading);
   }
 
   a {
     color: inherit;
-  }
-
-  /* Controles PrimeNG: superficie blanca y foco rosado, para que no se sientan ajenos. */
-  .p-inputtext,
-  .p-select,
-  .p-multiselect,
-  .p-textarea,
-  .p-inputnumber-input {
-    background: var(--mb-surface);
-    border-color: var(--mb-border);
-    color: var(--mb-text);
-  }
-
-  .p-inputtext:enabled:hover,
-  .p-select:not(.p-disabled):hover,
-  .p-multiselect:not(.p-disabled):hover {
-    border-color: var(--mb-primary);
-  }
-
-  .p-inputtext:enabled:focus,
-  .p-select:not(.p-disabled).p-focus,
-  .p-multiselect:not(.p-disabled).p-focus {
-    border-color: var(--mb-primary);
-    box-shadow: 0 0 0 3px rgba(230, 57, 139, 0.12);
   }
 }

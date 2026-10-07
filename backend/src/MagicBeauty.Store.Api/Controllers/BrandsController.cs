@@ -1,11 +1,14 @@
 using MagicBeauty.Store.Application.Features.Brands;
 using MagicBeauty.Store.Contracts.Brands.Requests;
 using MagicBeauty.Store.Contracts.Brands.Responses;
+using MagicBeauty.Store.Api.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MagicBeauty.Store.Api.Controllers;
 
 [ApiController]
+[Authorize(Policy = AuthorizationPolicies.StoreAdmin)]
 [Route("api/brands")]
 public sealed class BrandsController(IBrandService brandService) : ControllerBase
 {

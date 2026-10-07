@@ -1,0 +1,9 @@
+<div class="loader__content">
+  <span class="loader__mark" aria-hidden="true"></span>
+  <span class="loader__bar" aria-hidden="true"><span></span></span>
+  @if (message()) {
+    <p class="loader__message">{{ message() }}</p>
+  } @else {
+    <span class="loader__sr">Cargando</span>
+  }
+</div>

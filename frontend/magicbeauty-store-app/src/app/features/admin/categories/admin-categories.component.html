@@ -2,30 +2,23 @@
 <p-confirmdialog />
 
 <section class="categories">
-  <header class="categories__head">
-    <div>
-      <p class="eyebrow">Catálogo</p>
-      <h1>Categorías</h1>
-      <p class="subtitle">
-        Así queda organizada la navegación de la tienda.
-      </p>
+  <app-page-header
+    eyebrow="Catálogo"
+    title="Categorías"
+    subtitle="Así queda organizada la navegación de la tienda.">
+    <div class="mb-stat">
+      <strong>{{ categories().length }}</strong>
+      <span>en total</span>
     </div>
-
-    <div class="categories__stats">
-      <div class="stat">
-        <strong>{{ categories().length }}</strong>
-        <span>en total</span>
-      </div>
-      <div class="stat">
-        <strong>{{ visibleInMenuCount() }}</strong>
-        <span>en el menú</span>
-      </div>
-      <div class="stat">
-        <strong>{{ homeCount() }}</strong>
-        <span>en el inicio</span>
-      </div>
+    <div class="mb-stat">
+      <strong>{{ visibleInMenuCount() }}</strong>
+      <span>en el menú</span>
     </div>
-  </header>
+    <div class="mb-stat">
+      <strong>{{ homeCount() }}</strong>
+      <span>en el inicio</span>
+    </div>
+  </app-page-header>
 
   <div class="categories__workspace">
     <!-- Estructura -->
@@ -69,7 +62,7 @@
           </ng-template>
         </p-tree>
       } @else if (loading()) {
-        <div class="panel__empty">Cargando…</div>
+        <app-loader message="Cargando categorías…" [compact]="true" />
       } @else {
         <div class="panel__empty">
           <i class="pi pi-sitemap"></i>

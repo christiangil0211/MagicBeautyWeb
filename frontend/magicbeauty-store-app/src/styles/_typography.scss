@@ -1,0 +1,65 @@
+// Textos reutilizables (SectionTitleStyle, MoneyStyle, etiquetas de MagicCuadre).
+@layer app {
+  /* Antetítulo: categoría pequeña sobre un título. */
+  .mb-eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mb-primary);
+  }
+
+  /* Título de página del administrador. */
+  .mb-page-title {
+    margin: 0.15rem 0 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--mb-heading);
+  }
+
+  .mb-subtitle {
+    margin: 0.3rem 0 0;
+    font-size: 0.92rem;
+    color: var(--mb-text-muted);
+  }
+
+  /* Título de sección dentro de una tarjeta (SectionTitleStyle: 19px negrita). */
+  .mb-section-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--mb-heading);
+  }
+
+  /* Rótulo de campo o de dato. */
+  .mb-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--mb-text-secondary);
+  }
+
+  /* Importe destacado (MoneyStyle: fucsia, negrita). */
+  .mb-money {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--mb-primary);
+  }
+
+  .mb-money--sm {
+    font-size: 0.95rem;
+  }
+
+  .mb-muted {
+    color: var(--mb-text-muted);
+  }
+
+  /* Referencias y códigos. */
+  .mb-code {
+    font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+    font-size: 0.8rem;
+    color: var(--mb-text-secondary);
+  }
+}

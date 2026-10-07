@@ -1,0 +1,49 @@
+// Insignias de estado con los colores de MagicCuadre (éxito, aviso, error, marca, neutro).
+@layer app {
+  .mb-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: var(--mb-radius-pill);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+
+    i {
+      font-size: 0.7rem;
+    }
+  }
+
+  .mb-badge--primary {
+    border-color: var(--mb-pink-300);
+    background: var(--mb-primary-soft);
+    color: var(--mb-primary);
+  }
+
+  .mb-badge--success {
+    border-color: var(--mb-success-border);
+    background: var(--mb-success-soft);
+    color: var(--mb-success);
+  }
+
+  .mb-badge--warning {
+    border-color: var(--mb-warning-border);
+    background: var(--mb-warning-soft);
+    color: var(--mb-warning);
+  }
+
+  .mb-badge--danger {
+    border-color: var(--mb-danger-border);
+    background: var(--mb-danger-soft);
+    color: var(--mb-danger);
+  }
+
+  .mb-badge--neutral {
+    border-color: var(--mb-border);
+    background: var(--mb-surface-2);
+    color: var(--mb-text-secondary);
+  }
+}

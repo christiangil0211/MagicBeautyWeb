@@ -1,0 +1,72 @@
+// Campos con el aspecto de MagicCuadre (InputStyle: 38px, borde gris frío, radio 7px)
+// para inputs nativos y para los controles de PrimeNG.
+@layer app {
+  .mb-input {
+    width: 100%;
+    height: var(--mb-control-h);
+    padding: 0 0.75rem;
+    border: 1px solid var(--mb-border);
+    border-radius: var(--mb-radius-sm);
+    background: var(--mb-surface);
+    color: var(--mb-text);
+    font-family: var(--mb-font-body);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder {
+      color: var(--mb-text-muted);
+    }
+
+    &:hover:not(:disabled) {
+      border-color: var(--mb-primary);
+    }
+
+    &:focus {
+      border-color: var(--mb-primary);
+      box-shadow: var(--mb-focus-ring);
+    }
+
+    &:disabled {
+      background: var(--mb-surface-2);
+      color: var(--mb-text-disabled);
+    }
+  }
+
+  .mb-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .mb-field__error {
+    font-size: 0.76rem;
+    color: var(--mb-danger);
+  }
+
+  /* Controles PrimeNG: misma superficie, borde y foco que los nativos. */
+  .p-inputtext,
+  .p-select,
+  .p-multiselect,
+  .p-textarea,
+  .p-inputnumber-input {
+    background: var(--mb-surface);
+    border-color: var(--mb-border);
+    color: var(--mb-text);
+  }
+
+  .p-inputtext:enabled:hover,
+  .p-select:not(.p-disabled):hover,
+  .p-multiselect:not(.p-disabled):hover,
+  .p-textarea:enabled:hover {
+    border-color: var(--mb-primary);
+  }
+
+  .p-inputtext:enabled:focus,
+  .p-select:not(.p-disabled).p-focus,
+  .p-multiselect:not(.p-disabled).p-focus,
+  .p-textarea:enabled:focus {
+    border-color: var(--mb-primary);
+    box-shadow: var(--mb-focus-ring);
+  }
+}

@@ -5,7 +5,6 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AdjustInventoryRequest,
-  ProductDetail,
   CreateProductRequest,
   CreateProductVariantRequest,
   InventoryMovement,
@@ -32,12 +31,6 @@ export interface ProductFilters {
 export class ProductService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiBaseUrl}/products`;
-  private readonly catalogUrl = `${environment.apiBaseUrl}/catalog`;
-
-  /** Ficha pública: solo el precio aplicable, sin variante interna ni inactivos. */
-  getPublicDetail(reference: string): Observable<ProductDetail> {
-    return this.http.get<ProductDetail>(`${this.catalogUrl}/products/${reference}`);
-  }
 
   getAll(filters: ProductFilters = {}): Observable<ProductListItem[]> {
     let params = new HttpParams();
@@ -124,6 +117,28 @@ export class ProductService {
 
   addImage(productId: number, request: ProductImageRequest): Observable<ProductImage> {
     return this.http.post<ProductImage>(`${this.apiUrl}/${productId}/images`, request);
+  }
+
+  /** Sube una foto desde el equipo; el API la guarda en el almacenamiento y la registra. */
+  uploadImage(
+    productId: number,
+    file: File,
+    options: { altText?: string | null; productVariantId?: number | null; displayOrder: number; isMain: boolean }
+  ): Observable<ProductImage> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    form.append('displayOrder', String(options.displayOrder));
+    form.append('isMain', String(options.isMain));
+
+    if (options.altText) {
+      form.append('altText', options.altText);
+    }
+
+    if (options.productVariantId != null) {
+      form.append('productVariantId', String(options.productVariantId));
+    }
+
+    return this.http.post<ProductImage>(`${this.apiUrl}/${productId}/images/upload`, form);
   }
 
   updateImage(imageId: number, request: ProductImageRequest): Observable<void> {

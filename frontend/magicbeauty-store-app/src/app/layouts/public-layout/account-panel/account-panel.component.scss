@@ -1,0 +1,336 @@
+/* Mismo lenguaje visual que los paneles móviles del layout (cabecera, overlay, sombras). */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  /* Por encima del header sticky (z-index 60). */
+  z-index: 70;
+}
+
+.account-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 71;
+  width: min(90vw, 380px);
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--mb-surface);
+  color: var(--mb-text);
+  box-shadow: var(--mb-shadow-lg);
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+  visibility: hidden;
+
+  &.open {
+    transform: translateX(0);
+    visibility: visible;
+  }
+}
+
+.account-panel__header {
+  height: 72px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--mb-border-soft);
+
+  h2 {
+    margin: 0;
+    color: var(--mb-heading);
+    font-size: 18px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  button {
+    border: 0;
+    background: transparent;
+    font-size: 34px;
+    font-weight: 300;
+    color: var(--mb-text);
+    cursor: pointer;
+  }
+}
+
+.account-panel__body {
+  padding: 22px 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.account-panel__greeting {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  strong {
+    color: var(--mb-heading);
+    font-family: var(--mb-font-display);
+    font-size: 1.15rem;
+  }
+}
+
+.account-panel__avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--mb-primary-soft);
+  color: var(--mb-heading);
+
+  svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.account-panel__eyebrow {
+  margin: 0 0 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mb-text-muted);
+}
+
+.account-panel__heading {
+  display: block;
+  padding: 14px 20px 8px;
+  border-top: 1px solid var(--mb-border-soft);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mb-primary);
+}
+
+.account-panel__links {
+  display: grid;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--mb-border-soft);
+    color: var(--mb-text);
+    text-decoration: none;
+    font-size: 15px;
+    transition: color 0.2s ease, background 0.2s ease;
+
+    i {
+      color: var(--mb-primary);
+      font-size: 0.95rem;
+    }
+
+    &:hover {
+      color: var(--mb-primary);
+      background: var(--mb-pink-softer);
+    }
+  }
+}
+
+.account-panel__hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--mb-text-secondary);
+}
+
+.account-panel__form {
+  display: grid;
+  gap: 10px;
+
+  label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--mb-text-secondary);
+  }
+
+  input {
+    height: 48px;
+    padding: 0 14px;
+    border: 1px solid var(--mb-border);
+    border-radius: var(--mb-radius-sm);
+    background: var(--mb-surface);
+    color: var(--mb-text);
+    font: inherit;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+    &:focus {
+      border-color: var(--mb-primary);
+      box-shadow: var(--mb-focus-ring);
+    }
+  }
+}
+
+.account-panel__identity {
+  min-width: 0;
+
+  strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.account-panel__password {
+  position: relative;
+
+  input {
+    width: 100%;
+    padding-right: 48px;
+  }
+
+  button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 48px;
+    height: 48px;
+    border: 0;
+    background: transparent;
+    color: var(--mb-text-secondary);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--mb-primary);
+    }
+  }
+}
+
+.account-panel__form input.account-panel__code {
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.5em;
+  text-align: center;
+}
+
+.account-panel__secondary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.account-panel__link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mb-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+  }
+
+  &:disabled {
+    color: var(--mb-text-muted);
+    cursor: not-allowed;
+  }
+}
+
+.account-panel__error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--mb-danger);
+}
+
+.account-panel__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  margin-top: 4px;
+  padding: 0 1.4rem;
+  border: none;
+  border-radius: var(--mb-radius-sm);
+  background: var(--mb-primary);
+  color: var(--mb-primary-contrast);
+  font-family: var(--mb-font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--mb-primary-hover);
+  }
+
+  &:disabled {
+    background: var(--mb-surface-2);
+    border: 1px solid var(--mb-border-soft);
+    color: var(--mb-text-muted);
+    cursor: not-allowed;
+  }
+}
+
+.account-panel__button--ghost {
+  border: 1px solid var(--mb-border);
+  background: transparent;
+  color: var(--mb-text);
+
+  &:hover:not(:disabled) {
+    background: var(--mb-pink-softer);
+    color: var(--mb-primary);
+  }
+}
+
+.account-panel__note {
+  display: flex;
+  gap: 0.45rem;
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--mb-radius-sm);
+  background: var(--mb-pink-softer);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--mb-text-secondary);
+
+  i {
+    margin-top: 2px;
+    color: var(--mb-primary);
+  }
+}
+
+/* Requisitos de la contraseña nueva: se marcan en verde a medida que se cumplen. */
+.account-panel__rules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem 0.75rem;
+  margin: 0 0 0.25rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.76rem;
+    color: var(--mb-text-muted);
+
+    i {
+      font-size: 0.75rem;
+    }
+
+    &.met {
+      color: var(--mb-success);
+    }
+  }
+}

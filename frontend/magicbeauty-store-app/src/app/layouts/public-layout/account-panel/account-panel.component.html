@@ -1,0 +1,209 @@
+@if (open()) {
+  <div class="overlay" (click)="close()"></div>
+}
+
+<aside class="account-panel" [class.open]="open()" [attr.aria-hidden]="!open()" aria-label="Cuenta">
+  <div class="account-panel__header">
+    <h2>
+      @if (isAuthenticated()) {
+        Mi cuenta
+      } @else if (step() === 'code') {
+        Verifica tu correo
+      } @else if (step() === 'new-password') {
+        Crea tu contraseña
+      } @else {
+        Iniciar sesión
+      }
+    </h2>
+    <button type="button" aria-label="Cerrar" (click)="close()">×</button>
+  </div>
+
+  @if (isAuthenticated()) {
+    <div class="account-panel__body">
+      <div class="account-panel__greeting">
+        <span class="account-panel__avatar">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 21c1.6-4.2 14.4-4.2 16 0"></path>
+          </svg>
+        </span>
+        <div class="account-panel__identity">
+          <p class="account-panel__eyebrow">Hola</p>
+          <strong>{{ session()?.displayName }}</strong>
+        </div>
+      </div>
+    </div>
+
+    @if (canManageStore()) {
+      <span class="account-panel__heading">Gestionar y administrar</span>
+
+      <nav class="account-panel__links">
+        @for (link of adminLinks(); track link.path) {
+          <a [routerLink]="link.path" (click)="close()">
+            <i [class]="link.icon"></i>
+            {{ link.label }}
+          </a>
+        }
+      </nav>
+    }
+
+    <div class="account-panel__body">
+      <button type="button" class="account-panel__button account-panel__button--ghost" (click)="logout()">
+        <i class="pi pi-sign-out"></i>
+        Cerrar sesión
+      </button>
+    </div>
+  } @else if (step() === 'credentials') {
+    <div class="account-panel__body">
+      <p class="account-panel__hint">Ingresa con tu correo y contraseña.</p>
+
+      <form class="account-panel__form" novalidate (ngSubmit)="submitCredentials()">
+        <label for="account-email">Correo electrónico</label>
+        <input
+          id="account-email"
+          name="email"
+          type="email"
+          autocomplete="username"
+          inputmode="email"
+          placeholder="tucorreo@ejemplo.com"
+          [ngModel]="email()"
+          (ngModelChange)="email.set($event)" />
+
+        <label for="account-password">Contraseña</label>
+        <div class="account-panel__password">
+          <input
+            id="account-password"
+            name="password"
+            [type]="showPassword() ? 'text' : 'password'"
+            autocomplete="current-password"
+            placeholder="Tu contraseña"
+            [ngModel]="password()"
+            (ngModelChange)="password.set($event)" />
+          <button
+            type="button"
+            [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            (click)="showPassword.set(!showPassword())">
+            <i class="pi" [class.pi-eye]="!showPassword()" [class.pi-eye-slash]="showPassword()"></i>
+          </button>
+        </div>
+
+        @if (error(); as message) {
+          <p class="account-panel__error">{{ message }}</p>
+        }
+
+        <button
+          type="submit"
+          class="account-panel__button"
+          [disabled]="submitting() || !email().trim() || !password()">
+          {{ submitting() ? 'Ingresando…' : 'Ingresar' }}
+        </button>
+      </form>
+    </div>
+  } @else if (step() === 'new-password') {
+    <div class="account-panel__body">
+      <p class="account-panel__note">
+        <i class="pi pi-key"></i>
+        Ingresaste con una contraseña temporal. Elige la tuya para continuar.
+      </p>
+
+      <form class="account-panel__form" novalidate (ngSubmit)="submitNewPassword()">
+        <!-- Ayuda a los gestores de contraseñas a guardar la nueva para este correo. -->
+        <input type="email" name="username" autocomplete="username" [value]="email()" hidden />
+
+        <label for="account-new-password">Nueva contraseña</label>
+        <div class="account-panel__password">
+          <input
+            id="account-new-password"
+            name="newPassword"
+            [type]="showPassword() ? 'text' : 'password'"
+            autocomplete="new-password"
+            [ngModel]="newPassword()"
+            (ngModelChange)="newPassword.set($event)" />
+          <button
+            type="button"
+            [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            (click)="showPassword.set(!showPassword())">
+            <i class="pi" [class.pi-eye]="!showPassword()" [class.pi-eye-slash]="showPassword()"></i>
+          </button>
+        </div>
+
+        <ul class="account-panel__rules">
+          @for (rule of passwordRules; track rule.label) {
+            <li [class.met]="newRuleMet(rule.test)">
+              <i class="pi" [class.pi-check-circle]="newRuleMet(rule.test)" [class.pi-circle]="!newRuleMet(rule.test)"></i>
+              {{ rule.label }}
+            </li>
+          }
+        </ul>
+
+        <label for="account-confirm-password">Confirmar contraseña</label>
+        <input
+          id="account-confirm-password"
+          name="confirmPassword"
+          [type]="showPassword() ? 'text' : 'password'"
+          autocomplete="new-password"
+          [ngModel]="confirmPassword()"
+          (ngModelChange)="confirmPassword.set($event)" />
+
+        @if (error(); as message) {
+          <p class="account-panel__error">{{ message }}</p>
+        }
+
+        <button type="submit" class="account-panel__button" [disabled]="submitting() || !newPasswordReady()">
+          {{ submitting() ? 'Guardando…' : 'Guardar e ingresar' }}
+        </button>
+      </form>
+
+      <div class="account-panel__secondary">
+        <button type="button" class="account-panel__link" (click)="backToCredentials()">
+          Usar otra cuenta
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="account-panel__body">
+      @if (info(); as message) {
+        <p class="account-panel__note">
+          <i class="pi pi-envelope"></i>
+          {{ message }}
+        </p>
+      }
+
+      <p class="account-panel__hint">
+        Es la primera vez que ingresas: confirma que el correo es tuyo con el código que te enviamos.
+      </p>
+
+      <form class="account-panel__form" novalidate (ngSubmit)="submitCode()">
+        <label for="account-code">Código de verificación</label>
+        <input
+          id="account-code"
+          name="code"
+          class="account-panel__code"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          placeholder="000000"
+          [ngModel]="code()"
+          (ngModelChange)="code.set($event)" />
+
+        @if (error(); as message) {
+          <p class="account-panel__error">{{ message }}</p>
+        }
+
+        <button type="submit" class="account-panel__button" [disabled]="submitting() || code().trim().length !== 6">
+          {{ submitting() ? 'Verificando…' : 'Verificar e ingresar' }}
+        </button>
+      </form>
+
+      <div class="account-panel__secondary">
+        <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="resendCode()">
+          Reenviar código
+        </button>
+        <button type="button" class="account-panel__link" (click)="backToCredentials()">
+          Usar otra cuenta
+        </button>
+      </div>
+    </div>
+  }
+</aside>

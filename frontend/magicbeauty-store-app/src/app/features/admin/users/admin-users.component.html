@@ -1,0 +1,153 @@
+<p-toast position="top-right" />
+<p-confirmdialog />
+
+<!-- Última revisión antes de crear: el correo en grande, imposible de pasar por alto. -->
+<p-confirmdialog key="create-admin" [style]="{ width: '30rem', maxWidth: 'calc(100vw - 2rem)' }">
+  <ng-template #message let-confirmation>
+    <div class="confirm-email">
+      <span class="confirm-email__icon"><i class="pi pi-envelope"></i></span>
+      <p>Enviaremos la contraseña temporal a:</p>
+      <strong class="confirm-email__address">{{ confirmation.message }}</strong>
+      <p class="confirm-email__warning">
+        <i class="pi pi-exclamation-triangle"></i>
+        Revisa que esté bien escrito: quien reciba este correo tendrá acceso completo al administrador.
+      </p>
+    </div>
+  </ng-template>
+</p-confirmdialog>
+
+<section class="users">
+  <app-page-header
+    eyebrow="Seguridad"
+    title="Administradores"
+    subtitle="Quién puede gestionar la tienda. Cada cuenta nueva recibe una contraseña temporal por correo y elige la suya al entrar.">
+    <div class="mb-stat">
+      <strong>{{ users().length }}</strong>
+      <span>usuarios</span>
+    </div>
+  </app-page-header>
+
+  <div class="users__layout">
+    <div class="panel mb-table-wrap" [class.is-loading]="loading()">
+      @if (loading()) {
+        <app-loader mode="overlay" message="Cargando usuarios…" [compact]="true" />
+      }
+
+      <p-table [value]="users()" styleClass="mb-table" dataKey="id" [rowHover]="true">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Correo</th>
+            <th style="width: 7rem">Rol</th>
+            <th style="width: 13rem">Acceso</th>
+            <th style="width: 10rem">Último ingreso</th>
+            <th style="width: 4rem" class="center"></th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-user>
+          <tr>
+            <td>
+              <span class="email">{{ user.email }}</span>
+              @if (isCurrentUser(user)) {
+                <span class="muted"> (tú)</span>
+              }
+            </td>
+            <td>
+              @for (role of user.roles; track role) {
+                <p-tag [value]="role" severity="info" />
+              }
+            </td>
+            <td>
+              @switch (accessState(user)) {
+                @case ('active') {
+                  <p-tag value="Activo" severity="success" />
+                }
+                @case ('pending') {
+                  <p-tag value="Esperando primer ingreso" severity="warn" />
+                  <small class="access-hint">
+                    Temporal vence {{ user.temporaryPasswordExpiresAt | date: 'dd/MM HH:mm' }}
+                  </small>
+                }
+                @case ('expired') {
+                  <p-tag value="Temporal vencida" severity="danger" />
+                  <small class="access-hint">Reenvía el acceso</small>
+                }
+              }
+            </td>
+            <td>
+              @if (user.lastLoginAt) {
+                {{ user.lastLoginAt | date: 'dd/MM/yyyy HH:mm' }}
+              } @else {
+                <span class="muted">Nunca</span>
+              }
+            </td>
+            <td class="center">
+              @if (!isCurrentUser(user)) {
+                <p-button
+                  icon="pi pi-envelope"
+                  [rounded]="true"
+                  [text]="true"
+                  severity="secondary"
+                  pTooltip="Reenviar acceso"
+                  tooltipPosition="left"
+                  [attr.aria-label]="'Reenviar acceso a ' + user.email"
+                  [loading]="resettingId() === user.id"
+                  [disabled]="resettingId() !== null"
+                  (onClick)="confirmResetAccess(user)" />
+              }
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="5" class="center muted">
+              @if (!loading()) {
+                Todavía no hay usuarios.
+              }
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+
+    <form class="panel form" [formGroup]="form" novalidate (ngSubmit)="submit()">
+      <h2>Nuevo administrador</h2>
+      <p class="form__hint">
+        Solo escribe su correo. Le enviaremos una contraseña temporal que vence en 72 horas; al ingresar
+        elegirá la suya. Tendrá acceso completo, incluido crear otros administradores.
+      </p>
+
+      <label for="new-admin-email">Correo electrónico</label>
+      <input pInputText id="new-admin-email" type="email" formControlName="email" autocomplete="off" placeholder="correo@ejemplo.com" />
+      @if (showError('email')) {
+        <small class="form__error">Escribe un correo electrónico válido.</small>
+      }
+
+      <label for="new-admin-confirm-email">Confirmar correo electrónico</label>
+      <input
+        pInputText
+        id="new-admin-confirm-email"
+        type="email"
+        formControlName="confirmEmail"
+        autocomplete="off"
+        placeholder="Escríbelo de nuevo"
+        [class.is-invalid]="showMismatch()"
+        (paste)="$event.preventDefault()" />
+      @if (showMismatch()) {
+        <small class="form__error">Los correos no coinciden.</small>
+      } @else if (showError('confirmEmail')) {
+        <small class="form__error">Confirma el correo.</small>
+      } @else if (form.valid) {
+        <small class="form__ok"><i class="pi pi-check-circle"></i> Los correos coinciden.</small>
+      }
+
+      <p-button
+        type="submit"
+        label="Crear y enviar acceso"
+        icon="pi pi-send"
+        [loading]="saving()"
+        [disabled]="saving() || form.invalid" />
+    </form>
+  </div>
+</section>

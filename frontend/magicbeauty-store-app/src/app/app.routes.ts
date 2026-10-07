@@ -1,8 +1,11 @@
 import { Routes } from '@angular/router';
 
+import { adminGuard } from './core/guards/admin.guard';
+
 export const routes: Routes = [
   {
     path: 'admin',
+    canActivate: [adminGuard],
     loadComponent: () =>
       import('./layouts/admin-layout/admin-layout.component').then(m => m.AdminLayoutComponent),
     children: [
@@ -38,6 +41,12 @@ export const routes: Routes = [
             m => m.AdminProductsComponent
           ),
         title: 'Productos · Magic Beauty'
+      },
+      {
+        path: 'users',
+        loadComponent: () =>
+          import('./features/admin/users/admin-users.component').then(m => m.AdminUsersComponent),
+        title: 'Administradores · Magic Beauty'
       },
       {
         path: '',

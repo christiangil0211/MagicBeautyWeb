@@ -1,9 +1,8 @@
-namespace MagicBeauty.Store.Contracts.Products.Responses;
+namespace MagicBeauty.Store.Contracts.Catalog.Responses;
 
 /// <summary>
-/// Ficha publica del producto. A diferencia de <see cref="ProductDto"/> nunca viaja
-/// el desglose de precios comerciales ni la variante interna: el consumidor solo
-/// recibe el precio que le aplica.
+/// Ficha publica del producto. A diferencia de ProductDto (administracion) nunca
+/// viaja la variante interna ni un precio que la audiencia actual no pueda ver.
 /// </summary>
 public sealed class ProductDetailDto
 {
@@ -17,8 +16,8 @@ public sealed class ProductDetailDto
 
     public string BrandName { get; set; } = string.Empty;
 
-    /// <summary>Importe del tipo de precio predeterminado. Null si todavia no se cargo.</summary>
-    public decimal? Price { get; set; }
+    /// <summary>Precios visibles para la audiencia, ya ordenados. Vacia si no hay ninguno.</summary>
+    public List<CatalogPriceDto> Prices { get; set; } = [];
 
     public bool HasVariants { get; set; }
 

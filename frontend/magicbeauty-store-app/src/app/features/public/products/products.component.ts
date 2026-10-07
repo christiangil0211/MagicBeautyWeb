@@ -1,8 +1,16 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
+import { catchError, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 
-import { ProductService } from '../../../core/services/product.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { CatalogService } from '../../../core/services/catalog.service';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
+import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { ProductCardComponent } from '../../../shared/components/product-card/product-card.component';
 import { ProductCardModel, toProductCard } from '../../../shared/models/product.model';
 
@@ -13,14 +21,24 @@ import { ProductCardModel, toProductCard } from '../../../shared/models/product.
  */
 @Component({
   selector: 'app-public-products',
-  imports: [ProductCardComponent, ToastModule],
+  imports: [
+    RouterLink,
+    ProductCardComponent,
+    LoaderComponent,
+    EmptyStateComponent,
+    PaginationComponent,
+    ToastModule
+  ],
   providers: [MessageService],
   templateUrl: './products.component.html',
   styleUrl: './products.component.scss'
 })
 export class ProductsComponent {
-  private readonly productService = inject(ProductService);
+  private readonly catalogService = inject(CatalogService);
   private readonly messageService = inject(MessageService);
+
+  /** Las pistas de administración solo se muestran a quien puede administrar. */
+  readonly canManageStore = inject(AuthService).canManageStore;
 
   readonly products = signal<ProductCardModel[]>([]);
   readonly loading = signal(true);
@@ -33,17 +51,53 @@ export class ProductsComponent {
     }))
   );
 
+  /** Productos por página: 4 filas completas en escritorio (5 columnas). */
+  readonly pageSize = 20;
+  readonly page = signal(1);
+
+  readonly pagedCards = computed(() => {
+    const start = (this.page() - 1) * this.pageSize;
+
+    return this.cards().slice(start, start + this.pageSize);
+  });
+
+  goToPage(page: number): void {
+    this.page.set(page);
+    // Al cambiar de página se vuelve al inicio del listado, no al pie.
+    globalThis.scrollTo?.({ top: 0, behavior: 'smooth' });
+  }
+
+  /** Texto buscado desde la cabecera (?q=). Vacío muestra todo el catálogo. */
+  readonly searchTerm = signal('');
+
   constructor() {
-    this.productService.getAll({ isActive: true }).subscribe({
-      next: products => {
+    // El listado se pide solo en el navegador: así el servidor responde de
+    // inmediato con el loader en vez de dejar la página en blanco mientras consulta.
+    if (!isPlatformBrowser(inject(PLATFORM_ID))) {
+      return;
+    }
+
+    // Cada búsqueda nueva cancela la anterior para que no lleguen resultados viejos.
+    inject(ActivatedRoute)
+      .queryParamMap.pipe(
+        map(params => (params.get('q') ?? '').trim()),
+        distinctUntilChanged(),
+        tap(term => {
+          this.searchTerm.set(term);
+          this.page.set(1);
+          this.loading.set(true);
+        }),
+        switchMap(term =>
+          this.catalogService.getProducts({ search: term || null }).pipe(
+            catchError(() => of([]))
+          )
+        ),
+        takeUntilDestroyed(inject(DestroyRef))
+      )
+      .subscribe(products => {
         this.products.set(products.map(toProductCard));
         this.loading.set(false);
-      },
-      error: () => {
-        this.products.set([]);
-        this.loading.set(false);
-      }
-    });
+      });
   }
 
   /** La tarjeta no conoce rutas: la página le indica a dónde lleva el producto. */

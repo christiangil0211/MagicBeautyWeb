@@ -1,0 +1,12 @@
+@if (items().length === 0) {
+  <span class="price-list__empty">Precio no disponible</span>
+} @else {
+  <dl class="price-list">
+    @for (item of items(); track item.code; let first = $first) {
+      <div class="price-list__row" [class.price-list__row--lead]="first">
+        <dt>{{ item.name }}</dt>
+        <dd>{{ item.formatted }}</dd>
+      </div>
+    }
+  </dl>
+}

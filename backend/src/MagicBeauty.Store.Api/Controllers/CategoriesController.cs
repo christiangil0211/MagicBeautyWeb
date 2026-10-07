@@ -1,11 +1,14 @@
 ﻿using MagicBeauty.Store.Application.Features.Categories;
 using MagicBeauty.Store.Contracts.Categories.Requests;
 using MagicBeauty.Store.Contracts.Categories.Responses;
+using MagicBeauty.Store.Api.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MagicBeauty.Store.Api.Controllers;
 
 [ApiController]
+[Authorize(Policy = AuthorizationPolicies.StoreAdmin)]
 [Route("api/categories")]
 public sealed class CategoriesController(ICategoryService categoryService) : ControllerBase
 {
@@ -25,6 +28,7 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
         return Ok(categories);
     }
 
+    [AllowAnonymous]
     [HttpGet("menu")]
     public async Task<ActionResult<IReadOnlyList<CategoryMenuDto>>> GetMenu(CancellationToken cancellationToken)
     {
@@ -33,6 +37,7 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
         return Ok(menu);
     }
 
+    [AllowAnonymous]
     [HttpGet("home")]
     public async Task<ActionResult<IReadOnlyList<CategoryTileDto>>> GetHomeTiles(CancellationToken cancellationToken)
     {
