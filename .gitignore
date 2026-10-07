@@ -31,7 +31,10 @@ yarn-error.log*
 # Environment files
 .env
 .env.*
-appsettings.*.local.json
+# Configuración real: solo se publican plantillas
+appsettings.json
+appsettings.*.json
+!appsettings.*.example.json
 
 # OS
 .DS_Store
