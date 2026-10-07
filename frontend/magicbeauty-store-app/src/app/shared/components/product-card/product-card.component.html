@@ -1,0 +1,64 @@
+<article class="product-card" [class.product-card--sold-out]="isSoldOut()">
+  <div class="product-card__media">
+    @if (detailLink(); as link) {
+      <a class="product-card__media-link" [routerLink]="link" [attr.aria-label]="product().name">
+        @if (product().mainImageUrl) {
+          <img [src]="product().mainImageUrl" [alt]="product().name" loading="lazy" />
+        } @else {
+          <span class="product-card__placeholder">
+            <i class="pi pi-image"></i>
+            <small>Sin imagen</small>
+          </span>
+        }
+      </a>
+    } @else {
+      @if (product().mainImageUrl) {
+        <img [src]="product().mainImageUrl" [alt]="product().name" loading="lazy" />
+      } @else {
+        <span class="product-card__placeholder">
+          <i class="pi pi-image"></i>
+          <small>Sin imagen</small>
+        </span>
+      }
+    }
+
+    @if (isSoldOut()) {
+      <span class="product-card__badge product-card__badge--muted">Agotado</span>
+    } @else if (product().badge) {
+      <span class="product-card__badge">{{ product().badge }}</span>
+    }
+
+    <button
+      type="button"
+      class="product-card__favorite"
+      [class.active]="product().isFavorite"
+      [attr.aria-label]="product().isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+      [attr.aria-pressed]="!!product().isFavorite"
+      (click)="onToggleFavorite($event)">
+      <i class="pi" [class.pi-heart]="!product().isFavorite" [class.pi-heart-fill]="product().isFavorite"></i>
+    </button>
+  </div>
+
+  <div class="product-card__body">
+    <span class="product-card__brand">{{ product().brandName }}</span>
+
+    @if (detailLink(); as link) {
+      <a class="product-card__name" [routerLink]="link">{{ product().name }}</a>
+    } @else {
+      <span class="product-card__name">{{ product().name }}</span>
+    }
+
+    <span class="product-card__price" [class.unavailable]="product().price == null">
+      {{ formattedPrice() }}
+    </span>
+
+    <button
+      type="button"
+      class="product-card__action"
+      [disabled]="isSoldOut()"
+      (click)="onAction()">
+      <i [class]="actionIcon()"></i>
+      {{ actionLabel() }}
+    </button>
+  </div>
+</article>

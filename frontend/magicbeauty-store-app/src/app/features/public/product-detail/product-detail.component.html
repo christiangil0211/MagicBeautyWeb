@@ -1,0 +1,167 @@
+<p-toast position="top-right" />
+
+@if (loading()) {
+  <p class="detail-state">Cargando producto…</p>
+} @else if (notFound()) {
+  <div class="detail-state detail-state--empty">
+    <i class="pi pi-inbox"></i>
+    <strong>No encontramos este producto</strong>
+    <span>Puede que ya no esté disponible en la tienda.</span>
+    <a class="btn btn--solid" routerLink="/productos">Ver todos los productos</a>
+  </div>
+} @else if (product(); as item) {
+  <nav class="breadcrumb" aria-label="Ruta de navegación">
+    <a routerLink="/">Inicio</a>
+    <i class="pi pi-angle-right"></i>
+    @if (breadcrumbCategory(); as category) {
+      <a [routerLink]="['/categoria', category.slug]">{{ category.name }}</a>
+    } @else {
+      <a routerLink="/productos">Productos</a>
+    }
+    <i class="pi pi-angle-right"></i>
+    <span aria-current="page">{{ item.name }}</span>
+  </nav>
+
+  <section class="detail">
+    <!-- Galería -->
+    <div class="gallery">
+      @if (gallery().length > 1) {
+        <div class="gallery__thumbs">
+          @for (image of gallery(); track image.id) {
+            <button
+              type="button"
+              class="thumb"
+              [class.active]="selectedImage()?.id === image.id"
+              [attr.aria-label]="'Ver ' + (image.altText || item.name)"
+              (click)="selectImage(image)">
+              <img [src]="image.url" [alt]="image.altText || item.name" loading="lazy" />
+            </button>
+          }
+        </div>
+      }
+
+      <div class="gallery__main">
+        @if (selectedImage(); as image) {
+          <img [src]="image.url" [alt]="image.altText || item.name" />
+        } @else {
+          <span class="gallery__placeholder">
+            <i class="pi pi-image"></i>
+            <small>Sin imagen</small>
+          </span>
+        }
+      </div>
+    </div>
+
+    <!-- Información -->
+    <div class="info">
+      <span class="info__brand">{{ item.brandName }}</span>
+      <h1 class="info__name">{{ item.name }}</h1>
+      <span class="info__reference">Ref. {{ item.reference }}</span>
+
+      <p class="info__price" [class.unavailable]="item.price == null">{{ formattedPrice() }}</p>
+
+      @if (isSoldOut()) {
+        <p class="info__stock info__stock--out"><i class="pi pi-ban"></i> Agotado</p>
+      } @else if (!item.hasVariants) {
+        <p class="info__stock"><i class="pi pi-check-circle"></i> Disponible · {{ availableStock() }} unidades</p>
+      }
+
+      <!-- Tonos -->
+      @if (item.hasVariants && item.variants.length > 0) {
+        <div class="variants">
+          <p class="variants__title">Selecciona tu tono</p>
+
+          <div class="variants__list">
+            @for (variant of item.variants; track variant.id) {
+              <button
+                type="button"
+                class="variant"
+                [class.selected]="selectedVariantId() === variant.id"
+                [class.out]="variant.quantity === 0"
+                [disabled]="variant.quantity === 0"
+                [attr.aria-pressed]="selectedVariantId() === variant.id"
+                (click)="selectVariant(variant)">
+                @if (variant.colorHex) {
+                  <span class="variant__swatch" [style.background]="variant.colorHex"></span>
+                }
+                <span class="variant__name">{{ variant.name }}</span>
+                @if (variant.quantity === 0) {
+                  <span class="variant__tag">Agotado</span>
+                }
+              </button>
+            }
+          </div>
+
+          @if (selectedVariant(); as variant) {
+            <p class="info__stock"><i class="pi pi-check-circle"></i> {{ variant.name }} · {{ variant.quantity }} disponibles</p>
+          } @else if (!isSoldOut()) {
+            <p class="variants__hint">Elige un tono para continuar.</p>
+          }
+        </div>
+      }
+
+      <!-- Cantidad -->
+      <div class="quantity">
+        <span class="quantity__label">Cantidad</span>
+        <div class="quantity__control">
+          <button type="button" aria-label="Quitar una unidad" [disabled]="quantity() <= 1 || !canAddToCart()" (click)="decrease()">
+            <i class="pi pi-minus"></i>
+          </button>
+          <span class="quantity__value">{{ quantity() }}</span>
+          <button type="button" aria-label="Agregar una unidad" [disabled]="quantity() >= availableStock() || !canAddToCart()" (click)="increase()">
+            <i class="pi pi-plus"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="actions">
+        <button type="button" class="actions__cta" [disabled]="!canAddToCart()" (click)="addToCart()">
+          <i class="pi pi-shopping-cart"></i>
+          {{ ctaLabel() }}
+        </button>
+
+        <button
+          type="button"
+          class="actions__favorite"
+          [class.active]="isFavorite()"
+          [attr.aria-pressed]="isFavorite()"
+          [attr.aria-label]="isFavorite() ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+          (click)="toggleFavorite()">
+          <i class="pi" [class.pi-heart]="!isFavorite()" [class.pi-heart-fill]="isFavorite()"></i>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Confianza -->
+  <section class="trust">
+    <div class="trust__item"><i class="pi pi-verified"></i><span>Producto original</span></div>
+    <div class="trust__item"><i class="pi pi-shield"></i><span>Compra segura</span></div>
+    <div class="trust__item"><i class="pi pi-headphones"></i><span>Atención personalizada</span></div>
+    <div class="trust__item"><i class="pi pi-truck"></i><span>Envíos a todo el país</span></div>
+  </section>
+
+  @if (item.description) {
+    <section class="description">
+      <h2>Descripción</h2>
+      <p>{{ item.description }}</p>
+    </section>
+  }
+
+  @if (related().length > 0) {
+    <section class="related">
+      <h2>También te puede gustar</h2>
+
+      <div class="related__grid">
+        @for (product of related(); track product.id) {
+          <app-product-card
+            [product]="product"
+            [detailLink]="detailLink(product.reference)"
+            (addToCart)="addRelatedToCart($event)"
+            (chooseVariant)="openRelated($event)" />
+        }
+      </div>
+    </section>
+  }
+}

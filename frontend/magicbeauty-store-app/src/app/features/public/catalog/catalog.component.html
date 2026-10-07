@@ -1,0 +1,37 @@
+<section class="catalog">
+  @if (current(); as category) {
+    <nav class="breadcrumb">
+      <a routerLink="/">Inicio</a>
+      @for (crumb of breadcrumb(); track crumb.id) {
+        <span class="breadcrumb__sep">/</span>
+        <a [routerLink]="categoryPath(crumb.slug)">{{ crumb.name }}</a>
+      }
+    </nav>
+
+    <h1 class="catalog__title">{{ category.name }}</h1>
+
+    @if (category.children.length > 0) {
+      <div class="subcategories">
+        @for (child of category.children; track child.id) {
+          <a class="subcategory" [routerLink]="categoryPath(child.slug)">
+            {{ child.name }}
+            <i class="pi pi-angle-right"></i>
+          </a>
+        }
+      </div>
+    }
+
+    <div class="catalog__pending">
+      <i class="pi pi-shopping-bag"></i>
+      <strong>Productos en camino</strong>
+      <span>El listado de productos de esta categoría llega con el módulo Products.</span>
+    </div>
+  } @else {
+    <div class="catalog__pending">
+      <i class="pi pi-search"></i>
+      <strong>No encontramos esta categoría</strong>
+      <span>Puede que esté inactiva u oculta en el menú.</span>
+      <a class="catalog__back" routerLink="/">Volver al inicio</a>
+    </div>
+  }
+</section>

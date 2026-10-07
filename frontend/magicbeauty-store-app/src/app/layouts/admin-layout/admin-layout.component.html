@@ -1,0 +1,56 @@
+<div class="admin-shell">
+  <aside class="admin-sidebar" [class.open]="isSidebarOpen()">
+    <a class="admin-sidebar__brand" routerLink="/admin/categories" (click)="closeSidebar()">
+      <img src="/images/logo-header.png" alt="Magic Beauty Cosmetics" />
+    </a>
+
+    <nav class="admin-sidebar__nav">
+      @for (item of navItems; track item.label) {
+        @if (item.path) {
+          <a
+            class="admin-nav-item"
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            (click)="closeSidebar()">
+            <i [class]="item.icon"></i>
+            <span>{{ item.label }}</span>
+          </a>
+        } @else {
+          <span class="admin-nav-item admin-nav-item--disabled">
+            <i [class]="item.icon"></i>
+            <span>{{ item.label }}</span>
+            <small>Pronto</small>
+          </span>
+        }
+      }
+    </nav>
+
+    <a class="admin-sidebar__store" routerLink="/" (click)="closeSidebar()">
+      <i class="pi pi-external-link"></i>
+      Ver la tienda
+    </a>
+  </aside>
+
+  @if (isSidebarOpen()) {
+    <div class="admin-overlay" (click)="closeSidebar()"></div>
+  }
+
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <button type="button" class="admin-burger" (click)="toggleSidebar()" aria-label="Abrir menú">
+        <i class="pi pi-bars"></i>
+      </button>
+
+      <span class="admin-topbar__title">Administración</span>
+
+      <a class="admin-topbar__store" routerLink="/">
+        <i class="pi pi-external-link"></i>
+        <span>Ver la tienda</span>
+      </a>
+    </header>
+
+    <main class="admin-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

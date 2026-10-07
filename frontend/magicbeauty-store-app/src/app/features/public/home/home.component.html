@@ -1,0 +1,134 @@
+<p-toast position="top-right" />
+
+<section class="hero">
+  <div class="hero__content">
+    <p class="hero__eyebrow">Resalta tu</p>
+    <h1 class="hero__title">ESENCIA</h1>
+    <p class="hero__text">
+      Maquillaje, skincare y accesorios que realzan tu belleza todos los días.
+    </p>
+
+    <div class="hero__actions">
+      <a class="btn btn--solid" routerLink="/nuevo">Comprar ahora</a>
+      <a class="btn btn--ghost" routerLink="/ofertas">Ver ofertas</a>
+    </div>
+
+    <ul class="hero__badges">
+      <li><i class="pi pi-verified"></i> Productos originales</li>
+      <li><i class="pi pi-sparkles"></i> Belleza en tendencia</li>
+      <li><i class="pi pi-heart"></i> Amor en cada detalle</li>
+    </ul>
+  </div>
+</section>
+
+<!-- Estas tarjetas son exactamente las categorías marcadas como destacadas en el administrador. -->
+<section class="shop-by-category">
+  <h2 class="section-title">Compra por categoría</h2>
+
+  @if (tiles().length > 0) {
+    <div class="tiles">
+      @for (tile of tiles(); track tile.id) {
+        <a class="tile" [routerLink]="categoryPath(tile.slug)">
+          <div class="tile__image">
+            @if (tile.imageUrl) {
+              <img [src]="tile.imageUrl" [alt]="tile.name" loading="lazy" />
+            } @else {
+              <div class="tile__placeholder"><i class="pi pi-image"></i></div>
+            }
+          </div>
+
+          <span class="tile__name">{{ tile.name }} <i class="pi pi-angle-right"></i></span>
+        </a>
+      }
+    </div>
+  } @else if (loaded()) {
+    <div class="tiles-empty">
+      <i class="pi pi-inbox"></i>
+      <strong>Todavía no hay categorías destacadas</strong>
+      <span>
+        Marca una categoría como <em>Destacar en el inicio</em> desde
+        <a routerLink="/admin/categories">el administrador</a> y aparecerá aquí.
+      </span>
+    </div>
+  }
+</section>
+
+<!--
+  Sección comercial del inicio. No usa un campo "destacado" del backend: toma los
+  primeros productos activos del catálogo y los pinta con la ProductCard pública.
+-->
+<section class="favorites">
+  <header class="favorites__head">
+    <div>
+      <p class="favorites__eyebrow">Lo más amado <i class="pi pi-heart-fill"></i></p>
+      <h2 class="section-title">Productos Favoritos</h2>
+    </div>
+
+    <a class="favorites__all" routerLink="/productos">
+      Ver todos <i class="pi pi-angle-right"></i>
+    </a>
+  </header>
+
+  @if (productsLoading()) {
+    <p class="favorites__state">Cargando productos…</p>
+  } @else if (favoriteCards().length > 0) {
+    <div class="favorites__grid">
+      @for (product of favoriteCards(); track product.id) {
+        <app-product-card
+          [product]="product"
+          [detailLink]="detailLink(product.reference)"
+          (addToCart)="onAddToCart($event)"
+          (chooseVariant)="onChooseVariant($event)"
+          (toggleFavorite)="onToggleFavorite($event)" />
+      }
+    </div>
+  } @else {
+    <p class="favorites__state">Todavía no hay productos publicados en la tienda.</p>
+  }
+</section>
+
+<section class="promos">
+  <article class="promo promo--wide">
+    <h3>Brilla con Confianza</h3>
+    <p>Luce tu mejor versión todos los días.</p>
+    <a class="btn btn--solid btn--sm" routerLink="/nuevo">Descubrir colección</a>
+  </article>
+
+  <article class="promo">
+    <h3>Ahorra más, vive tu magia</h3>
+    <p>Combos exclusivos para ti.</p>
+    <a class="btn btn--outline btn--sm" routerLink="/ofertas">Ver combos</a>
+  </article>
+
+  <article class="promo promo--soft">
+    <h3>Envío gratis</h3>
+    <p>En compras desde $120.000</p>
+    <span class="promo__note">Rápido, seguro y con amor.</span>
+  </article>
+</section>
+
+<section class="benefits">
+  <div class="benefit">
+    <i class="pi pi-truck"></i>
+    <strong>Envíos rápidos</strong>
+    <span>A todo el país, de 2 a 5 días hábiles.</span>
+  </div>
+
+  <div class="benefit">
+    <i class="pi pi-shield"></i>
+    <strong>Pagos seguros</strong>
+    <span>Tus compras protegidas con métodos confiables.</span>
+  </div>
+
+  <div class="benefit">
+    <i class="pi pi-verified"></i>
+    <strong>Productos originales</strong>
+    <span>100% auténticos y de las mejores marcas.</span>
+  </div>
+
+  <div class="benefit">
+    <i class="pi pi-headphones"></i>
+    <strong>Atención personalizada</strong>
+    <span>Estamos aquí para ayudarte con mucho amor.</span>
+  </div>
+</section>

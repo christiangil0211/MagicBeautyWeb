@@ -1,0 +1,142 @@
+// Fuentes autohospedadas: Google Fonts no es alcanzable desde la red corporativa.
+@use '@fontsource/inter/400.css' as *;
+@use '@fontsource/inter/500.css' as *;
+@use '@fontsource/inter/600.css' as *;
+@use '@fontsource/inter/700.css' as *;
+@use '@fontsource/playfair-display/500.css' as *;
+@use '@fontsource/playfair-display/600.css' as *;
+@use '@fontsource/playfair-display/700.css' as *;
+@use '@fontsource/playfair-display/500-italic.css' as *;
+@use 'primeicons/primeicons.css';
+
+@layer theme, base, primeng, app;
+
+:root {
+  /* ---- Paleta base ---------------------------------------------------- */
+  --mb-white: #ffffff;
+  --mb-blush-50: #fff5fa;
+  --mb-blush-100: #fde4ef;
+  --mb-blush-200: #fbd0e2;
+  --mb-blush-300: #f7b3ce;
+  --mb-blush-400: #f48cb6;
+  --mb-fuchsia: #ec3d92;
+  --mb-fuchsia-dark: #d12b7c;
+  --mb-wine: #5c1030;
+  --mb-plum: #3f2b36;
+
+  /* ---- Tokens de interfaz --------------------------------------------- */
+  /*
+   * Dos fondos distintos a propósito: la tienda necesita el rosa saturado del
+   * mockup para que las tarjetas blancas resalten, y el administrador debe
+   * quedarse en rosa muy pálido para no cansar en jornadas largas de trabajo.
+   */
+  --mb-bg: var(--mb-blush-100);           /* fondo del administrador */
+  --mb-bg-store: #f9c9dc;                 /* fondo de la tienda */
+  --mb-surface: var(--mb-white);          /* cards, formularios, tablas */
+  --mb-surface-2: var(--mb-blush-50);     /* secciones secundarias */
+  --mb-surface-3: var(--mb-blush-200);    /* ambientación, chips */
+
+  --mb-primary: var(--mb-fuchsia);        /* CTA y acentos */
+  --mb-primary-hover: var(--mb-fuchsia-dark);
+  --mb-primary-soft: var(--mb-blush-200);
+  --mb-primary-contrast: var(--mb-white);
+
+  --mb-heading: var(--mb-wine);           /* títulos de identidad */
+  --mb-text: var(--mb-plum);              /* texto principal */
+  --mb-text-secondary: #7b6470;           /* texto de apoyo */
+  --mb-text-muted: #a18e99;
+
+  --mb-border: var(--mb-blush-300);       /* borde visible */
+  --mb-border-soft: var(--mb-blush-200);  /* divisores */
+  --mb-border-strong: var(--mb-blush-400);
+
+  --mb-success: #2f9e6b;
+  --mb-danger: #d23f5e;
+  --mb-danger-soft: #fdeef1;
+
+  --mb-radius-sm: 10px;
+  --mb-radius: 16px;
+  --mb-radius-lg: 24px;
+  --mb-radius-pill: 999px;
+
+  --mb-shadow-xs: 0 1px 3px rgba(92, 16, 48, 0.06);
+  --mb-shadow-sm: 0 3px 12px rgba(92, 16, 48, 0.08);
+  --mb-shadow: 0 10px 30px rgba(92, 16, 48, 0.12);
+  --mb-shadow-lg: 0 20px 55px rgba(92, 16, 48, 0.16);
+
+  --mb-container: 1280px;
+  --mb-gutter: 24px;
+  --mb-announcement-h: 34px;
+
+  --mb-font-body: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mb-font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+
+  /*
+   * Alias heredados. Los componentes existentes los siguen consumiendo, así que
+   * reapuntarlos aquí cambia la identidad en toda la aplicación sin reescribirlos.
+   */
+  --mb-black: var(--mb-text);
+  --mb-raspberry: var(--mb-primary);
+  --mb-raspberry-bright: #f45ba5;
+  --mb-rose-gold: var(--mb-text-secondary);
+  --mb-pink-soft: var(--mb-blush-200);
+  --mb-pink-softer: var(--mb-blush-50);
+  --mb-white-warm: var(--mb-blush-50);
+  --mb-shadow-soft: var(--mb-shadow);
+  --mb-shadow-card: var(--mb-shadow-sm);
+}
+
+@layer app {
+  html,
+  body {
+    margin: 0;
+    min-height: 100%;
+    font-family: var(--mb-font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--mb-text);
+    background: var(--mb-bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--mb-font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--mb-heading);
+  }
+
+  a {
+    color: inherit;
+  }
+
+  /* Controles PrimeNG: superficie blanca y foco rosado, para que no se sientan ajenos. */
+  .p-inputtext,
+  .p-select,
+  .p-multiselect,
+  .p-textarea,
+  .p-inputnumber-input {
+    background: var(--mb-surface);
+    border-color: var(--mb-border);
+    color: var(--mb-text);
+  }
+
+  .p-inputtext:enabled:hover,
+  .p-select:not(.p-disabled):hover,
+  .p-multiselect:not(.p-disabled):hover {
+    border-color: var(--mb-primary);
+  }
+
+  .p-inputtext:enabled:focus,
+  .p-select:not(.p-disabled).p-focus,
+  .p-multiselect:not(.p-disabled).p-focus {
+    border-color: var(--mb-primary);
+    box-shadow: 0 0 0 3px rgba(230, 57, 139, 0.12);
+  }
+}

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MagicBeauty.Store.Api/MagicBeauty.Store.Api.csproj" />
+    <Project Path="src/MagicBeauty.Store.Application/MagicBeauty.Store.Application.csproj" />
+    <Project Path="src/MagicBeauty.Store.Contracts/MagicBeauty.Store.Contracts.csproj" />
+    <Project Path="src/MagicBeauty.Store.Domain/MagicBeauty.Store.Domain.csproj" />
+    <Project Path="src/MagicBeauty.Store.Infrastructure/MagicBeauty.Store.Infrastructure.csproj" />
+  </Folder>
+</Solution>

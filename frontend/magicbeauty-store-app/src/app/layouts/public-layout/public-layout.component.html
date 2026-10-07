@@ -1,0 +1,285 @@
+<div class="store-shell">
+  <header class="store-header">
+    <div class="announcement-bar">
+      <div class="marquee-track">
+        <span>MAGIC BEAUTY COSMETICS</span>
+        <span>PRODUCTOS ORIGINALES</span>
+        <span>ATENCIÓN PERSONALIZADA</span>
+        <span>ENVÍO GRATIS EN COMPRAS DESDE $120.000</span>
+        <span>MAGIC BEAUTY COSMETICS</span>
+        <span>PRODUCTOS ORIGINALES</span>
+        <span>ATENCIÓN PERSONALIZADA</span>
+        <span>ENVÍO GRATIS EN COMPRAS DESDE $120.000</span>
+        <span>MAGIC BEAUTY COSMETICS</span>
+        <span>PRODUCTOS ORIGINALES</span>
+        <span>ATENCIÓN PERSONALIZADA</span>
+        <span>ENVÍO GRATIS EN COMPRAS DESDE $120.000</span>
+        <span>MAGIC BEAUTY COSMETICS</span>
+        <span>PRODUCTOS ORIGINALES</span>
+        <span>ATENCIÓN PERSONALIZADA</span>
+        <span>ENVÍO GRATIS EN COMPRAS DESDE $120.000</span>
+      </div>
+    </div>
+
+    <div class="main-header">
+      <button type="button" class="mobile-menu-button mobile-only" (click)="openMobileMenu()" aria-label="Abrir menú">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <!-- El logo es el acceso al inicio desde cualquier página pública. -->
+      <a class="brand" routerLink="/" aria-label="Magic Beauty Cosmetics, ir al inicio">
+        <img src="/images/logo-header.png" alt="Magic Beauty Cosmetics" />
+      </a>
+
+      <div class="search-box desktop-search">
+        <input type="text" placeholder="Buscar producto..." />
+
+        <button type="button" aria-label="Buscar producto">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="header-actions">
+        <button
+          type="button"
+          class="mobile-header-button mobile-only"
+          (click)="openMobileSearch()"
+          aria-label="Buscar">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+          </svg>
+        </button>
+
+        <a class="mobile-header-button mobile-only" href="javascript:void(0)" aria-label="Carrito">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 7H6"></path>
+            <circle cx="10" cy="21" r="1"></circle>
+            <circle cx="18" cy="21" r="1"></circle>
+          </svg>
+        </a>
+
+        <a class="header-action desktop-only" href="javascript:void(0)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 21c1.6-4.2 14.4-4.2 16 0"></path>
+          </svg>
+          <span>Cuenta</span>
+        </a>
+
+        <a class="header-action desktop-only" href="javascript:void(0)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20.8 4.6c-1.8-1.8-4.7-1.8-6.5 0L12 6.9 9.7 4.6c-1.8-1.8-4.7-1.8-6.5 0s-1.8 4.7 0 6.5L12 20l8.8-8.9c1.8-1.8 1.8-4.7 0-6.5z"></path>
+          </svg>
+          <span>Favoritos</span>
+        </a>
+
+        <a class="header-action desktop-only" href="javascript:void(0)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 7H6"></path>
+            <circle cx="10" cy="21" r="1"></circle>
+            <circle cx="18" cy="21" r="1"></circle>
+          </svg>
+          <span>Carrito</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- El menú se arma con lo que se configura en el administrador de categorías. -->
+    <nav class="store-menu" (mouseleave)="closeMegaMenu()">
+      <a class="store-menu__link" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        Inicio
+      </a>
+
+      @for (item of menu(); track item.id) {
+        <div class="store-menu__item" (mouseenter)="openMegaMenu(item.id)">
+          <a class="store-menu__link" [routerLink]="categoryPath(item.slug)" routerLinkActive="active">
+            {{ item.name }}
+            @if (item.children.length > 0) {
+              <i class="pi pi-angle-down"></i>
+            }
+          </a>
+
+          @if (item.children.length > 0 && openMenuId() === item.id) {
+            <div class="nav-dropdown">
+              @for (child of item.children; track child.id) {
+                <div class="nav-dropdown__row">
+                  <a class="nav-dropdown__link" [routerLink]="categoryPath(child.slug)" (click)="closeMegaMenu()">
+                    {{ child.name }}
+                  </a>
+
+                  @if (child.children.length > 0) {
+                    <button
+                      type="button"
+                      class="nav-dropdown__toggle"
+                      [attr.aria-expanded]="isChildExpanded(child.id)"
+                      [attr.aria-label]="'Ver subcategorías de ' + child.name"
+                      (click)="toggleChild(child.id, $event)">
+                      <i class="pi" [class.pi-angle-down]="!isChildExpanded(child.id)"
+                         [class.pi-angle-up]="isChildExpanded(child.id)"></i>
+                    </button>
+                  }
+                </div>
+
+                @if (child.children.length > 0 && isChildExpanded(child.id)) {
+                  <div class="nav-dropdown__sublist">
+                    @for (grandChild of child.children; track grandChild.id) {
+                      <a
+                        class="nav-dropdown__sublink"
+                        [routerLink]="categoryPath(grandChild.slug)"
+                        (click)="closeMegaMenu()">
+                        {{ grandChild.name }}
+                      </a>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @for (link of dynamicLinks; track link.path) {
+        <a class="store-menu__link" [routerLink]="link.path" routerLinkActive="active">{{ link.label }}</a>
+      }
+
+      <!-- Back office. Debe quedar detrás del rol Administrator cuando exista autenticación. -->
+      <div class="store-menu__item store-menu__item--admin" (mouseenter)="openAdminMenu()">
+        <button type="button" class="store-menu__link store-menu__link--admin">
+          <i class="pi pi-cog"></i>
+          Gestionar y administrar
+          <i class="pi pi-angle-down"></i>
+        </button>
+
+        @if (isAdminMenuOpen()) {
+          <div class="nav-dropdown nav-dropdown--right">
+            @for (link of adminLinks; track link.path) {
+              <div class="nav-dropdown__row">
+                <a
+                  class="nav-dropdown__link"
+                  [routerLink]="link.path"
+                  routerLinkActive="active"
+                  (click)="closeMegaMenu()">
+                  <i [class]="link.icon"></i>
+                  {{ link.label }}
+                </a>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </nav>
+  </header>
+
+  <main class="store-content">
+    <router-outlet />
+  </main>
+
+  <footer class="store-footer">
+    <div class="store-footer__inner">
+      <div class="store-footer__brand">
+        <img src="/images/logo-header.png" alt="Magic Beauty Cosmetics" />
+        <p>Belleza que te inspira, productos que te enamoran.</p>
+      </div>
+
+      <div class="store-footer__column">
+        <h3>Compra</h3>
+        @for (item of menu(); track item.id) {
+          <a [routerLink]="categoryPath(item.slug)">{{ item.name }}</a>
+        }
+      </div>
+
+      <div class="store-footer__column">
+        <h3>Información</h3>
+        <a href="javascript:void(0)">Quiénes somos</a>
+        <a href="javascript:void(0)">Nuestra tienda</a>
+        <a href="javascript:void(0)">Envíos y entregas</a>
+        <a href="javascript:void(0)">Preguntas frecuentes</a>
+      </div>
+
+      <div class="store-footer__column">
+        <h3>Contáctanos</h3>
+        <span>+57 301 166 3303</span>
+        <span>cliente.magicbeauty&#64;gmail.com</span>
+        <a routerLink="/admin/categories">Administrar tienda</a>
+      </div>
+    </div>
+
+    <p class="store-footer__legal">© 2026 Magic Beauty Cosmetics. Todos los derechos reservados.</p>
+  </footer>
+
+  @if (isMobileSearchOpen()) {
+    <div class="overlay" (click)="closeMobileSearch()"></div>
+  }
+
+  <section class="mobile-search-panel" [class.open]="isMobileSearchOpen()">
+    <div class="mobile-panel-header">
+      <h2>Buscar en nuestro sitio</h2>
+      <button type="button" (click)="closeMobileSearch()">×</button>
+    </div>
+
+    <div class="mobile-search-body">
+      <div class="mobile-search-input">
+        <input type="text" placeholder="Buscar producto..." />
+
+        <button type="button" aria-label="Buscar producto">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="quick-search">
+        <strong>Búsqueda rápida</strong>
+        <span>Labios, cuidado facial, maquillaje</span>
+      </div>
+    </div>
+  </section>
+
+  @if (isMobileMenuOpen()) {
+    <div class="overlay" (click)="closeMobileMenu()"></div>
+  }
+
+  <aside class="mobile-menu-panel" [class.open]="isMobileMenuOpen()">
+    <div class="mobile-panel-header">
+      <h2>Menú</h2>
+      <button type="button" (click)="closeMobileMenu()">×</button>
+    </div>
+
+    <nav class="mobile-menu-links">
+      @for (item of menu(); track item.id) {
+        <a [routerLink]="categoryPath(item.slug)" (click)="closeMobileMenu()">{{ item.name }}</a>
+
+        @for (child of item.children; track child.id) {
+          <a class="mobile-menu-links__child" [routerLink]="categoryPath(child.slug)" (click)="closeMobileMenu()">
+            {{ child.name }}
+          </a>
+        }
+      }
+
+      @for (link of dynamicLinks; track link.path) {
+        <a [routerLink]="link.path" (click)="closeMobileMenu()">{{ link.label }}</a>
+      }
+
+      <span class="mobile-menu-links__heading">Gestionar y administrar</span>
+
+      @for (link of adminLinks; track link.path) {
+        <a class="mobile-menu-links__child" [routerLink]="link.path" (click)="closeMobileMenu()">
+          {{ link.label }}
+        </a>
+      }
+    </nav>
+
+    <div class="mobile-help">
+      <p>¿Necesitas ayuda?</p>
+      <span>+57 301 166 3303</span>
+      <span>cliente.magicbeauty&#64;gmail.com</span>
+    </div>
+  </aside>
+</div>

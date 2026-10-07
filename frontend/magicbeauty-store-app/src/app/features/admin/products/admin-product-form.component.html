@@ -1,0 +1,430 @@
+<p-toast position="top-right" />
+<p-confirmdialog />
+
+<section class="product-form">
+  <header class="product-form__head">
+    <div>
+      <a class="back" routerLink="/admin/products"><i class="pi pi-arrow-left"></i> Productos</a>
+      <h1>{{ isEditMode() ? product()!.name : 'Crear producto' }}</h1>
+      @if (isEditMode()) {
+        <span class="reference">{{ product()!.reference }}</span>
+      } @else {
+        <p class="subtitle">Una referencia nueva siempre es un producto nuevo.</p>
+      }
+    </div>
+
+    <div class="product-form__actions">
+      <p-button
+        label="Guardar"
+        icon="pi pi-check"
+        [loading]="saving()"
+        (onClick)="save()" />
+    </div>
+  </header>
+
+  <form class="panel" [formGroup]="form">
+    <h2>Información básica</h2>
+
+    <div class="grid">
+      <div class="field">
+        <label for="reference">Referencia</label>
+        <input pInputText id="reference" formControlName="reference" placeholder="ABC123" maxlength="6" />
+        @if (isEditMode()) {
+          <small class="hint"><i class="pi pi-lock"></i> No se puede cambiar: sería otro producto.</small>
+        } @else {
+          <small class="hint">3 letras y 3 números. Ejemplo: ABC123.</small>
+        }
+        @if (form.controls.reference.touched && form.controls.reference.invalid) {
+          <small class="error">Formato inválido. Debe ser como ABC123.</small>
+        }
+      </div>
+
+      <div class="field">
+        <label for="brand">Marca</label>
+        <p-select
+          inputId="brand"
+          formControlName="brandId"
+          [options]="brandOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Selecciona la marca"
+          appendTo="body" />
+        @if (form.controls.brandId.touched && form.controls.brandId.invalid) {
+          <small class="error">La marca es obligatoria.</small>
+        }
+      </div>
+
+      <div class="field field--full">
+        <label for="name">Nombre</label>
+        <input pInputText id="name" formControlName="name" placeholder="Ej: Base Fit Me Mate" />
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <small class="error">El nombre es obligatorio.</small>
+        }
+      </div>
+
+      <div class="field field--full">
+        <label for="description">Descripción</label>
+        <textarea
+          pTextarea
+          id="description"
+          formControlName="description"
+          rows="3"
+          placeholder="Texto que verá el cliente en la ficha"></textarea>
+      </div>
+
+      <div class="field field--full">
+        <label for="categories">Categorías</label>
+        <p-multiselect
+          inputId="categories"
+          formControlName="categoryIds"
+          [options]="categoryOptions()"
+          optionLabel="label"
+          optionValue="value"
+          display="chip"
+          placeholder="Un producto puede estar en varias"
+          appendTo="body" />
+      </div>
+    </div>
+
+    <label class="switch">
+      <p-toggleswitch formControlName="isActive" />
+      <span>
+        <strong>Producto activo</strong>
+        <small>Si se apaga, deja de verse en la tienda pero conserva su histórico.</small>
+      </span>
+    </label>
+
+    <!-- Precios -->
+    <div class="section">
+      <h2>Precios</h2>
+      <p class="section__hint">
+        Todos los tonos de una referencia cuestan lo mismo. Deja vacío un tipo para no cargarlo.
+      </p>
+
+      <div class="price-rows" formArrayName="prices">
+        @for (row of priceRows.controls; track $index) {
+          <div class="price-row" [formGroupName]="$index">
+            <div class="price-row__label">
+              <strong>{{ row.get('name')!.value }}</strong>
+              <span class="code">{{ row.get('code')!.value }}</span>
+              @if (row.get('isDefault')!.value) {
+                <p-tag value="Obligatorio" severity="info" />
+              }
+            </div>
+
+            <p-input-number
+              formControlName="amount"
+              mode="currency"
+              currency="COP"
+              locale="es-CO"
+              [maxFractionDigits]="0"
+              [min]="0"
+              placeholder="Sin precio" />
+          </div>
+        }
+      </div>
+
+      @if (priceTypes().length === 0) {
+        <div class="empty-inline">No se pudo cargar el catálogo de tipos de precio.</div>
+      }
+    </div>
+
+    <!-- Variantes -->
+    <div class="section">
+      <h2>Tonos y variantes</h2>
+
+      <label class="switch">
+        <p-toggleswitch
+          formControlName="hasVariants"
+          (onChange)="onHasVariantsChange($event.checked)" />
+        <span>
+          <strong>¿Este producto tiene tonos o variantes?</strong>
+          @if (isEditMode()) {
+            <small><i class="pi pi-lock"></i> No se puede cambiar después de crear el producto.</small>
+          } @else {
+            <small>Actívalo si el cliente debe escoger un tono antes de comprar.</small>
+          }
+        </span>
+      </label>
+
+      @if (!form.controls.hasVariants.value) {
+        @if (!isEditMode()) {
+          <div class="grid">
+            <div class="field">
+              <label for="initialQuantity">Cantidad inicial</label>
+              <p-input-number inputId="initialQuantity" formControlName="initialQuantity" [min]="0" [showButtons]="true" />
+              <small class="hint">Existencias con las que entra el producto.</small>
+            </div>
+          </div>
+        }
+      } @else if (!isEditMode()) {
+        <div class="variant-rows" formArrayName="variants">
+          @for (row of variantRows.controls; track $index) {
+            <div class="variant-row" [formGroupName]="$index">
+              <div class="field">
+                <label>Nombre</label>
+                <input pInputText formControlName="name" placeholder="110 Porcelain" />
+              </div>
+              <div class="field field--xs">
+                <label>Código</label>
+                <input pInputText formControlName="code" placeholder="110" />
+              </div>
+              <div class="field field--xs">
+                <label>Color</label>
+                <div class="color-input">
+                  <input pInputText formControlName="colorHex" placeholder="#D2A679" maxlength="7" />
+                  @if (row.get('colorHex')!.value) {
+                    <span class="swatch" [style.background]="row.get('colorHex')!.value"></span>
+                  }
+                </div>
+              </div>
+              <div class="field field--xs">
+                <label>Cantidad</label>
+                <p-input-number formControlName="quantity" [min]="0" />
+              </div>
+              <div class="field field--xs">
+                <label>Orden</label>
+                <p-input-number formControlName="displayOrder" [min]="0" />
+              </div>
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                [text]="true"
+                (onClick)="removeVariantRow($index)" />
+            </div>
+          }
+        </div>
+
+        <p-button
+          label="Agregar tono"
+          icon="pi pi-plus"
+          severity="secondary"
+          [outlined]="true"
+          size="small"
+          (onClick)="addVariantRow()" />
+      }
+    </div>
+  </form>
+
+  <!-- Inventario e imágenes: solo cuando el producto ya existe -->
+  @if (isEditMode()) {
+    <div class="panel">
+      <div class="panel__head">
+        <h2>Inventario</h2>
+        <span class="total-stock">{{ totalStock() }} unidades en total</span>
+      </div>
+
+      @if (!product()!.hasVariants) {
+        @if (defaultVariant(); as variant) {
+          <div class="simple-stock">
+            <div>
+              <span class="simple-stock__label">Disponible</span>
+              <strong class="simple-stock__value">{{ variant.quantity }}</strong>
+            </div>
+            <p-button
+              label="Ajustar existencias"
+              icon="pi pi-sliders-h"
+              size="small"
+              severity="secondary"
+              [outlined]="true"
+              (onClick)="adjustInventory(variant)" />
+          </div>
+        }
+      } @else {
+        <div class="table-scroll">
+        <table class="variants-table">
+          <thead>
+            <tr>
+              <th>Tono</th>
+              <th>Código</th>
+              <th>Color</th>
+              <th class="center">Cantidad</th>
+              <th class="center">Estado</th>
+              <th class="center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (variant of visibleVariants(); track variant.id) {
+              <tr>
+                <td>{{ variant.name }}</td>
+                <td>{{ variant.code || '—' }}</td>
+                <td>
+                  @if (variant.colorHex) {
+                    <span class="swatch swatch--inline" [style.background]="variant.colorHex"></span>
+                    <span class="hex">{{ variant.colorHex }}</span>
+                  } @else {
+                    <span class="muted">—</span>
+                  }
+                </td>
+                <td class="center">
+                  <span class="stock" [class.stock--empty]="variant.quantity === 0">{{ variant.quantity }}</span>
+                </td>
+                <td class="center">
+                  @if (variant.isActive) {
+                    <p-tag value="Activo" severity="success" />
+                  } @else {
+                    <p-tag value="Inactivo" severity="secondary" />
+                  }
+                </td>
+                <td class="center">
+                  <p-button
+                    icon="pi pi-sliders-h"
+                    severity="secondary"
+                    [text]="true"
+                    size="small"
+                    (onClick)="adjustInventory(variant)" />
+                  <p-button
+                    [icon]="variant.isActive ? 'pi pi-ban' : 'pi pi-check'"
+                    severity="secondary"
+                    [text]="true"
+                    size="small"
+                    (onClick)="toggleVariantActive(variant)" />
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="empty-inline">Todavía no hay tonos cargados.</td></tr>
+            }
+          </tbody>
+        </table>
+        </div>
+
+        <div class="section">
+          <h3>Agregar tono</h3>
+          <form class="variant-row" [formGroup]="newVariantForm">
+            <div class="field">
+              <label>Nombre</label>
+              <input pInputText formControlName="name" placeholder="128 Warm Nude" />
+            </div>
+            <div class="field field--xs">
+              <label>Código</label>
+              <input pInputText formControlName="code" placeholder="128" />
+            </div>
+            <div class="field field--xs">
+              <label>Color</label>
+              <div class="color-input">
+                <input pInputText formControlName="colorHex" placeholder="#D2A679" maxlength="7" />
+                @if (newVariantForm.controls.colorHex.value) {
+                  <span class="swatch" [style.background]="newVariantForm.controls.colorHex.value"></span>
+                }
+              </div>
+            </div>
+            <div class="field field--xs">
+              <label>Cantidad</label>
+              <p-input-number formControlName="quantity" [min]="0" />
+            </div>
+            <div class="field field--xs">
+              <label>Orden</label>
+              <p-input-number formControlName="displayOrder" [min]="0" />
+            </div>
+            <p-button label="Agregar" icon="pi pi-plus" size="small" (onClick)="addVariant()" />
+          </form>
+        </div>
+      }
+    </div>
+
+    <div class="panel">
+      <h2>Imágenes</h2>
+      <p class="section__hint">Por ahora solo URL. Sin variante, la imagen es general del producto.</p>
+
+      @if (images().length > 0) {
+        <div class="image-grid">
+          @for (image of images(); track image.id) {
+            <figure class="image-card">
+              <img [src]="image.url" [alt]="image.altText || product()!.name" />
+              <figcaption>
+                <span class="image-card__scope">{{ variantName(image.productVariantId) }}</span>
+                @if (image.isMain) {
+                  <p-tag value="Principal" severity="info" />
+                }
+                <span class="image-card__order">Orden {{ image.displayOrder }}</span>
+              </figcaption>
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                [text]="true"
+                size="small"
+                (onClick)="deleteImage(image)" />
+            </figure>
+          }
+        </div>
+      } @else {
+        <div class="empty-inline">Este producto todavía no tiene imágenes.</div>
+      }
+
+      <form class="image-form" [formGroup]="imageForm">
+        <div class="field">
+          <label for="imageUrl">URL</label>
+          <input pInputText id="imageUrl" formControlName="url" placeholder="/images/productos/ejemplo.jpg" />
+        </div>
+        <div class="field">
+          <label for="altText">Texto alternativo</label>
+          <input pInputText id="altText" formControlName="altText" placeholder="Opcional" />
+        </div>
+        <div class="field">
+          <label for="imageVariant">Variante</label>
+          <p-select
+            inputId="imageVariant"
+            formControlName="productVariantId"
+            [options]="variantOptions()"
+            optionLabel="label"
+            optionValue="value"
+            appendTo="body" />
+        </div>
+        <div class="field field--xs">
+          <label for="imageOrder">Orden</label>
+          <p-input-number inputId="imageOrder" formControlName="displayOrder" [min]="0" />
+        </div>
+        <label class="switch switch--inline">
+          <p-toggleswitch formControlName="isMain" />
+          <span><strong>Principal</strong></span>
+        </label>
+        <p-button label="Agregar imagen" icon="pi pi-plus" size="small" (onClick)="addImage()" />
+      </form>
+    </div>
+  }
+</section>
+
+<p-dialog
+  [visible]="inventoryTarget() !== null"
+  (visibleChange)="closeInventory()"
+  [modal]="true"
+  [style]="{ width: '28rem' }"
+  header="Ajustar existencias">
+  @if (inventoryTarget(); as variant) {
+    <form class="inventory-form" [formGroup]="inventoryForm">
+      <p class="inventory-form__current">
+        {{ variant.isDefault ? 'Existencias actuales' : variant.name }}:
+        <strong>{{ variant.quantity }}</strong>
+      </p>
+
+      <div class="field">
+        <label for="movementType">Tipo de movimiento</label>
+        <p-select
+          inputId="movementType"
+          formControlName="type"
+          [options]="movementOptions"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body" />
+      </div>
+
+      <div class="field">
+        <label for="movementQty">Cantidad</label>
+        <p-input-number inputId="movementQty" formControlName="quantity" [showButtons]="true" />
+        <small class="hint">
+          En entradas y ventas usa un número positivo. En ajustes puedes usar negativos.
+        </small>
+      </div>
+
+      <div class="field">
+        <label for="movementReason">Motivo</label>
+        <input pInputText id="movementReason" formControlName="reason" placeholder="Opcional" />
+      </div>
+    </form>
+  }
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="closeInventory()" />
+    <p-button label="Aplicar" icon="pi pi-check" (onClick)="submitInventory()" />
+  </ng-template>
+</p-dialog>

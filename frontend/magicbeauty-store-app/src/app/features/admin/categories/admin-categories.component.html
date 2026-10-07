@@ -1,0 +1,251 @@
+<p-toast position="top-right" />
+<p-confirmdialog />
+
+<section class="categories">
+  <header class="categories__head">
+    <div>
+      <p class="eyebrow">Catálogo</p>
+      <h1>Categorías</h1>
+      <p class="subtitle">
+        Así queda organizada la navegación de la tienda.
+      </p>
+    </div>
+
+    <div class="categories__stats">
+      <div class="stat">
+        <strong>{{ categories().length }}</strong>
+        <span>en total</span>
+      </div>
+      <div class="stat">
+        <strong>{{ visibleInMenuCount() }}</strong>
+        <span>en el menú</span>
+      </div>
+      <div class="stat">
+        <strong>{{ homeCount() }}</strong>
+        <span>en el inicio</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="categories__workspace">
+    <!-- Estructura -->
+    <aside class="panel panel--tree">
+      <div class="panel__head">
+        <h2>Estructura</h2>
+        <p-button
+          label="Nueva"
+          icon="pi pi-plus"
+          size="small"
+          (onClick)="newCategory()" />
+      </div>
+
+      <p class="panel__hint">
+        Vista previa del menú. Selecciona un nodo para editarlo.
+      </p>
+
+      @if (treeNodes().length > 0) {
+        <p-tree
+          [value]="treeNodes()"
+          selectionMode="single"
+          [(selection)]="selectedNode"
+          [filter]="true"
+          filterPlaceholder="Buscar categoría"
+          styleClass="mb-tree"
+          (onNodeSelect)="onNodeSelect($event.node)">
+          <ng-template pTemplate="default" let-treeNode>
+            <span class="tree-node">
+              <span class="tree-node__name">{{ treeNode.data.name }}</span>
+
+              @if (!treeNode.data.isActive) {
+                <p-tag value="Inactiva" severity="secondary" />
+              }
+              @if (treeNode.data.showInHome) {
+                <i class="pi pi-star-fill tree-node__flag" title="Destacada en el inicio"></i>
+              }
+              @if (treeNode.data.isActive && !treeNode.data.showInNavigation) {
+                <i class="pi pi-eye-slash tree-node__flag" title="Oculta en el menú"></i>
+              }
+            </span>
+          </ng-template>
+        </p-tree>
+      } @else if (loading()) {
+        <div class="panel__empty">Cargando…</div>
+      } @else {
+        <div class="panel__empty">
+          <i class="pi pi-sitemap"></i>
+          <strong>Aún no hay categorías</strong>
+          <span>Crea la primera para armar el menú.</span>
+        </div>
+      }
+    </aside>
+
+    <!-- Detalle -->
+    <form class="panel panel--form" [formGroup]="form" (ngSubmit)="save()">
+      <div class="panel__head">
+        <div>
+          <h2>{{ selectedCategory() ? selectedCategory()!.name : 'Nueva categoría' }}</h2>
+          <span class="path">{{ storefrontPath() }}</span>
+        </div>
+
+        <div class="panel__actions">
+          @if (selectedCategory()) {
+            <p-button
+              label="Subcategoría"
+              icon="pi pi-plus"
+              severity="secondary"
+              [outlined]="true"
+              size="small"
+              (onClick)="addChildOfSelected()" />
+            <p-button
+              label="Eliminar"
+              icon="pi pi-trash"
+              severity="danger"
+              [text]="true"
+              size="small"
+              (onClick)="confirmDelete()" />
+          }
+
+          <p-button
+            type="submit"
+            label="Guardar"
+            icon="pi pi-check"
+            size="small"
+            [loading]="saving()" />
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="name">Nombre</label>
+          <input
+            pInputText
+            id="name"
+            formControlName="name"
+            placeholder="Ej: Labiales"
+            (blur)="generateSlug()" />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <small class="error">El nombre es obligatorio.</small>
+          }
+        </div>
+
+        <div class="field">
+          <label for="slug">URL</label>
+          <input pInputText id="slug" formControlName="slug" placeholder="labiales" />
+          @if (form.controls.slug.touched && form.controls.slug.invalid) {
+            <small class="error">La URL es obligatoria.</small>
+          }
+        </div>
+
+        <div class="field field--full">
+          <label for="description">Descripción</label>
+          <textarea
+            pTextarea
+            id="description"
+            formControlName="description"
+            rows="2"
+            placeholder="Texto breve para la tienda"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="parent">Ubicación en el menú</label>
+          <p-select
+            inputId="parent"
+            formControlName="parentCategoryId"
+            [options]="parentOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Selecciona el padre"
+            appendTo="body" />
+        </div>
+
+        <div class="field">
+          <label for="order">Orden</label>
+          <p-input-number inputId="order" formControlName="displayOrder" [min]="0" [showButtons]="true" />
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Visibilidad</h3>
+
+        <div class="switches">
+          <label class="switch">
+            <p-toggleswitch formControlName="isActive" />
+            <span>
+              <strong>Activa</strong>
+              <small>Si se apaga, desaparece de la tienda junto con sus hijas.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <p-toggleswitch formControlName="showInNavigation" />
+            <span>
+              <strong>Mostrar en el menú</strong>
+              <small>Aparece en la barra superior de la tienda.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <p-toggleswitch formControlName="showInMegaMenu" />
+            <span>
+              <strong>Destacar en el mega menú</strong>
+              <small>Se resalta al desplegar su categoría padre.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <p-toggleswitch formControlName="showInHome" />
+            <span>
+              <strong>Destacar en el inicio</strong>
+              <small>Aparece en "Compra por categoría".</small>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Imágenes</h3>
+
+        <div class="grid">
+          <div class="field">
+            <label for="homeImageUrl">Imagen del inicio</label>
+            <input
+              pInputText
+              id="homeImageUrl"
+              formControlName="homeImageUrl"
+              placeholder="/images/categorias/labiales.jpg" />
+            @if (form.controls.homeImageUrl.hasError('required')) {
+              <small class="error">Requerida si la categoría se destaca en el inicio.</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="imageUrl">Imagen del mega menú</label>
+            <input pInputText id="imageUrl" formControlName="imageUrl" placeholder="Opcional" />
+          </div>
+
+          <div class="field">
+            <label for="iconUrl">Ícono</label>
+            <input pInputText id="iconUrl" formControlName="iconUrl" placeholder="Opcional" />
+          </div>
+        </div>
+
+        @if (form.controls.showInHome.value) {
+          <div class="tile-preview">
+            <span class="tile-preview__label">Vista previa de la tarjeta</span>
+
+            <div class="tile">
+              @if (form.controls.homeImageUrl.value) {
+                <img [src]="form.controls.homeImageUrl.value" [alt]="form.controls.name.value" />
+              } @else {
+                <div class="tile__placeholder"><i class="pi pi-image"></i></div>
+              }
+              <span class="tile__name">
+                {{ form.controls.name.value || 'Nombre' }} <i class="pi pi-angle-right"></i>
+              </span>
+            </div>
+          </div>
+        }
+      </div>
+    </form>
+  </div>
+</section>

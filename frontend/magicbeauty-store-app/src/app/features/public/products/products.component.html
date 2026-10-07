@@ -1,0 +1,30 @@
+<p-toast position="top-right" />
+
+<section class="showcase">
+  <header class="showcase__head">
+    <p class="eyebrow">Catálogo</p>
+    <h1>Nuestros productos</h1>
+    <p class="subtitle">Belleza que te inspira, productos que te enamoran.</p>
+  </header>
+
+  @if (loading()) {
+    <div class="showcase__state">Cargando productos…</div>
+  } @else if (cards().length === 0) {
+    <div class="showcase__state">
+      <i class="pi pi-shopping-bag"></i>
+      <strong>Todavía no hay productos publicados</strong>
+      <span>Crea el primero desde el administrador.</span>
+    </div>
+  } @else {
+    <div class="showcase__grid">
+      @for (product of cards(); track product.id) {
+        <app-product-card
+          [product]="product"
+          [detailLink]="detailLink(product.reference)"
+          (addToCart)="onAddToCart($event)"
+          (chooseVariant)="onChooseVariant($event)"
+          (toggleFavorite)="onToggleFavorite($event)" />
+      }
+    </div>
+  }
+</section>
