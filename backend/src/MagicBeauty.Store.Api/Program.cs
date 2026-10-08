@@ -97,6 +97,13 @@ if (app.Services.GetService<LocalFileStorageOptions>() is { } localStorage)
 
 app.UseCors(CorsPolicyName);
 
+// Fuera de Development la cookie es SameSite=None: se exige un origen permitido al modificar datos.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseMiddleware<CrossSiteRequestGuardMiddleware>(
+        new HashSet<string>(allowedOrigins, StringComparer.OrdinalIgnoreCase));
+}
+
 app.UseRateLimiter();
 
 app.UseAuthentication();

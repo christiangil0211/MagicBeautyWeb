@@ -19,12 +19,22 @@ public static class AuthenticationExtensions
             {
                 options.Cookie.Name = "MagicBeauty.Session";
                 options.Cookie.HttpOnly = true;
-                // La tienda (4200) y el API (5070) son el mismo sitio: Lax basta y
-                // evita que otro sitio dispare peticiones con la sesion.
-                options.Cookie.SameSite = SameSiteMode.Lax;
-                options.Cookie.SecurePolicy = environment.IsDevelopment()
-                    ? CookieSecurePolicy.SameAsRequest
-                    : CookieSecurePolicy.Always;
+
+                if (environment.IsDevelopment())
+                {
+                    // La tienda (4200) y el API (5070) son el mismo sitio: Lax basta y
+                    // funciona sobre http://localhost.
+                    options.Cookie.SameSite = SameSiteMode.Lax;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                }
+                else
+                {
+                    // La tienda y el API estan en sitios distintos: la cookie solo viaja con
+                    // None, que exige Secure. CrossSiteRequestGuardMiddleware suple la
+                    // proteccion contra CSRF que Lax daba.
+                    options.Cookie.SameSite = SameSiteMode.None;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                }
                 options.ExpireTimeSpan = TimeSpan.FromHours(8);
                 options.SlidingExpiration = true;
 
