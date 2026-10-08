@@ -1,54 +1,70 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
+# Despliega solo el backend (MagicBeauty.Store.Api) en Azure App Service api-magic-beauty.
+# Autenticacion OIDC con los secrets que creo Azure Deployment Center (sin publish profile).
+# La credencial federada confia en la rama release: el job de deploy no usa environment.
 
-name: Build and deploy ASP.Net Core app to Azure Web App - api-magic-beauty
+name: Deploy backend - api-magic-beauty
 
 on:
   push:
     branches:
-      - 'release'
+      - release
   workflow_dispatch:
+
+env:
+  API_PROJECT: backend/src/MagicBeauty.Store.Api/MagicBeauty.Store.Api.csproj
+  DOTNET_VERSION: '10.0.x'
+  ARTIFACT_NAME: api-magic-beauty
+
+concurrency:
+  group: deploy-api-magic-beauty
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up .NET Core
+      - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore
+        run: dotnet restore "$API_PROJECT"
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+      - name: Build
+        run: dotnet build "$API_PROJECT" --configuration Release --no-restore
 
-      - name: Upload artifact for deployment job
+      - name: Publish
+        run: dotnet publish "$API_PROJECT" --configuration Release --no-build --output "${{ runner.temp }}/api"
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/api
+          if-no-files-found: error
+          retention-days: 7
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write # requerido para el token OIDC
+      contents: read
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: .net-app
-      
-      - name: Login to Azure
+          name: ${{ env.ARTIFACT_NAME }}
+          path: api
+
+      - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_7D9A2CAC0D674464A9D1DA311FC95F72 }}
@@ -59,7 +75,6 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'api-magic-beauty'
-          slot-name: 'Production'
-          package: .
-          
+          app-name: api-magic-beauty
+          slot-name: Production
+          package: api
