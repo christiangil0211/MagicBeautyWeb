@@ -1,4 +1,5 @@
 using Azure;
+using Azure.Identity;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using MagicBeauty.Store.Application.Common.Interfaces;
@@ -6,19 +7,29 @@ using Microsoft.Extensions.Logging;
 
 namespace MagicBeauty.Store.Infrastructure.Storage;
 
-/// <summary>Azure Blob Storage. Se activa cuando existe Storage:AzureBlob:ConnectionString.</summary>
+/// <summary>
+/// Azure Blob Storage. Se activa con Storage:AzureBlob:ConnectionString (local o pruebas)
+/// o con Storage:AzureBlob:ServiceUri (Managed Identity, sin secretos).
+/// </summary>
 public sealed class AzureBlobStorageOptions
 {
     public const string SectionName = "Storage:AzureBlob";
 
     public string? ConnectionString { get; set; }
 
+    /// <summary>URL de la cuenta, p. ej. https://cuenta.blob.core.windows.net. Usa la identidad asignada por el sistema.</summary>
+    public string? ServiceUri { get; set; }
+
     public string ContainerName { get; set; } = "catalogo";
 
     /// <summary>Opcional: dominio propio o CDN delante del contenedor.</summary>
     public string? PublicBaseUrl { get; set; }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(ConnectionString);
+    /// <summary>Si hay ConnectionString, tiene prioridad sobre ServiceUri.</summary>
+    public bool UsesManagedIdentity =>
+        string.IsNullOrWhiteSpace(ConnectionString) && !string.IsNullOrWhiteSpace(ServiceUri);
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ConnectionString) || UsesManagedIdentity;
 }
 
 /// <summary>Disco local: solo Development, mientras no se configure Azure.</summary>
@@ -92,11 +103,16 @@ public sealed class AzureBlobFileStorage(
     AzureBlobStorageOptions options,
     ILogger<AzureBlobFileStorage> logger) : IFileStorage
 {
-    private readonly BlobContainerClient container =
-        new(options.ConnectionString, options.ContainerName);
+    private readonly BlobContainerClient container = options.UsesManagedIdentity
+        ? new BlobContainerClient(
+            new Uri(options.ServiceUri!.TrimEnd('/') + "/" + options.ContainerName),
+            new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned))
+        : new BlobContainerClient(options.ConnectionString, options.ContainerName);
 
     private readonly SemaphoreSlim containerLock = new(1, 1);
-    private bool containerReady;
+
+    // Con Managed Identity el contenedor es infraestructura existente: no se crea ni se cambia su acceso.
+    private bool containerReady = options.UsesManagedIdentity;
 
     private string BaseUrl =>
         (string.IsNullOrWhiteSpace(options.PublicBaseUrl)
@@ -192,7 +208,7 @@ public sealed class UnconfiguredFileStorage : IFileStorage
     public Task<string> SaveAsync(string path, Stream content, string contentType, CancellationToken cancellationToken)
     {
         throw new InvalidOperationException(
-            "El almacenamiento de imagenes no esta configurado (Storage:AzureBlob:ConnectionString).");
+            "El almacenamiento de imagenes no esta configurado (Storage:AzureBlob:ServiceUri o ConnectionString).");
     }
 
     public Task DeleteByUrlAsync(string url, CancellationToken cancellationToken) => Task.CompletedTask;
