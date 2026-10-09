@@ -19,5 +19,8 @@ public interface ICategoryService
 
     Task UpdateAsync(int id, UpdateCategoryRequest request, CancellationToken cancellationToken);
 
+    Task<CategoryDto> UploadImageAsync(int id, string kind, Stream content, long length, CancellationToken cancellationToken);
+    Task<CategoryDto> DeleteImageAsync(int id, string kind, CancellationToken cancellationToken);
+
     Task DeleteAsync(int id, CancellationToken cancellationToken);
 }

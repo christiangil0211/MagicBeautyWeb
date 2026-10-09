@@ -1,3 +1,4 @@
+using MagicBeauty.Store.Application.Common;
 using System.Text.RegularExpressions;
 
 using MagicBeauty.Store.Application.Common.Interfaces;

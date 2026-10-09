@@ -2,16 +2,14 @@ import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 
+import { ProductsComponent } from '../products/products.component';
 import { CategoryService } from '../../../core/services/category.service';
 import { CategoryMenuItem } from '../../../shared/models/category.model';
 
-/**
- * Página de categoría. Por ahora solo resuelve la categoría desde el slug y
- * muestra sus subcategorías: el listado de productos llega con el módulo Products.
- */
+/** Resuelve la categoría y muestra sus subcategorías y productos. */
 @Component({
   selector: 'app-catalog',
-  imports: [RouterLink],
+  imports: [RouterLink, ProductsComponent],
   templateUrl: './catalog.component.html',
   styleUrl: './catalog.component.scss'
 })

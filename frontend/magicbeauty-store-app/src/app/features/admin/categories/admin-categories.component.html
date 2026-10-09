@@ -5,7 +5,8 @@
   <app-page-header
     eyebrow="Catálogo"
     title="Categorías"
-    subtitle="Así queda organizada la navegación de la tienda.">
+    subtitle="Así queda organizada la navegación de la tienda."
+  >
     <div class="mb-stat">
       <strong>{{ categories().length }}</strong>
       <span>en total</span>
@@ -25,18 +26,12 @@
     <aside class="panel panel--tree">
       <div class="panel__head">
         <h2>Estructura</h2>
-        <p-button
-          label="Nueva"
-          icon="pi pi-plus"
-          size="small"
-          (onClick)="newCategory()" />
+        <p-button label="Nueva" icon="pi pi-plus" size="small" (onClick)="newCategory()" />
       </div>
 
-      <p class="panel__hint">
-        Vista previa del menú. Selecciona un nodo para editarlo.
-      </p>
+      <p class="panel__hint">Vista previa del menú. Selecciona un nodo para editarlo.</p>
 
-      @if (treeNodes().length > 0) {
+      @if (treeNodes().length > 0 && !saving()) {
         <p-tree
           [value]="treeNodes()"
           selectionMode="single"
@@ -44,7 +39,8 @@
           [filter]="true"
           filterPlaceholder="Buscar categoría"
           styleClass="mb-tree"
-          (onNodeSelect)="onNodeSelect($event.node)">
+          (onNodeSelect)="onNodeSelect($event.node)"
+        >
           <ng-template pTemplate="default" let-treeNode>
             <span class="tree-node">
               <span class="tree-node__name">{{ treeNode.data.name }}</span>
@@ -88,14 +84,16 @@
               severity="secondary"
               [outlined]="true"
               size="small"
-              (onClick)="addChildOfSelected()" />
+              (onClick)="addChildOfSelected()"
+            />
             <p-button
               label="Eliminar"
               icon="pi pi-trash"
               severity="danger"
               [text]="true"
               size="small"
-              (onClick)="confirmDelete()" />
+              (onClick)="confirmDelete()"
+            />
           }
 
           <p-button
@@ -103,7 +101,8 @@
             label="Guardar"
             icon="pi pi-check"
             size="small"
-            [loading]="saving()" />
+            [loading]="saving()"
+          />
         </div>
       </div>
 
@@ -115,7 +114,8 @@
             id="name"
             formControlName="name"
             placeholder="Ej: Labiales"
-            (blur)="generateSlug()" />
+            (blur)="generateSlug()"
+          />
           @if (form.controls.name.touched && form.controls.name.invalid) {
             <small class="error">El nombre es obligatorio.</small>
           }
@@ -136,7 +136,8 @@
             id="description"
             formControlName="description"
             rows="2"
-            placeholder="Texto breve para la tienda"></textarea>
+            placeholder="Texto breve para la tienda"
+          ></textarea>
         </div>
 
         <div class="field">
@@ -148,12 +149,18 @@
             optionLabel="label"
             optionValue="value"
             placeholder="Selecciona el padre"
-            appendTo="body" />
+            appendTo="body"
+          />
         </div>
 
         <div class="field">
           <label for="order">Orden</label>
-          <p-input-number inputId="order" formControlName="displayOrder" [min]="0" [showButtons]="true" />
+          <p-input-number
+            inputId="order"
+            formControlName="displayOrder"
+            [min]="0"
+            [showButtons]="true"
+          />
         </div>
       </div>
 
@@ -199,27 +206,42 @@
         <h3>Imágenes</h3>
 
         <div class="grid">
-          <div class="field">
-            <label for="homeImageUrl">Imagen del inicio</label>
-            <input
-              pInputText
-              id="homeImageUrl"
-              formControlName="homeImageUrl"
-              placeholder="/images/categorias/labiales.jpg" />
-            @if (form.controls.homeImageUrl.hasError('required')) {
-              <small class="error">Requerida si la categoría se destaca en el inicio.</small>
-            }
-          </div>
-
-          <div class="field">
-            <label for="imageUrl">Imagen del mega menú</label>
-            <input pInputText id="imageUrl" formControlName="imageUrl" placeholder="Opcional" />
-          </div>
-
-          <div class="field">
-            <label for="iconUrl">Ícono</label>
-            <input pInputText id="iconUrl" formControlName="iconUrl" placeholder="Opcional" />
-          </div>
+          @for (image of imageKinds; track image.kind) {
+            <div class="field category-image">
+              <label [for]="'category-file-' + image.kind">{{ image.label }}</label>
+              @if (form.controls[image.field].value && !pendingRemovals().includes(image.kind)) {
+                <img
+                  class="category-image__preview"
+                  [src]="form.controls[image.field].value"
+                  [alt]="image.label"
+                />
+              }
+              <input
+                type="file"
+                [id]="'category-file-' + image.kind"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                [disabled]="saving()"
+                (change)="selectImage(image.kind, $event)"
+              />
+              @if (pendingFiles()[image.kind]; as file) {
+                <small>{{ file.name }} ? Pendiente de guardar</small>
+              }
+              @if (pendingRemovals().includes(image.kind)) {
+                <small>Se eliminará al guardar.</small>
+              }
+              @if (form.controls[image.field].value || pendingFiles()[image.kind]) {
+                <p-button
+                  label="Quitar imagen"
+                  icon="pi pi-trash"
+                  severity="secondary"
+                  [text]="true"
+                  [disabled]="saving()"
+                  (onClick)="removeImage(image.kind)"
+                />
+              }
+              <small>JPG, PNG, WEBP o GIF. Máximo 8 MB.</small>
+            </div>
+          }
         </div>
 
         @if (form.controls.showInHome.value) {

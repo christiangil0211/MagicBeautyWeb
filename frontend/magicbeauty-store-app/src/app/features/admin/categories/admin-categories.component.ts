@@ -1,3 +1,4 @@
+import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -39,17 +40,55 @@ interface ParentOption {
     ToastModule,
     ConfirmDialogModule,
     PageHeaderComponent,
-    LoaderComponent
+    LoaderComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './admin-categories.component.html',
-  styleUrl: './admin-categories.component.scss'
+  styleUrl: './admin-categories.component.scss',
 })
 export class AdminCategoriesComponent {
   private readonly categoryService = inject(CategoryService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
+
+  readonly imageKinds = [
+    { kind: 'home' as const, label: 'Imagen del inicio', field: 'homeImageUrl' as const },
+    { kind: 'image' as const, label: 'Imagen del mega menú', field: 'imageUrl' as const },
+    { kind: 'icon' as const, label: 'Ícono', field: 'iconUrl' as const },
+  ];
+  readonly pendingFiles = signal<Partial<Record<'image' | 'home' | 'icon', File>>>({});
+  readonly pendingRemovals = signal<('image' | 'home' | 'icon')[]>([]);
+
+  selectImage(kind: 'image' | 'home' | 'icon', event: Event): void {
+    if (this.saving()) return;
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file && (file.size === 0 || file.size > 8 * 1024 * 1024)) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Revisa la imagen',
+        detail: 'Selecciona un archivo de hasta 8 MB que no esté vacío.',
+      });
+      input.value = '';
+      return;
+    }
+    if (file) {
+      this.pendingFiles.update((files) => ({ ...files, [kind]: file }));
+      this.pendingRemovals.update((kinds) => kinds.filter((item) => item !== kind));
+    }
+    input.value = '';
+  }
+
+  removeImage(kind: 'image' | 'home' | 'icon'): void {
+    if (this.saving()) return;
+    this.pendingFiles.update((files) => {
+      const next = { ...files };
+      delete next[kind];
+      return next;
+    });
+    this.pendingRemovals.update((kinds) => (kinds.includes(kind) ? kinds : [...kinds, kind]));
+  }
 
   readonly categories = signal<Category[]>([]);
   readonly loading = signal(false);
@@ -60,14 +99,17 @@ export class AdminCategoriesComponent {
   readonly treeNodes = computed(() => this.buildTree(this.categories()));
 
   readonly selectedCategory = computed(() =>
-    this.categories().find(category => category.id === this.selectedId())
+    this.categories().find((category) => category.id === this.selectedId()),
   );
 
   readonly visibleInMenuCount = computed(
-    () => this.categories().filter(category => category.isActive && category.showInNavigation).length
+    () =>
+      this.categories().filter((category) => category.isActive && category.showInNavigation).length,
   );
 
-  readonly homeCount = computed(() => this.categories().filter(category => category.showInHome).length);
+  readonly homeCount = computed(
+    () => this.categories().filter((category) => category.showInHome).length,
+  );
 
   /**
    * La jerarquía no tiene tope de niveles: lo normal son tres, pero puede bajar más.
@@ -86,7 +128,7 @@ export class AdminCategoriesComponent {
         if (!blocked.has(category.id)) {
           options.push({
             label: '— '.repeat(level - 1) + category.name,
-            value: category.id
+            value: category.id,
           });
         }
 
@@ -111,7 +153,7 @@ export class AdminCategoriesComponent {
     showInHome: [false],
     imageUrl: [''],
     homeImageUrl: [''],
-    iconUrl: ['']
+    iconUrl: [''],
   });
 
   constructor() {
@@ -122,7 +164,7 @@ export class AdminCategoriesComponent {
     this.loading.set(true);
 
     this.categoryService.getAll().subscribe({
-      next: categories => {
+      next: (categories) => {
         this.categories.set(categories);
         this.loading.set(false);
 
@@ -130,14 +172,17 @@ export class AdminCategoriesComponent {
           this.selectById(selectAfterLoad);
         }
       },
-      error: error => {
+      error: (error) => {
         this.loading.set(false);
         this.showError('No se pudieron cargar las categorías', error);
-      }
+      },
     });
   }
 
   newCategory(parentCategoryId: number | null = null): void {
+    if (this.saving()) return;
+    this.pendingFiles.set({});
+    this.pendingRemovals.set([]);
     this.selectedId.set(null);
     this.selectedNode.set(null);
 
@@ -153,7 +198,7 @@ export class AdminCategoriesComponent {
       showInHome: false,
       imageUrl: '',
       homeImageUrl: '',
-      iconUrl: ''
+      iconUrl: '',
     });
   }
 
@@ -166,6 +211,7 @@ export class AdminCategoriesComponent {
   }
 
   onNodeSelect(node: TreeNode): void {
+    if (this.saving()) return;
     const category = node.data as Category | undefined;
 
     if (category) {
@@ -173,67 +219,70 @@ export class AdminCategoriesComponent {
     }
   }
 
-  save(): void {
+  async save(): Promise<void> {
+    if (this.saving()) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Revisa el formulario',
-        detail: 'Hay campos obligatorios sin completar.'
-      });
-
       return;
     }
-
-    const value = this.form.getRawValue();
-
-    if (value.showInHome && !value.homeImageUrl.trim()) {
-      this.form.controls.homeImageUrl.setErrors({ required: true });
-      this.form.controls.homeImageUrl.markAsTouched();
-
+    const { imageUrl, homeImageUrl, iconUrl, ...value } = this.form.getRawValue();
+    const hasHome =
+      this.pendingFiles().home || (homeImageUrl.trim() && !this.pendingRemovals().includes('home'));
+    if (value.showInHome && !hasHome) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Falta la imagen del inicio',
-        detail: 'Una categoría destacada necesita imagen para su tarjeta.'
+        detail: 'Selecciona una imagen para la tarjeta.',
       });
-
       return;
     }
-
     this.saving.set(true);
-    const editingId = this.selectedId();
-
-    if (editingId === null) {
-      this.categoryService.create(value).subscribe({
-        next: created => {
-          this.saving.set(false);
-          this.notifySaved(created.name + ' se creó correctamente.');
-          this.load(created.id);
-        },
-        error: error => {
-          this.saving.set(false);
-          this.showError('No se pudo crear la categoría', error);
+    let id = this.selectedId();
+    try {
+      if (id === null) {
+        const created = await firstValueFrom(this.categoryService.create(value));
+        id = created.id;
+        this.selectedId.set(id);
+        this.categories.update((categories) => [...categories, created]);
+      } else await firstValueFrom(this.categoryService.update(id, value));
+      for (const image of this.imageKinds) {
+        const file = this.pendingFiles()[image.kind];
+        if (file) {
+          const updated = await firstValueFrom(
+            this.categoryService.uploadImage(id, image.kind, file),
+          );
+          this.form.controls[image.field].setValue(updated[image.field] ?? '');
+          this.pendingFiles.update((files) => {
+            const next = { ...files };
+            delete next[image.kind];
+            return next;
+          });
+          this.categories.update((categories) =>
+            categories.map((category) => (category.id === id ? updated : category)),
+          );
+        } else if (this.pendingRemovals().includes(image.kind)) {
+          const updated = await firstValueFrom(this.categoryService.deleteImage(id, image.kind));
+          this.form.controls[image.field].setValue(updated[image.field] ?? '');
+          this.pendingRemovals.update((kinds) => kinds.filter((kind) => kind !== image.kind));
+          this.categories.update((categories) =>
+            categories.map((category) => (category.id === id ? updated : category)),
+          );
         }
-      });
-
-      return;
-    }
-
-    this.categoryService.update(editingId, value).subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.notifySaved('Los cambios se guardaron.');
-        this.load(editingId);
-      },
-      error: error => {
-        this.saving.set(false);
-        this.showError('No se pudo guardar la categoría', error);
       }
-    });
+      this.notifySaved('Los cambios se guardaron.');
+      this.load(id);
+    } catch (error) {
+      this.showError(
+        'No se pudo completar el guardado; puedes reintentar las imágenes pendientes',
+        error,
+      );
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   confirmDelete(): void {
+    if (this.saving()) return;
     const category = this.selectedCategory();
 
     if (!category) {
@@ -248,7 +297,7 @@ export class AdminCategoriesComponent {
       rejectLabel: 'Cancelar',
       acceptButtonStyleClass: 'p-button-danger',
       rejectButtonStyleClass: 'p-button-text',
-      accept: () => this.delete(category.id)
+      accept: () => this.delete(category.id),
     });
   }
 
@@ -281,17 +330,19 @@ export class AdminCategoriesComponent {
         this.messageService.add({
           severity: 'success',
           summary: 'Categoría eliminada',
-          detail: 'La categoría se quitó del catálogo.'
+          detail: 'La categoría se quitó del catálogo.',
         });
 
         this.newCategory();
         this.load();
       },
-      error: error => this.showError('No se pudo eliminar', error)
+      error: (error) => this.showError('No se pudo eliminar', error),
     });
   }
 
   private applyCategoryToForm(category: Category): void {
+    this.pendingFiles.set({});
+    this.pendingRemovals.set([]);
     this.selectedId.set(category.id);
 
     this.form.reset({
@@ -306,12 +357,12 @@ export class AdminCategoriesComponent {
       showInHome: category.showInHome,
       imageUrl: category.imageUrl ?? '',
       homeImageUrl: category.homeImageUrl ?? '',
-      iconUrl: category.iconUrl ?? ''
+      iconUrl: category.iconUrl ?? '',
     });
   }
 
   private selectById(id: number): void {
-    const category = this.categories().find(item => item.id === id);
+    const category = this.categories().find((item) => item.id === id);
 
     if (!category) {
       return;
@@ -343,7 +394,7 @@ export class AdminCategoriesComponent {
       label: category.name,
       data: category,
       expanded: true,
-      children: this.childrenOf(categories, category.id).map(toNode)
+      children: this.childrenOf(categories, category.id).map(toNode),
     });
 
     return this.childrenOf(categories, null).map(toNode);
@@ -351,10 +402,10 @@ export class AdminCategoriesComponent {
 
   private childrenOf(categories: Category[], parentId: number | null): Category[] {
     return categories
-      .filter(category => (category.parentCategoryId ?? null) === parentId)
+      .filter((category) => (category.parentCategoryId ?? null) === parentId)
       .sort(
         (first, second) =>
-          first.displayOrder - second.displayOrder || first.name.localeCompare(second.name)
+          first.displayOrder - second.displayOrder || first.name.localeCompare(second.name),
       );
   }
 
@@ -365,7 +416,9 @@ export class AdminCategoriesComponent {
     while (pending.length > 0) {
       const currentId = pending.pop()!;
 
-      for (const child of categories.filter(category => category.parentCategoryId === currentId)) {
+      for (const child of categories.filter(
+        (category) => category.parentCategoryId === currentId,
+      )) {
         if (!ids.has(child.id)) {
           ids.add(child.id);
           pending.push(child.id);
@@ -379,7 +432,7 @@ export class AdminCategoriesComponent {
   private nextDisplayOrder(parentCategoryId: number | null): number {
     const siblings = this.childrenOf(this.categories(), parentCategoryId);
 
-    return siblings.length === 0 ? 10 : Math.max(...siblings.map(item => item.displayOrder)) + 10;
+    return siblings.length === 0 ? 10 : Math.max(...siblings.map((item) => item.displayOrder)) + 10;
   }
 
   private toSlug(value: string): string {

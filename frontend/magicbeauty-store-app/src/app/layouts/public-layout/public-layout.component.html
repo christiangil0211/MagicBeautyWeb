@@ -100,7 +100,7 @@
       <nav class="store-menu" (mouseleave)="closeMegaMenu()">
 
         @for (item of menu(); track item.id) {
-          <div class="store-menu__item" (mouseenter)="openMegaMenu(item.id)">
+          <div class="store-menu__item" (mouseenter)="openMegaMenu(item.id)" (focusin)="openMegaMenu(item.id)">
             <a class="store-menu__link" [routerLink]="categoryPath(item.slug)" routerLinkActive="active">
               {{ item.name }}
               @if (item.children.length > 0) {
@@ -110,38 +110,7 @@
 
             @if (item.children.length > 0 && openMenuId() === item.id) {
               <div class="nav-dropdown">
-                @for (child of item.children; track child.id) {
-                  <div class="nav-dropdown__row">
-                    <a class="nav-dropdown__link" [routerLink]="categoryPath(child.slug)" (click)="closeMegaMenu()">
-                      {{ child.name }}
-                    </a>
-
-                    @if (child.children.length > 0) {
-                      <button
-                        type="button"
-                        class="nav-dropdown__toggle"
-                        [attr.aria-expanded]="isChildExpanded(child.id)"
-                        [attr.aria-label]="'Ver subcategorías de ' + child.name"
-                        (click)="toggleChild(child.id, $event)">
-                        <i class="pi" [class.pi-angle-down]="!isChildExpanded(child.id)"
-                           [class.pi-angle-up]="isChildExpanded(child.id)"></i>
-                      </button>
-                    }
-                  </div>
-
-                  @if (child.children.length > 0 && isChildExpanded(child.id)) {
-                    <div class="nav-dropdown__sublist">
-                      @for (grandChild of child.children; track grandChild.id) {
-                        <a
-                          class="nav-dropdown__sublink"
-                          [routerLink]="categoryPath(grandChild.slug)"
-                          (click)="closeMegaMenu()">
-                          {{ grandChild.name }}
-                        </a>
-                      }
-                    </div>
-                  }
-                }
+                <ng-container *ngTemplateOutlet="categoryBranches; context: { $implicit: item.children }" />
               </div>
             }
           </div>
@@ -296,3 +265,24 @@
     [returnUrl]="loginReturnUrl()"
     (closed)="closeAccount()" />
 </div>
+
+<ng-template #categoryBranches let-items>
+  @for (node of items; track node.id) {
+    <div class="nav-dropdown__branch" (mouseenter)="expandChild(node.id)" (mouseleave)="collapseChild(node.id)" (focusin)="expandChild(node.id)">
+      <div class="nav-dropdown__row">
+        <a class="nav-dropdown__link" [routerLink]="categoryPath(node.slug)" (click)="closeMegaMenu()">{{ node.name }}</a>
+        @if (node.children.length > 0) {
+          <button type="button" class="nav-dropdown__toggle" [attr.aria-expanded]="isChildExpanded(node.id)"
+            [attr.aria-label]="'Ver subcategorías de ' + node.name" (click)="toggleChild(node.id, $event)">
+            <i class="pi" [class.pi-angle-down]="!isChildExpanded(node.id)" [class.pi-angle-up]="isChildExpanded(node.id)"></i>
+          </button>
+        }
+      </div>
+      @if (node.children.length > 0 && isChildExpanded(node.id)) {
+        <div class="nav-dropdown__sublist">
+          <ng-container *ngTemplateOutlet="categoryBranches; context: { $implicit: node.children }" />
+        </div>
+      }
+    </div>
+  }
+</ng-template>

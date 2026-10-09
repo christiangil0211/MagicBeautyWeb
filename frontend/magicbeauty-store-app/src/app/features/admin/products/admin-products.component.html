@@ -41,7 +41,7 @@
           type="text"
           placeholder="Buscar por nombre o referencia"
           [ngModel]="search()"
-          (ngModelChange)="search.set($event)"
+          (ngModelChange)="searchChanged($event)"
           (keyup.enter)="load()" />
       </span>
 

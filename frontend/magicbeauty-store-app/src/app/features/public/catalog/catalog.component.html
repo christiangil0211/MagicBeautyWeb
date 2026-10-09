@@ -21,11 +21,7 @@
       </div>
     }
 
-    <div class="catalog__pending">
-      <i class="pi pi-shopping-bag"></i>
-      <strong>Productos en camino</strong>
-      <span>El listado de productos de esta categoría llega con el módulo Products.</span>
-    </div>
+    <app-public-products [categoryId]="category.id" [hideHeading]="true" />
   } @else {
     <div class="catalog__pending">
       <i class="pi pi-search"></i>

@@ -3,6 +3,7 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { EMAIL_PATTERN, PASSWORD_RULES } from '../../../shared/utils/account-rules';
 
@@ -21,7 +22,7 @@ type LoginStep = 'credentials' | 'code' | 'new-password';
  */
 @Component({
   selector: 'app-account-panel',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, LoaderComponent],
   templateUrl: './account-panel.component.html',
   styleUrl: './account-panel.component.scss'
 })

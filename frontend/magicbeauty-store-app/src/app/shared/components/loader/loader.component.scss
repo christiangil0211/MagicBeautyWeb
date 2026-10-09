@@ -53,15 +53,18 @@
   border-radius: var(--mb-radius-pill);
   background: var(--mb-primary-soft-hover);
 
-  span {
+}
+
+.loader__indicator {
     position: absolute;
+    display: block;
+    left: 0;
     top: 0;
     bottom: 0;
     width: 40%;
     border-radius: inherit;
     background: var(--mb-primary);
     animation: loader-progress 1.2s ease-in-out infinite;
-  }
 }
 
 .loader__message {
@@ -115,21 +118,22 @@
 
 @keyframes loader-progress {
   from {
-    left: -40%;
+    transform: translateX(-100%);
   }
 
   to {
-    left: 100%;
+    transform: translateX(250%);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .loader__mark,
-  .loader__bar span {
+  .loader__indicator {
     animation: none;
   }
 
-  .loader__bar span {
+  .loader__indicator {
     left: 30%;
+    transform: none;
   }
 }

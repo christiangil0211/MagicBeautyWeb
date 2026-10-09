@@ -1,6 +1,7 @@
 <p-toast position="top-right" />
 
 <section class="showcase">
+  @if (!hideHeading()) {
   <header class="showcase__head">
     @if (searchTerm()) {
       <p class="mb-eyebrow">Búsqueda</p>
@@ -17,6 +18,7 @@
       <p class="subtitle">Belleza que te inspira, productos que te enamoran.</p>
     }
   </header>
+  }
 
   @if (loading()) {
     <app-loader [message]="searchTerm() ? 'Buscando productos…' : 'Cargando productos…'" />

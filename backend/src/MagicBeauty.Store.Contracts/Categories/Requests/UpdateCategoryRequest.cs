@@ -14,12 +14,6 @@ public sealed class UpdateCategoryRequest
 
     public bool IsActive { get; set; } = true;
 
-    public string? ImageUrl { get; set; }
-
-    public string? HomeImageUrl { get; set; }
-
-    public string? IconUrl { get; set; }
-
     public bool ShowInHome { get; set; }
 
     public bool ShowInNavigation { get; set; } = true;

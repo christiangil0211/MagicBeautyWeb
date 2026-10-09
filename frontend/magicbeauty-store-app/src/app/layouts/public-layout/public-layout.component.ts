@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -21,7 +22,7 @@ const ADMIN_LINKS: AccountAdminLink[] = [
 
 @Component({
   selector: 'app-public-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AccountPanelComponent, SearchBoxComponent],
+  imports: [NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, AccountPanelComponent, SearchBoxComponent],
   templateUrl: './public-layout.component.html',
   styleUrl: './public-layout.component.scss'
 })
@@ -117,6 +118,18 @@ export class PublicLayoutComponent {
     this.openMenuId.set(null);
     this.isAdminMenuOpen.set(false);
     this.expandedChildIds.set(new Set());
+  }
+
+  expandChild(id: number): void {
+    this.expandedChildIds.update(ids => new Set([...ids, id]));
+  }
+
+  collapseChild(id: number): void {
+    this.expandedChildIds.update(ids => {
+      const next = new Set(ids);
+      next.delete(id);
+      return next;
+    });
   }
 
   isChildExpanded(id: number): boolean {

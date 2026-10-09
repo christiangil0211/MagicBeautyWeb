@@ -1,4 +1,4 @@
-namespace MagicBeauty.Store.Application.Features.Products;
+namespace MagicBeauty.Store.Application.Common;
 
 /// <summary>
 /// Que imagenes se aceptan. El tipo se decide por la firma real del archivo, no

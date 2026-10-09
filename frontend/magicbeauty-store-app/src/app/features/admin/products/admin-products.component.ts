@@ -1,5 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EMPTY, Subject, catchError, finalize, of, switchMap, timer } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ConfirmationService, MessageService, PrimeTemplate } from 'primeng/api';
@@ -51,6 +53,8 @@ export class AdminProductsComponent {
   private readonly confirmationService = inject(ConfirmationService);
   private readonly router = inject(Router);
 
+  private readonly loadRequests = new Subject<number>();
+
   readonly products = signal<ProductListItem[]>([]);
   readonly brands = signal<Brand[]>([]);
   readonly loading = signal(false);
@@ -79,6 +83,25 @@ export class AdminProductsComponent {
   readonly withoutPrice = computed(() => this.products().filter(product => product.defaultPrice == null).length);
 
   constructor() {
+    this.loadRequests.pipe(
+      switchMap(delay => {
+        this.loading.set(true);
+        return (delay ? timer(delay) : of(0)).pipe(
+          switchMap(() => this.productService.getAll({
+            search: this.search().trim() || null,
+            brandId: this.brandFilter(),
+            isActive: this.statusFilter()
+          })),
+          catchError(error => {
+            this.showError('No se pudieron cargar los productos', error);
+            return EMPTY;
+          }),
+          finalize(() => this.loading.set(false))
+        );
+      }),
+      takeUntilDestroyed(inject(DestroyRef))
+    ).subscribe(products => this.products.set(products));
+
     this.brandService.getAll().subscribe({
       next: brands => this.brands.set(brands),
       error: () => this.brands.set([])
@@ -88,24 +111,15 @@ export class AdminProductsComponent {
   }
 
   load(): void {
-    this.loading.set(true);
+    this.loadRequests.next(0);
+  }
 
-    this.productService
-      .getAll({
-        search: this.search().trim() || null,
-        brandId: this.brandFilter(),
-        isActive: this.statusFilter()
-      })
-      .subscribe({
-        next: products => {
-          this.products.set(products);
-          this.loading.set(false);
-        },
-        error: error => {
-          this.loading.set(false);
-          this.showError('No se pudieron cargar los productos', error);
-        }
-      });
+  searchChanged(value: string): void {
+    const previous = this.search().trim();
+    this.search.set(value);
+    if (value.trim() !== previous) {
+      this.loadRequests.next(350);
+    }
   }
 
   clearFilters(): void {

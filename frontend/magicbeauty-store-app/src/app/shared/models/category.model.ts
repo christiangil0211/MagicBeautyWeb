@@ -37,9 +37,6 @@ export interface CreateCategoryRequest {
   parentCategoryId?: number | null;
   displayOrder: number;
   isActive: boolean;
-  imageUrl?: string | null;
-  homeImageUrl?: string | null;
-  iconUrl?: string | null;
   showInHome: boolean;
   showInNavigation: boolean;
   showInMegaMenu: boolean;

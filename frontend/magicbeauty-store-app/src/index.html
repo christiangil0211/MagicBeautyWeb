@@ -49,6 +49,8 @@
     }
 
     .boot-loader__bar span {
+      display: block;
+      left: 0;
       position: absolute;
       top: 0;
       bottom: 0;
@@ -70,13 +72,14 @@
     }
 
     @keyframes boot-progress {
-      from { left: -40%; }
-      to { left: 100%; }
+      from { transform: translateX(-100%); }
+      to { transform: translateX(250%); }
     }
 
     @media (prefers-reduced-motion: reduce) {
       .boot-loader__mark,
       .boot-loader__bar span { animation: none; }
+      .boot-loader__bar span { left: 30%; transform: none; }
     }
   </style>
 </head>

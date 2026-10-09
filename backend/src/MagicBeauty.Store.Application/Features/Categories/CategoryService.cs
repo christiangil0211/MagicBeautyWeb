@@ -1,12 +1,15 @@
-﻿using MagicBeauty.Store.Application.Common.Interfaces;
+using MagicBeauty.Store.Application.Common;
+using Microsoft.Extensions.Logging;
+using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Contracts.Categories.Requests;
 using MagicBeauty.Store.Contracts.Categories.Responses;
 using MagicBeauty.Store.Domain.Entities;
 
 namespace MagicBeauty.Store.Application.Features.Categories;
 
-public sealed class CategoryService(ICategoryRepository categoryRepository) : ICategoryService
+public sealed class CategoryService(ICategoryRepository categoryRepository, IFileStorageFactory storageFactory, ILogger<CategoryService> logger) : ICategoryService
 {
+    private readonly IFileStorage storage = storageFactory.Get(FileStorageDestination.Categories);
     public async Task<IReadOnlyList<CategoryDto>> GetAllAsync(CancellationToken cancellationToken)
     {
         var categories = await categoryRepository.GetAllAsync(cancellationToken);
@@ -108,9 +111,6 @@ public sealed class CategoryService(ICategoryRepository categoryRepository) : IC
             ParentCategoryId = request.ParentCategoryId,
             DisplayOrder = request.DisplayOrder,
             IsActive = request.IsActive,
-            ImageUrl = Normalize(request.ImageUrl),
-            HomeImageUrl = Normalize(request.HomeImageUrl),
-            IconUrl = Normalize(request.IconUrl),
             ShowInHome = request.ShowInHome,
             ShowInNavigation = request.ShowInNavigation,
             ShowInMegaMenu = request.ShowInMegaMenu,
@@ -141,9 +141,6 @@ public sealed class CategoryService(ICategoryRepository categoryRepository) : IC
         category.ParentCategoryId = request.ParentCategoryId;
         category.DisplayOrder = request.DisplayOrder;
         category.IsActive = request.IsActive;
-        category.ImageUrl = Normalize(request.ImageUrl);
-        category.HomeImageUrl = Normalize(request.HomeImageUrl);
-        category.IconUrl = Normalize(request.IconUrl);
         category.ShowInHome = request.ShowInHome;
         category.ShowInNavigation = request.ShowInNavigation;
         category.ShowInMegaMenu = request.ShowInMegaMenu;
@@ -171,8 +168,84 @@ public sealed class CategoryService(ICategoryRepository categoryRepository) : IC
             throw new InvalidOperationException("No se puede eliminar una categoría con productos asociados.");
         }
 
+        var urls = new[] { category.ImageUrl, category.HomeImageUrl, category.IconUrl };
         categoryRepository.Delete(category);
         await categoryRepository.SaveChangesAsync(cancellationToken);
+        foreach (var url in urls.Distinct()) await CleanupIfUnusedAsync(new Category(), url);
+    }
+
+    public async Task<CategoryDto> UploadImageAsync(int id, string kind, Stream content, long length, CancellationToken cancellationToken)
+    {
+        ValidateKind(kind);
+        var category = await categoryRepository.GetByIdAsync(id, cancellationToken) ?? throw new KeyNotFoundException("La categoría no existe.");
+        if (length <= 0 || length > ImageUploadRules.MaxBytes) throw new ArgumentException("La imagen debe pesar entre 1 byte y 8 MB.");
+        using var buffer = new MemoryStream();
+        // Bound memory even when the caller reports an incorrect length.
+        var chunk = new byte[81920];
+        int count;
+        while ((count = await content.ReadAsync(chunk, cancellationToken)) > 0)
+        {
+            if (buffer.Length + count > ImageUploadRules.MaxBytes) throw new ArgumentException("La imagen supera 8 MB.");
+            await buffer.WriteAsync(chunk.AsMemory(0, count), cancellationToken);
+        }
+        var format = ImageUploadRules.Detect(buffer.GetBuffer().AsSpan(0, (int)Math.Min(buffer.Length, 16)));
+        buffer.Position = 0;
+        var previous = GetImage(category, kind);
+        var url = await storage.SaveAsync($"categories/{id}/{kind}/{Guid.NewGuid():N}{format.Extension}", buffer, format.ContentType, cancellationToken);
+        SetImage(category, kind, url);
+        var previousUpdatedAt = category.UpdatedAt;
+        category.UpdatedAt = DateTime.UtcNow;
+        try { await categoryRepository.SaveChangesAsync(cancellationToken); }
+        catch
+        {
+            SetImage(category, kind, previous);
+            category.UpdatedAt = previousUpdatedAt;
+            await CleanupAsync(url);
+            throw;
+        }
+        await CleanupIfUnusedAsync(category, previous);
+        return MapToDto(category);
+    }
+
+    public async Task<CategoryDto> DeleteImageAsync(int id, string kind, CancellationToken cancellationToken)
+    {
+        ValidateKind(kind);
+        var category = await categoryRepository.GetByIdAsync(id, cancellationToken) ?? throw new KeyNotFoundException("La categoría no existe.");
+        var previous = GetImage(category, kind);
+        var previousUpdatedAt = category.UpdatedAt;
+        SetImage(category, kind, null);
+        category.UpdatedAt = DateTime.UtcNow;
+        try { await categoryRepository.SaveChangesAsync(cancellationToken); }
+        catch { SetImage(category, kind, previous); category.UpdatedAt = previousUpdatedAt; throw; }
+        await CleanupIfUnusedAsync(category, previous);
+        return MapToDto(category);
+    }
+
+    private static void ValidateKind(string kind)
+    {
+        if (kind is not ("image" or "home" or "icon")) throw new ArgumentException("Tipo de imagen inválido: image, home o icon.");
+    }
+    private static string? GetImage(Category category, string kind) => kind switch { "image" => category.ImageUrl, "home" => category.HomeImageUrl, "icon" => category.IconUrl, _ => throw new ArgumentException("Tipo inválido.") };
+    private static void SetImage(Category category, string kind, string? url)
+    {
+        switch (kind) { case "image": category.ImageUrl = url; break; case "home": category.HomeImageUrl = url; break; case "icon": category.IconUrl = url; break; default: throw new ArgumentException("Tipo inválido."); }
+    }
+    private async Task CleanupIfUnusedAsync(Category category, string? url)
+    {
+        if (url is null || new[] { category.ImageUrl, category.HomeImageUrl, category.IconUrl }.Contains(url)) return;
+        try
+        {
+            // Existing manually supplied URLs may be shared by other categories.
+            if ((await categoryRepository.GetAllAsync(CancellationToken.None)).Any(c => c.ImageUrl == url || c.HomeImageUrl == url || c.IconUrl == url)) return;
+            await CleanupAsync(url);
+        }
+        catch (Exception exception) { logger.LogError(exception, "No se pudo comprobar el uso de {ImageUrl}; requiere reintento de limpieza.", url); }
+    }
+    private async Task CleanupAsync(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+        try { await storage.DeleteByUrlAsync(url, CancellationToken.None); }
+        catch (Exception exception) { logger.LogError(exception, "No se pudo limpiar la imagen de categoría {ImageUrl}; requiere reintento de limpieza.", url); }
     }
 
     private async Task ValidateCreateAsync(CreateCategoryRequest request, CancellationToken cancellationToken)

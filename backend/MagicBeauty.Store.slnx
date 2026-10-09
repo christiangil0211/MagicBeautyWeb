@@ -6,4 +6,7 @@
     <Project Path="src/MagicBeauty.Store.Domain/MagicBeauty.Store.Domain.csproj" />
     <Project Path="src/MagicBeauty.Store.Infrastructure/MagicBeauty.Store.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MagicBeauty.Store.Tests/MagicBeauty.Store.Tests.csproj" />
+  </Folder>
 </Solution>

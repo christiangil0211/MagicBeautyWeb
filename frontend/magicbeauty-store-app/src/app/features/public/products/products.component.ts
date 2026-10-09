@@ -1,9 +1,9 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, input, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
-import { catchError, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
+import { catchError, combineLatest, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -69,6 +69,8 @@ export class ProductsComponent {
 
   /** Texto buscado desde la cabecera (?q=). Vacío muestra todo el catálogo. */
   readonly searchTerm = signal('');
+  readonly categoryId = input<number | null>(null);
+  readonly hideHeading = input(false);
 
   constructor() {
     // El listado se pide solo en el navegador: así el servidor responde de
@@ -78,17 +80,20 @@ export class ProductsComponent {
     }
 
     // Cada búsqueda nueva cancela la anterior para que no lleguen resultados viejos.
-    inject(ActivatedRoute)
-      .queryParamMap.pipe(
+    combineLatest([
+      inject(ActivatedRoute).queryParamMap.pipe(
         map(params => (params.get('q') ?? '').trim()),
-        distinctUntilChanged(),
-        tap(term => {
+        distinctUntilChanged()
+      ),
+      toObservable(this.categoryId)
+    ]).pipe(
+        tap(([term]) => {
           this.searchTerm.set(term);
           this.page.set(1);
           this.loading.set(true);
         }),
-        switchMap(term =>
-          this.catalogService.getProducts({ search: term || null }).pipe(
+        switchMap(([term, categoryId]) =>
+          this.catalogService.getProducts({ search: term || null, categoryId }).pipe(
             catchError(() => of([]))
           )
         ),

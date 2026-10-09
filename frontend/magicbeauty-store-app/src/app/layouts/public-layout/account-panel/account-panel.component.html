@@ -207,3 +207,7 @@
     </div>
   }
 </aside>
+
+@if (submitting()) {
+  <app-loader mode="fullscreen" message="Iniciando sesión…" />
+}

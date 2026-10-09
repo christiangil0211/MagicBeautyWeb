@@ -22,6 +22,9 @@ public sealed class AzureBlobStorageOptions
 
     public string ContainerName { get; set; } = "catalogo";
 
+    public string CategoryContainerName { get; set; } = "category-images";
+    public string? CategoryPublicBaseUrl { get; set; }
+
     /// <summary>Opcional: dominio propio o CDN delante del contenedor.</summary>
     public string? PublicBaseUrl { get; set; }
 

@@ -9,11 +9,11 @@ import {
   CategoryTile,
   CategoryTree,
   CreateCategoryRequest,
-  UpdateCategoryRequest
+  UpdateCategoryRequest,
 } from '../../shared/models/category.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CategoryService {
   private readonly http = inject(HttpClient);
@@ -47,6 +47,16 @@ export class CategoryService {
 
   update(id: number, request: UpdateCategoryRequest): Observable<void> {
     return this.http.put<void>(`${this.apiUrl}/${id}`, request);
+  }
+
+  uploadImage(id: number, kind: 'image' | 'home' | 'icon', file: File): Observable<Category> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.put<Category>(`${this.apiUrl}/${id}/images/${kind}`, form);
+  }
+
+  deleteImage(id: number, kind: 'image' | 'home' | 'icon'): Observable<Category> {
+    return this.http.delete<Category>(`${this.apiUrl}/${id}/images/${kind}`);
   }
 
   delete(id: number): Observable<void> {

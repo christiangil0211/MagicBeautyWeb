@@ -75,6 +75,19 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
         return NoContent();
     }
 
+    [HttpPut("{id:int}/images/{kind}")]
+    [RequestSizeLimit(9 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 9 * 1024 * 1024)]
+    public async Task<ActionResult<CategoryDto>> UploadImage(int id, string kind, [FromForm] IFormFile file, CancellationToken cancellationToken)
+    {
+        await using var content = file.OpenReadStream();
+        return Ok(await categoryService.UploadImageAsync(id, kind, content, file.Length, cancellationToken));
+    }
+
+    [HttpDelete("{id:int}/images/{kind}")]
+    public async Task<ActionResult<CategoryDto>> DeleteImage(int id, string kind, CancellationToken cancellationToken)
+        => Ok(await categoryService.DeleteImageAsync(id, kind, cancellationToken));
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {

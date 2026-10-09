@@ -47,6 +47,10 @@ public static class DependencyInjection
         var azure = configuration.GetSection(AzureBlobStorageOptions.SectionName).Get<AzureBlobStorageOptions>()
             ?? new AzureBlobStorageOptions();
 
+        services.AddSingleton<IFileStorageFactory>(provider => new FileStorageFactory(
+            provider.GetRequiredService<IFileStorage>(), azure,
+            provider.GetService<LocalFileStorageOptions>(), provider.GetRequiredService<ILogger<AzureBlobFileStorage>>()));
+
         if (azure.IsConfigured)
         {
             services.AddSingleton(azure);
