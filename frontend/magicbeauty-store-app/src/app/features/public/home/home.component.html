@@ -1,6 +1,7 @@
 <p-toast position="top-right" />
 
 <section class="hero">
+  <div class="hero__layout">
   <div class="hero__content">
     <p class="hero__eyebrow">Resalta tu</p>
     <h1 class="hero__title">ESENCIA</h1>
@@ -18,6 +19,16 @@
       <li><i class="pi pi-sparkles"></i> Belleza en tendencia</li>
       <li><i class="pi pi-heart"></i> Amor en cada detalle</li>
     </ul>
+  </div>
+  @if (heroProducts().length > 0) {
+    <div class="hero__visual" aria-label="Productos de Magic Beauty Cosmetics">
+      @for (product of heroProducts(); track product.id) {
+        <a class="hero__product" [routerLink]="detailLink(product.reference)" [attr.aria-label]="product.name">
+          <img [src]="product.mainImageUrl" [alt]="product.name" decoding="async" />
+        </a>
+      }
+    </div>
+  }
   </div>
 </section>
 

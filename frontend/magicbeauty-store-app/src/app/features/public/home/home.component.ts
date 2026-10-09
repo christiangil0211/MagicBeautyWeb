@@ -38,6 +38,10 @@ export class HomeComponent {
   readonly productsLoading = signal(true);
   readonly favorites = signal<Set<number>>(new Set());
 
+  readonly heroProducts = computed(() =>
+    this.favoriteProducts().filter(product => !!product.mainImageUrl).slice(0, 3)
+  );
+
   readonly favoriteCards = computed(() =>
     this.favoriteProducts().map(product => ({
       ...product,
