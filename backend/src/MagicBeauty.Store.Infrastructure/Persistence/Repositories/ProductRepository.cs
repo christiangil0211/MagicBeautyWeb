@@ -47,8 +47,26 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
 
         if (categoryId.HasValue)
         {
+            // Read only hierarchy edges once; walk every descendant without a query per level.
+            var hierarchy = await dbContext.Categories
+                .AsNoTracking()
+                .Select(category => new { category.Id, category.ParentCategoryId })
+                .ToListAsync(cancellationToken);
+            var childrenByParent = hierarchy
+                .Where(category => category.ParentCategoryId.HasValue)
+                .ToLookup(category => category.ParentCategoryId!.Value, category => category.Id);
+            var categoryIds = new HashSet<int> { categoryId.Value };
+            var pending = new Stack<int>();
+            pending.Push(categoryId.Value);
+            while (pending.TryPop(out var parentId))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                foreach (var childId in childrenByParent[parentId])
+                    if (categoryIds.Add(childId)) pending.Push(childId);
+            }
+
             query = query.Where(product =>
-                product.ProductCategories.Any(link => link.CategoryId == categoryId.Value));
+                product.ProductCategories.Any(link => categoryIds.Contains(link.CategoryId)));
         }
 
         if (isActive.HasValue)
