@@ -8,6 +8,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { CategoryService } from '../../core/services/category.service';
 import { CategoryMenuItem } from '../../shared/models/category.model';
 import { SearchBoxComponent } from '../../shared/components/search-box/search-box.component';
+import { WhatsappButtonComponent } from '../../shared/components/whatsapp-button/whatsapp-button.component';
 import { AccountAdminLink, AccountPanelComponent } from './account-panel/account-panel.component';
 
 /**
@@ -22,7 +23,15 @@ const ADMIN_LINKS: AccountAdminLink[] = [
 
 @Component({
   selector: 'app-public-layout',
-  imports: [NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, AccountPanelComponent, SearchBoxComponent],
+  imports: [
+    NgTemplateOutlet,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    AccountPanelComponent,
+    SearchBoxComponent,
+    WhatsappButtonComponent
+  ],
   templateUrl: './public-layout.component.html',
   styleUrl: './public-layout.component.scss'
 })
