@@ -4,7 +4,7 @@
  */
 export const STORE_CONTACT = {
   /** Número en formato internacional, solo dígitos, como lo espera wa.me. */
-  whatsappPhone: '573011663303',
+  whatsappPhone: '573127381185',
   whatsappMessage:
     'Hola, estoy visitando el catálogo de Magic Beauty Cosmetics y quisiera recibir asesoría.'
 } as const;
