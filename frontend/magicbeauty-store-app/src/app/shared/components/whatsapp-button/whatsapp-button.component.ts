@@ -3,7 +3,7 @@ import { Component } from '@angular/core';
 import { whatsappUrl } from '../../../core/constants/store-contact';
 
 /**
- * Botón flotante de WhatsApp, fijo en la esquina inferior izquierda.
+ * Botón flotante de WhatsApp, fijo en la esquina inferior derecha.
  * Queda por debajo de los overlays y paneles del layout para no tapar la navegación.
  */
 @Component({
@@ -23,30 +23,28 @@ import { whatsappUrl } from '../../../core/constants/store-contact';
   styles: `
     .whatsapp {
       position: fixed;
-      left: max(1.25rem, env(safe-area-inset-left));
+      right: max(1.25rem, env(safe-area-inset-right));
       bottom: max(1.25rem, env(safe-area-inset-bottom));
       /* Debajo del overlay (20) y los paneles móviles (30). */
       z-index: 15;
       display: grid;
       place-items: center;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: #25d366;
-      color: #fff;
-      box-shadow: var(--mb-shadow);
+      width: 64px;
+      height: 64px;
+      background: transparent;
+      color: #25d366;
       text-decoration: none;
       transition:
         transform 0.2s ease,
-        box-shadow 0.2s ease;
+        filter 0.2s ease;
 
       i {
-        font-size: 1.75rem;
+        font-size: 3.5rem;
       }
 
       &:hover {
         transform: translateY(-2px);
-        box-shadow: var(--mb-shadow-lg);
+        filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.15));
       }
 
       &:focus-visible {
@@ -57,13 +55,13 @@ import { whatsappUrl } from '../../../core/constants/store-contact';
 
     @media (max-width: 640px) {
       .whatsapp {
-        left: max(1rem, env(safe-area-inset-left));
+        right: max(1rem, env(safe-area-inset-right));
         bottom: max(1rem, env(safe-area-inset-bottom));
-        width: 50px;
-        height: 50px;
+        width: 60px;
+        height: 60px;
 
         i {
-          font-size: 1.55rem;
+          font-size: 3.25rem;
         }
       }
     }
