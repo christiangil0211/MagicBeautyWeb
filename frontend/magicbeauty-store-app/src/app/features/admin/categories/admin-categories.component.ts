@@ -1,4 +1,5 @@
 import { firstValueFrom } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -61,7 +62,7 @@ export class AdminCategoriesComponent {
   readonly pendingRemovals = signal<('image' | 'home' | 'icon')[]>([]);
 
   selectImage(kind: 'image' | 'home' | 'icon', event: Event): void {
-    if (this.saving()) return;
+    if (this.saving() || !this.visibleImageKinds().some((image) => image.kind === kind)) return;
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (file && (file.size === 0 || file.size > 8 * 1024 * 1024)) {
@@ -81,7 +82,7 @@ export class AdminCategoriesComponent {
   }
 
   removeImage(kind: 'image' | 'home' | 'icon'): void {
-    if (this.saving()) return;
+    if (this.saving() || !this.visibleImageKinds().some((image) => image.kind === kind)) return;
     this.pendingFiles.update((files) => {
       const next = { ...files };
       delete next[kind];
@@ -121,7 +122,7 @@ export class AdminCategoriesComponent {
     const editingId = this.selectedId();
     const blocked = editingId === null ? new Set<number>() : this.collectSubtreeIds(all, editingId);
 
-    const options: ParentOption[] = [{ label: 'Categoría raíz (nivel 1)', value: null }];
+    const options: ParentOption[] = [{ label: 'Categoría raíz (nivel 0)', value: null }];
 
     const walk = (parentId: number | null, level: number): void => {
       for (const category of this.childrenOf(all, parentId)) {
@@ -155,6 +156,32 @@ export class AdminCategoriesComponent {
     homeImageUrl: [''],
     iconUrl: [''],
   });
+
+  private readonly parentCategoryId = toSignal(this.form.controls.parentCategoryId.valueChanges, {
+    initialValue: this.form.controls.parentCategoryId.value,
+  });
+  readonly categoryLevel = computed(() => {
+    let level = 0;
+    let parentId = this.parentCategoryId();
+    const visited = new Set<number>();
+    const categories = this.categories();
+    while (parentId != null) {
+      if (visited.has(parentId)) return Number.POSITIVE_INFINITY;
+      visited.add(parentId);
+      const parent = categories.find((category) => category.id === parentId);
+      if (!parent) return Number.POSITIVE_INFINITY;
+      level++;
+      parentId = parent.parentCategoryId ?? null;
+    }
+    return level;
+  });
+  readonly visibleImageKinds = computed(() =>
+    this.imageKinds.filter(
+      (image) =>
+        image.kind === 'icon' ||
+        (image.kind === 'home' ? this.categoryLevel() === 0 : this.categoryLevel() <= 1),
+    ),
+  );
 
   constructor() {
     this.load();
@@ -228,7 +255,7 @@ export class AdminCategoriesComponent {
     const { imageUrl, homeImageUrl, iconUrl, ...value } = this.form.getRawValue();
     const hasHome =
       this.pendingFiles().home || (homeImageUrl.trim() && !this.pendingRemovals().includes('home'));
-    if (value.showInHome && !hasHome) {
+    if (this.categoryLevel() === 0 && value.showInHome && !hasHome) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Falta la imagen del inicio',
@@ -245,7 +272,7 @@ export class AdminCategoriesComponent {
         this.selectedId.set(id);
         this.categories.update((categories) => [...categories, created]);
       } else await firstValueFrom(this.categoryService.update(id, value));
-      for (const image of this.imageKinds) {
+      for (const image of this.visibleImageKinds()) {
         const file = this.pendingFiles()[image.kind];
         if (file) {
           const updated = await firstValueFrom(

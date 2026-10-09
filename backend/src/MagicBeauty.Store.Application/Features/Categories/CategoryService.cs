@@ -178,6 +178,7 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
     {
         ValidateKind(kind);
         var category = await categoryRepository.GetByIdAsync(id, cancellationToken) ?? throw new KeyNotFoundException("La categoría no existe.");
+        await ValidateImageLevelAsync(category, kind, cancellationToken);
         if (length <= 0 || length > ImageUploadRules.MaxBytes) throw new ArgumentException("La imagen debe pesar entre 1 byte y 8 MB.");
         using var buffer = new MemoryStream();
         // Bound memory even when the caller reports an incorrect length.
@@ -219,6 +220,22 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
         catch { SetImage(category, kind, previous); category.UpdatedAt = previousUpdatedAt; throw; }
         await CleanupIfUnusedAsync(category, previous);
         return MapToDto(category);
+    }
+
+    private async Task ValidateImageLevelAsync(Category category, string kind, CancellationToken cancellationToken)
+    {
+        var level = 0;
+        var current = category;
+        var visited = new HashSet<int> { category.Id };
+        while (current.ParentCategoryId is int parentId)
+        {
+            if (!visited.Add(parentId)) throw new InvalidOperationException("La jerarquía de categorías contiene un ciclo.");
+            current = await categoryRepository.GetByIdAsync(parentId, cancellationToken)
+                ?? throw new InvalidOperationException("La categoría padre no existe.");
+            level++;
+        }
+        if ((kind == "home" && level > 0) || (kind == "image" && level > 1))
+            throw new InvalidOperationException($"El tipo de imagen '{kind}' no está permitido para una categoría de nivel {level}.");
     }
 
     private static void ValidateKind(string kind)

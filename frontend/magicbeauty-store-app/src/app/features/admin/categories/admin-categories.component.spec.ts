@@ -78,3 +78,63 @@ it('renders file inputs instead of URL text inputs', async () => {
   expect(fixture.nativeElement.querySelector('[formControlName="homeImageUrl"]')).toBeNull();
   expect(fixture.nativeElement.querySelector('[formControlName="iconUrl"]')).toBeNull();
 });
+
+const hierarchy: Category[] = [
+  { ...category, id: 1, parentCategoryId: null },
+  { ...category, id: 2, parentCategoryId: 1 },
+  { ...category, id: 3, parentCategoryId: 2 },
+];
+function visibleFiles(element: HTMLElement): string[] {
+  return Array.from(element.querySelectorAll<HTMLInputElement>('input[type="file"]')).map(
+    (input) => input.id,
+  );
+}
+it('recalculates visible image controls immediately when the parent changes at every level', async () => {
+  const { fixture, component } = setup();
+  component.categories.set(hierarchy);
+  for (const [parent, kinds] of [
+    [null, ['home', 'image', 'icon']],
+    [1, ['image', 'icon']],
+    [2, ['icon']],
+    [3, ['icon']],
+    [null, ['home', 'image', 'icon']],
+  ] as const) {
+    component.form.controls.parentCategoryId.setValue(parent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(visibleFiles(fixture.nativeElement)).toEqual(
+      kinds.map((kind) => 'category-file-' + kind),
+    );
+  }
+});
+it('uses the persisted parent when selecting a category for editing', async () => {
+  const { fixture, component } = setup();
+  component.categories.set(hierarchy);
+  component.onNodeSelect({ data: hierarchy[2] });
+  fixture.detectChanges();
+  await fixture.whenStable();
+  expect(visibleFiles(fixture.nativeElement)).toEqual(['category-file-icon']);
+});
+it('preserves existing URLs and pending selections during temporary parent changes', () => {
+  const { component } = setup();
+  component.categories.set(hierarchy);
+  const home = new File(['png'], 'home.png');
+  component.pendingFiles.set({ home });
+  component.form.controls.parentCategoryId.setValue(2);
+  expect(component.form.controls.homeImageUrl.value).toBe('stale-home');
+  expect(component.form.controls.imageUrl.value).toBe('stale-image');
+  component.form.controls.parentCategoryId.setValue(null);
+  expect(component.pendingFiles().home).toBe(home);
+});
+it('does not send hidden pending uploads or deletions when saving a deeper category', async () => {
+  const { api, component } = setup();
+  component.categories.set(hierarchy);
+  component.form.patchValue({ parentCategoryId: 2, showInHome: true, homeImageUrl: '' });
+  const icon = new File(['png'], 'icon.png');
+  component.pendingFiles.set({ home: new File(['png'], 'home.png'), icon });
+  component.pendingRemovals.set(['image']);
+  await component.save();
+  expect(api.create).toHaveBeenCalledOnce();
+  expect(api.uploadImage).toHaveBeenCalledExactlyOnceWith(6, 'icon', icon);
+  expect(api.deleteImage).not.toHaveBeenCalled();
+});

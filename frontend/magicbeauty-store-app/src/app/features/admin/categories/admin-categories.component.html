@@ -206,7 +206,7 @@
         <h3>Imágenes</h3>
 
         <div class="grid">
-          @for (image of imageKinds; track image.kind) {
+          @for (image of visibleImageKinds(); track image.kind) {
             <div class="field category-image">
               <label [for]="'category-file-' + image.kind">{{ image.label }}</label>
               @if (form.controls[image.field].value && !pendingRemovals().includes(image.kind)) {
@@ -244,7 +244,7 @@
           }
         </div>
 
-        @if (form.controls.showInHome.value) {
+        @if (categoryLevel() === 0 && form.controls.showInHome.value) {
           <div class="tile-preview">
             <span class="tile-preview__label">Vista previa de la tarjeta</span>
 

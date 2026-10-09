@@ -1,4 +1,5 @@
 using Xunit;
+using MagicBeauty.Store.Application.Features.Products;
 using Moq;
 using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Application.Features.Categories;
@@ -105,6 +106,65 @@ public class CategoryImagesTests
     {
         using var context = new Context(); await Assert.ThrowsAsync<ArgumentException>(() => context.Service.UploadImageAsync(6, "image", new MemoryStream([1, 2, 3]), 3, default));
     }
+    [Theory]
+    [InlineData(0, "home", true)]
+    [InlineData(0, "image", true)]
+    [InlineData(0, "icon", true)]
+    [InlineData(1, "home", false)]
+    [InlineData(1, "image", true)]
+    [InlineData(1, "icon", true)]
+    [InlineData(2, "home", false)]
+    [InlineData(2, "image", false)]
+    [InlineData(2, "icon", true)]
+    [InlineData(3, "home", false)]
+    [InlineData(3, "image", false)]
+    [InlineData(3, "icon", true)]
+    public async Task UploadRespectsPersistedHierarchy(int level, string kind, bool allowed)
+    {
+        using var context = new Context(level);
+        if (allowed) await context.Upload(kind);
+        else
+        {
+            context.Category.HomeImageUrl = "existing-home";
+            context.Category.ImageUrl = "existing-image";
+            await Assert.ThrowsAsync<InvalidOperationException>(() => context.Upload(kind));
+            Assert.Empty(Directory.GetFiles(context.Root, "*", SearchOption.AllDirectories));
+            Assert.Equal("existing-home", context.Category.HomeImageUrl);
+            Assert.Equal("existing-image", context.Category.ImageUrl);
+        }
+    }
+    [Fact]
+    public async Task MovingCategoryPreservesExistingImagesAndAllowsExplicitCleanup()
+    {
+        using var context = new Context(2);
+        context.Category.ParentCategoryId = null;
+        context.Category.HomeImageUrl = "existing-home";
+        context.Category.ImageUrl = "existing-image";
+        await context.Service.UpdateAsync(6, new UpdateCategoryRequest { Name = "Labiales", Slug = "labiales", ParentCategoryId = 10 }, default);
+        Assert.Equal("existing-home", context.Category.HomeImageUrl);
+        Assert.Equal("existing-image", context.Category.ImageUrl);
+        await context.Service.DeleteImageAsync(6, "home", default);
+        Assert.Null(context.Category.HomeImageUrl);
+    }
+    [Fact]
+    public async Task ProductUploadStillPersistsProductPathBytesAndMetadata()
+    {
+        using var context = new Context(3);
+        var repository = new Mock<IProductRepository>();
+        repository.Setup(r => r.GetByIdAsync(399, It.IsAny<CancellationToken>())).ReturnsAsync(new Product { Id = 399, Reference = "ABC123" });
+        ProductImage? persisted = null;
+        repository.Setup(r => r.AddImageAsync(It.IsAny<ProductImage>(), It.IsAny<CancellationToken>())).Callback<ProductImage, CancellationToken>((image, _) => persisted = image).Returns(Task.CompletedTask);
+        var service = new ProductService(repository.Object, Mock.Of<IBrandRepository>(), Mock.Of<ICategoryRepository>(), Mock.Of<IPriceTypeRepository>(), new LocalFileStorage(new LocalFileStorageOptions { RootPath = context.Root }));
+        var result = await service.UploadImageAsync(399, new ProductImageUpload(new MemoryStream(Png), Png.Length, "Product image", null, 2, false), default);
+        Assert.StartsWith("http://localhost:5070/media/products/abc123/", result.Url);
+        Assert.Equal(Png, await File.ReadAllBytesAsync(context.PathFor(result.Url)));
+        Assert.NotNull(persisted);
+        Assert.Equal(399, persisted.ProductId);
+        Assert.Equal(result.Url, persisted.Url);
+        Assert.Equal("Product image", result.AltText);
+        Assert.Equal(2, result.DisplayOrder);
+        repository.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
     private sealed class Context : IDisposable
     {
         public string Root { get; } = Path.Combine(Path.GetTempPath(), "magicbeauty-category-tests", Guid.NewGuid().ToString("N"));
@@ -112,11 +172,20 @@ public class CategoryImagesTests
         public bool FailSave; private bool deleted; public Action? BeforeSave;
         private string? image, home, icon;
         public CategoryService Service { get; }
-        public Context()
+        public Context(int level = 0)
         {
             Directory.CreateDirectory(Root);
             var repository = new Mock<ICategoryRepository>();
-            repository.Setup(r => r.GetByIdAsync(6, It.IsAny<CancellationToken>())).ReturnsAsync(Category);
+            var hierarchy = new Dictionary<int, Category> { [6] = Category };
+            var current = Category;
+            for (var index = 0; index < level; index++)
+            {
+                current.ParentCategoryId = 10 + index;
+                var parent = new Category { Id = 10 + index };
+                hierarchy.Add(parent.Id, parent);
+                current = parent;
+            }
+            repository.Setup(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync((int id, CancellationToken _) => hierarchy.GetValueOrDefault(id));
             repository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => deleted ? new List<Category>() : new List<Category> { Category });
             repository.Setup(r => r.Delete(Category)).Callback(() => deleted = true);
             repository.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>())).Returns(() => { BeforeSave?.Invoke(); if (FailSave) throw new InvalidOperationException("Persistence failed"); image = Category.ImageUrl; home = Category.HomeImageUrl; icon = Category.IconUrl; return Task.FromResult(1); });
