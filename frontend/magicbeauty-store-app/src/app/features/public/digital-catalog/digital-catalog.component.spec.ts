@@ -117,3 +117,23 @@ it('expands and collapses a category with its arrow', async () => {
   await fixture.whenStable();
   expect(fixture.nativeElement.textContent).not.toContain('Labiales');
 });
+
+
+it('locks background scrolling while filters are open and restores previous styles', async () => {
+  const { fixture } = await setup();
+  const bodyBefore = document.body.style.overflow;
+  const rootBefore = document.documentElement.style.overflow;
+  fixture.componentInstance.filtersOpen.set(true);
+  fixture.detectChanges();
+  expect(document.body.style.overflow).toBe('hidden');
+  expect(document.documentElement.style.overflow).toBe('hidden');
+  fixture.componentInstance.filtersOpen.set(false);
+  fixture.detectChanges();
+  expect(document.body.style.overflow).toBe(bodyBefore);
+  expect(document.documentElement.style.overflow).toBe(rootBefore);
+  fixture.componentInstance.filtersOpen.set(true);
+  fixture.detectChanges();
+  fixture.destroy();
+  expect(document.body.style.overflow).toBe(bodyBefore);
+  expect(document.documentElement.style.overflow).toBe(rootBefore);
+});

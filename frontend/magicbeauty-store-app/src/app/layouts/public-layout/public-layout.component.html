@@ -21,7 +21,7 @@
       </div>
     </div>
 
-    <div class="main-header">
+    <div class="main-header" [class.main-header--without-search]="!ecommerceNavigation()">
       <button type="button" class="mobile-menu-button mobile-only" (click)="openMobileMenu()" aria-label="Abrir menú">
         <span></span>
         <span></span>
@@ -33,9 +33,12 @@
         <img src="/images/logo-horizontal.png" alt="Magic Beauty Cosmetics" width="610" height="100" />
       </a>
 
-      <app-search-box class="desktop-search" inputId="desktop-search" [value]="searchTerm()" />
+      @if (ecommerceNavigation()) {
+        <app-search-box class="desktop-search" inputId="desktop-search" [value]="searchTerm()" />
+      }
 
       <div class="header-actions">
+        @if (ecommerceNavigation()) {
         <button
           type="button"
           class="mobile-header-button mobile-only"
@@ -46,6 +49,7 @@
             <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
           </svg>
         </button>
+        }
 
         <button type="button" class="mobile-header-button mobile-only" (click)="openAccount()" aria-label="Cuenta">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -211,7 +215,7 @@
         <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
         <a class="contact-address" [href]="contact.mapsUrl" target="_blank" rel="noopener noreferrer" title="Ver en Google Maps">
           <i class="pi pi-map-marker" aria-hidden="true"></i>
-          {{ contact.address }}
+          <span>{{ contact.address }}</span>
         </a>
         @if (canManageStore()) {
           <a routerLink="/admin/categories">Administrar tienda</a>
@@ -243,6 +247,7 @@
     <div class="overlay" (click)="closeMobileSearch()"></div>
   }
 
+  @if (ecommerceNavigation()) {
   <section class="mobile-search-panel" [class.open]="isMobileSearchOpen()">
     <div class="mobile-panel-header">
       <h2>Buscar en nuestro sitio</h2>
@@ -262,15 +267,21 @@
       </div>
     </div>
   </section>
+  }
 
   @if (isMobileMenuOpen()) {
     <div class="overlay" (click)="closeMobileMenu()"></div>
   }
 
   <aside class="mobile-menu-panel" [class.open]="isMobileMenuOpen()">
-    <div class="mobile-panel-header">
-      <h2>Menú</h2>
-      <button type="button" (click)="closeMobileMenu()">×</button>
+    <div class="mobile-panel-header mobile-menu-brand">
+      <div>
+        <img src="/images/logo-horizontal.png" alt="Magic Beauty Cosmetics" width="610" height="100" />
+        <p>Tu universo de belleza</p>
+      </div>
+      <button type="button" (click)="closeMobileMenu()" aria-label="Cerrar menú">
+        <i class="pi pi-times" aria-hidden="true"></i>
+      </button>
     </div>
 
     <nav class="mobile-menu-links">
@@ -280,22 +291,18 @@
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: tab.exact }"
           (click)="closeMobileMenu()">
-          {{ tab.label }}
+          <i class="mobile-menu-icon" [class]="tab.icon" aria-hidden="true"></i>
+          <span>{{ tab.label }}</span>
+          <i class="pi pi-angle-right mobile-menu-chevron" aria-hidden="true"></i>
         </a>
       }
 
       @if (showMenu()) {
         <span class="mobile-menu-links__heading">Categorías</span>
 
-        @for (item of menu(); track item.id) {
-          <a [routerLink]="categoryPath(item.slug)" (click)="closeMobileMenu()">{{ item.name }}</a>
-
-          @for (child of item.children; track child.id) {
-            <a class="mobile-menu-links__child" [routerLink]="categoryPath(child.slug)" (click)="closeMobileMenu()">
-              {{ child.name }}
-            </a>
-          }
-        }
+        <div class="mobile-category-tree">
+          <ng-container *ngTemplateOutlet="mobileCategoryBranches; context: { $implicit: menu() }" />
+        </div>
       }
 
       @if (canManageStore()) {
@@ -303,12 +310,14 @@
 
         @for (link of adminLinks; track link.path) {
           <a class="mobile-menu-links__child" [routerLink]="link.path" (click)="closeMobileMenu()">
-            {{ link.label }}
+            <i [class]="link.icon" aria-hidden="true"></i>
+            <span>{{ link.label }}</span>
           </a>
         }
       }
 
-      <a href="javascript:void(0)" (click)="closeMobileMenu(); openAccount()">
+      <a class="mobile-menu-account" href="javascript:void(0)" (click)="closeMobileMenu(); openAccount()">
+        <i class="pi pi-user mobile-menu-icon" aria-hidden="true"></i>
         {{ isAuthenticated() ? 'Mi cuenta' : 'Iniciar sesión' }}
       </a>
     </nav>
@@ -319,8 +328,19 @@
       <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
       <a class="contact-address" [href]="contact.mapsUrl" target="_blank" rel="noopener noreferrer">
         <i class="pi pi-map-marker" aria-hidden="true"></i>
-        {{ contact.address }}
+        <span>{{ contact.address }}</span>
       </a>
+      <nav class="mobile-help__socials" aria-label="Redes sociales">
+        @for (social of socialLinks; track social.name) {
+          <a [href]="social.url"
+             target="_blank"
+             rel="noopener noreferrer"
+             [title]="social.name"
+             [attr.aria-label]="social.name + ' de Magic Beauty Cosmetics'">
+            <i [class]="social.icon" aria-hidden="true"></i>
+          </a>
+        }
+      </nav>
     </div>
   </aside>
 
@@ -351,5 +371,30 @@
         </div>
       }
     </div>
+  }
+</ng-template>
+
+<ng-template #mobileCategoryBranches let-items>
+  @for (node of items; track node.id) {
+    @if (node.children.length > 0) {
+      <details class="mobile-category">
+        <summary>
+          <i class="pi pi-tag" aria-hidden="true"></i>
+          <span>{{ node.name }}</span>
+          <i class="pi pi-angle-down mobile-category__arrow" aria-hidden="true"></i>
+        </summary>
+        <div class="mobile-category__children">
+          <a class="mobile-category__all" [routerLink]="categoryPath(node.slug)" (click)="closeMobileMenu()">
+            Ver todo en {{ node.name }}
+          </a>
+          <ng-container *ngTemplateOutlet="mobileCategoryBranches; context: { $implicit: node.children }" />
+        </div>
+      </details>
+    } @else {
+      <a class="mobile-category__leaf" [routerLink]="categoryPath(node.slug)" (click)="closeMobileMenu()">
+        <i class="pi pi-circle-fill" aria-hidden="true"></i>
+        <span>{{ node.name }}</span>
+      </a>
+    }
   }
 </ng-template>

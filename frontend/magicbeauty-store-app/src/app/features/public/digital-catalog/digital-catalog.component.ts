@@ -1,5 +1,5 @@
-import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
+import { Component, computed, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { SliderModule } from 'primeng/slider';
@@ -205,6 +205,24 @@ export class DigitalCatalogComponent {
 
   /** Panel de filtros en móvil. */
   readonly filtersOpen = signal(false);
+
+  constructor() {
+    const document = inject(DOCUMENT);
+    effect(onCleanup => {
+      if (!this.filtersOpen()) return;
+      const elements = [document.documentElement, document.body];
+      const previous = elements.map(element => ({
+        value: element.style.getPropertyValue('overflow'),
+        priority: element.style.getPropertyPriority('overflow')
+      }));
+      elements.forEach(element => element.style.setProperty('overflow', 'hidden'));
+      onCleanup(() => elements.forEach((element, index) => {
+        const { value, priority } = previous[index];
+        if (value) element.style.setProperty('overflow', value, priority);
+        else element.style.removeProperty('overflow');
+      }));
+    });
+  }
 
   toggleCategory(id: number): void {
     this.selectedCategories.update(current => toggle(current, id));

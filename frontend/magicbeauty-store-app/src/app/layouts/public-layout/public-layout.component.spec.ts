@@ -102,3 +102,71 @@ it('shows the official email and the address linked to Google Maps', async () =>
   expect(address.getAttribute('target')).toBe('_blank');
   expect(fixture.nativeElement.textContent).not.toContain('cliente.magicbeauty');
 });
+
+
+it('does not offer header search in the public portal', async () => {
+  const fixture = createPortalLayout(false);
+  await fixture.whenStable();
+  expect(fixture.nativeElement.querySelector('.desktop-search')).toBeNull();
+  expect(fixture.nativeElement.querySelector('button[aria-label="Buscar"]')).toBeNull();
+  expect(fixture.nativeElement.querySelector('.mobile-search-panel')).toBeNull();
+  fixture.destroy();
+});
+
+it('keeps header search available when ecommerce navigation is enabled', async () => {
+  const fixture = createPortalLayout(false);
+  fixture.componentRef.setInput('ecommerceNavigation', true);
+  await fixture.whenStable();
+  expect(fixture.nativeElement.querySelector('.desktop-search')).not.toBeNull();
+  expect(fixture.nativeElement.querySelector('button[aria-label="Buscar"]')).not.toBeNull();
+  fixture.destroy();
+});
+
+it('locks page scrolling while the mobile menu is open and restores it on close and destroy', async () => {
+  const fixture = createPortalLayout(false);
+  await fixture.whenStable();
+  const initialBodyOverflow = document.body.style.overflow;
+  const initialRootOverflow = document.documentElement.style.overflow;
+  fixture.componentInstance.openMobileMenu();
+  fixture.detectChanges();
+  expect(document.body.style.overflow).toBe('hidden');
+  expect(document.documentElement.style.overflow).toBe('hidden');
+  fixture.componentInstance.closeMobileMenu();
+  fixture.detectChanges();
+  expect(document.body.style.overflow).toBe(initialBodyOverflow);
+  expect(document.documentElement.style.overflow).toBe(initialRootOverflow);
+  fixture.componentInstance.openMobileMenu();
+  fixture.detectChanges();
+  fixture.destroy();
+  expect(document.body.style.overflow).toBe(initialBodyOverflow);
+  expect(document.documentElement.style.overflow).toBe(initialRootOverflow);
+});
+
+
+it('offers a recursive expandable mobile category tree and links for every level', async () => {
+  const fixture = createPortalLayout(true);
+  fixture.componentInstance.menu.set([{ id: 10, name: 'Root', slug: 'root', children: [
+    { id: 11, name: 'Child', slug: 'child', children: [
+      { id: 12, name: 'Grandchild', slug: 'grandchild', children: [
+        { id: 13, name: 'Leaf', slug: 'leaf', children: [] }
+      ] }
+    ] }
+  ] }]);
+  fixture.componentInstance.openMobileMenu();
+  await fixture.whenStable();
+  const panel = fixture.nativeElement.querySelector('.mobile-menu-panel') as HTMLElement;
+  const branches = Array.from(panel.querySelectorAll('details.mobile-category')) as HTMLDetailsElement[];
+  expect(branches).toHaveLength(3);
+  for (const branch of branches) {
+    expect(branch.open).toBe(false);
+    (branch.querySelector('summary') as HTMLElement).click();
+    expect(branch.open).toBe(true);
+  }
+  for (const slug of ['root', 'child', 'grandchild', 'leaf']) {
+    expect(panel.querySelector('a[href="/categoria/' + slug + '"]')).not.toBeNull();
+  }
+  (branches[0].querySelector('summary') as HTMLElement).click();
+  expect(branches[0].open).toBe(false);
+  expect(fixture.componentInstance.isMobileMenuOpen()).toBe(true);
+  fixture.destroy();
+});

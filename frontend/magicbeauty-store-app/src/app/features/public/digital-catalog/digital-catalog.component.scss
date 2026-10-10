@@ -73,6 +73,7 @@
   flex-direction: column;
   gap: 0.15rem;
   min-width: 0;
+  flex: 0 0 auto;
   margin: 0;
   padding: 0;
   border: none;
@@ -200,9 +201,13 @@ p-slider {
     top: 0;
     bottom: 0;
     left: 0;
-    z-index: 40;
+    z-index: 71;
     width: min(320px, 86vw);
+    height: 100vh;
+    height: 100dvh;
     max-height: none;
+    overscroll-behavior-y: contain;
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
     border-radius: 0;
     box-shadow: var(--mb-shadow-lg);
     transform: translateX(-100%);
@@ -216,9 +221,19 @@ p-slider {
   .filters-overlay {
     position: fixed;
     inset: 0;
-    z-index: 35;
+    z-index: 70;
     display: block;
     background: rgba(23, 23, 23, 0.35);
+  }
+
+  .filters__head,
+  .filters__apply {
+    flex-shrink: 0;
+  }
+
+  .filter-group:first-of-type {
+    max-height: none;
+    overflow-y: visible;
   }
 
   .filters__close {
@@ -347,7 +362,9 @@ p-slider {
 }
 
 // El árbol puede crecer mucho: se desplaza dentro de su grupo.
-.filter-group:first-of-type {
-  max-height: 420px;
-  overflow-y: auto;
+@media (min-width: 901px) {
+  .filter-group:first-of-type {
+    max-height: 420px;
+    overflow-y: auto;
+  }
 }

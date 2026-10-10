@@ -1,5 +1,5 @@
-import { NgTemplateOutlet } from '@angular/common';
-import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
+import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -91,6 +91,22 @@ export class PublicLayoutComponent {
   readonly searchTerm = signal('');
 
   constructor() {
+    const document = inject(DOCUMENT);
+    effect(onCleanup => {
+      if (!this.isMobileMenuOpen() && !this.isMobileSearchOpen()) return;
+      const elements = [document.documentElement, document.body];
+      const previous = elements.map(element => ({
+        value: element.style.getPropertyValue('overflow'),
+        priority: element.style.getPropertyPriority('overflow')
+      }));
+      elements.forEach(element => element.style.setProperty('overflow', 'hidden'));
+      onCleanup(() => elements.forEach((element, index) => {
+        const { value, priority } = previous[index];
+        if (value) element.style.setProperty('overflow', value, priority);
+        else element.style.removeProperty('overflow');
+      }));
+    });
+
     this.categoryService.getMenu().subscribe({
       next: menu => this.menu.set(menu),
       // Si la API no responde, la tienda sigue navegable sin el menú de categorías.
@@ -198,6 +214,7 @@ export class PublicLayoutComponent {
   }
 
   openMobileMenu(): void {
+    this.isMobileSearchOpen.set(false);
     this.isMobileMenuOpen.set(true);
   }
 
@@ -206,6 +223,8 @@ export class PublicLayoutComponent {
   }
 
   openMobileSearch(): void {
+    if (!this.ecommerceNavigation()) return;
+    this.isMobileMenuOpen.set(false);
     this.isMobileSearchOpen.set(true);
   }
 
