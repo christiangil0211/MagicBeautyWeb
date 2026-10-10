@@ -1,6 +1,8 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 
 import { adminGuard } from './core/guards/admin.guard';
+import { PORTAL_BANNERS } from './features/public/portal/portal-navigation';
 
 export const routes: Routes = [
   {
@@ -43,6 +45,12 @@ export const routes: Routes = [
         title: 'Productos · Magic Beauty'
       },
       {
+        path: 'catalogs',
+        loadComponent: () =>
+          import('./features/admin/catalogs/admin-catalogs.component').then(m => m.AdminCatalogsComponent),
+        title: 'Catálogos tradicionales · Magic Beauty'
+      },
+      {
         path: 'users',
         loadComponent: () =>
           import('./features/admin/users/admin-users.component').then(m => m.AdminUsersComponent),
@@ -56,38 +64,84 @@ export const routes: Routes = [
     ]
   },
   {
+    /*
+     * Portal público: mientras se termina el e-commerce, la tienda se presenta en
+     * cuatro pestañas. HomeComponent y CatalogComponent siguen en el código para
+     * el e-commerce, pero sin ruta pública; sus URL antiguas redirigen al portal.
+     */
     path: '',
     loadComponent: () =>
       import('./layouts/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
     children: [
       {
+        // Banner + pestañas. Cada pestaña declara su banner en `data.portalBanner`.
         path: '',
         loadComponent: () =>
-          import('./features/public/home/home.component').then(m => m.HomeComponent),
-        title: 'Magic Beauty Cosmetics'
+          import('./features/public/portal/portal-shell.component').then(m => m.PortalShellComponent),
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('./features/public/benefits/benefits.component').then(m => m.BenefitsComponent),
+            title: 'Magic Beauty Cosmetics',
+            data: { portalBanner: PORTAL_BANNERS.benefits }
+          },
+          {
+            path: 'catalogo',
+            loadComponent: () =>
+              import('./features/public/digital-catalog/digital-catalog.component').then(
+                m => m.DigitalCatalogComponent
+              ),
+            title: 'Catálogo digital · Magic Beauty Cosmetics',
+            data: { portalBanner: PORTAL_BANNERS.digitalCatalog }
+          },
+          {
+            path: 'catalogo/:reference',
+            loadComponent: () =>
+              import('./features/public/product-detail/product-detail.component').then(
+                m => m.ProductDetailComponent
+              ),
+            // En el portal se cotiza: sin existencias ni topes por stock.
+            data: { quoteMode: true }
+          },
+          {
+            path: 'catalogos',
+            loadComponent: () =>
+              import('./features/public/traditional-catalogs/traditional-catalogs.component').then(
+                m => m.TraditionalCatalogsComponent
+              ),
+            title: 'Catálogo tradicional · Magic Beauty Cosmetics',
+            data: { portalBanner: PORTAL_BANNERS.traditionalCatalogs }
+          },
+          {
+            path: 'pedido',
+            loadComponent: () =>
+              import('./features/public/order/order.component').then(m => m.OrderComponent),
+            title: 'Mi pedido · Magic Beauty Cosmetics',
+            data: { portalBanner: PORTAL_BANNERS.order }
+          }
+        ]
       },
+      // Enlaces ya compartidos de la tienda anterior: conservan búsqueda y referencia.
       {
         path: 'productos',
-        loadComponent: () =>
-          import('./features/public/products/products.component').then(m => m.ProductsComponent),
-        title: 'Productos · Magic Beauty Cosmetics'
+        redirectTo: 'catalogo'
       },
       {
         path: 'productos/:reference',
-        loadComponent: () =>
-          import('./features/public/product-detail/product-detail.component').then(
-            m => m.ProductDetailComponent
-          )
+        redirectTo: 'catalogo/:reference'
       },
       {
+        // La categoría pasa a ser un filtro del catálogo digital.
         path: 'categoria/:slug',
-        loadComponent: () =>
-          import('./features/public/catalog/catalog.component').then(m => m.CatalogComponent)
+        redirectTo: ({ params }) =>
+          inject(Router).createUrlTree(['/catalogo'], { queryParams: { categoria: params['slug'] } })
       }
     ]
   },
   {
-    // Marcas, Ofertas y Nuevo todavía no existen: evitamos que el router falle.
+    // Rutas inexistentes (y las del e-commerce aún no publicadas) vuelven al inicio.
     path: '**',
     redirectTo: ''
   }

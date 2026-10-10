@@ -9,16 +9,16 @@
     title="No encontramos este producto"
     message="Puede que ya no esté disponible en la tienda."
     [boxed]="true">
-    <a class="mb-btn" routerLink="/productos">Ver todos los productos</a>
+    <a class="mb-btn" routerLink="/catalogo">Ver el catálogo digital</a>
   </app-empty-state>
 } @else if (product(); as item) {
   <nav class="breadcrumb" aria-label="Ruta de navegación">
     <a routerLink="/">Inicio</a>
     <i class="pi pi-angle-right"></i>
     @if (breadcrumbCategory(); as category) {
-      <a [routerLink]="['/categoria', category.slug]">{{ category.name }}</a>
+      <a routerLink="/catalogo" [queryParams]="{ categoria: category.slug }">{{ category.name }}</a>
     } @else {
-      <a routerLink="/productos">Productos</a>
+      <a routerLink="/catalogo">Catálogo digital</a>
     }
     <i class="pi pi-angle-right"></i>
     <span aria-current="page">{{ item.name }}</span>
@@ -64,7 +64,7 @@
 
       @if (isSoldOut()) {
         <p class="info__stock info__stock--out"><i class="pi pi-ban"></i> Agotado</p>
-      } @else if (!item.hasVariants) {
+      } @else if (!item.hasVariants && !quoteMode()) {
         <p class="info__stock"><i class="pi pi-check-circle"></i> Disponible · {{ availableStock() }} unidades</p>
       }
 
@@ -79,15 +79,15 @@
                 type="button"
                 class="variant"
                 [class.selected]="selectedVariantId() === variant.id"
-                [class.out]="variant.quantity === 0"
-                [disabled]="variant.quantity === 0"
+                [class.out]="isVariantOut(variant)"
+                [disabled]="isVariantOut(variant)"
                 [attr.aria-pressed]="selectedVariantId() === variant.id"
                 (click)="selectVariant(variant)">
                 @if (variant.colorHex) {
                   <span class="variant__swatch" [style.background]="variant.colorHex"></span>
                 }
                 <span class="variant__name">{{ variant.name }}</span>
-                @if (variant.quantity === 0) {
+                @if (isVariantOut(variant)) {
                   <span class="variant__tag">Agotado</span>
                 }
               </button>
@@ -95,7 +95,14 @@
           </div>
 
           @if (selectedVariant(); as variant) {
-            <p class="info__stock"><i class="pi pi-check-circle"></i> {{ variant.name }} · {{ variant.quantity }} disponibles</p>
+            <p class="info__stock">
+              <i class="pi pi-check-circle"></i>
+              @if (quoteMode()) {
+                Tono elegido: {{ variant.name }}
+              } @else {
+                {{ variant.name }} · {{ variant.quantity }} disponibles
+              }
+            </p>
           } @else if (!isSoldOut()) {
             <p class="variants__hint">Elige un tono para continuar.</p>
           }
@@ -123,16 +130,23 @@
           {{ ctaLabel() }}
         </button>
 
-        <button
-          type="button"
-          class="actions__favorite"
-          [class.active]="isFavorite()"
-          [attr.aria-pressed]="isFavorite()"
-          [attr.aria-label]="isFavorite() ? 'Quitar de favoritos' : 'Agregar a favoritos'"
-          (click)="toggleFavorite()">
-          <i class="pi" [class.pi-heart]="!isFavorite()" [class.pi-heart-fill]="isFavorite()"></i>
-        </button>
+        @if (showFavorite()) {
+          <button
+            type="button"
+            class="actions__favorite"
+            [class.active]="isFavorite()"
+            [attr.aria-pressed]="isFavorite()"
+            [attr.aria-label]="isFavorite() ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+            (click)="toggleFavorite()">
+            <i class="pi" [class.pi-heart]="!isFavorite()" [class.pi-heart-fill]="isFavorite()"></i>
+          </button>
+        }
       </div>
+
+      <a class="info__order-link" routerLink="/pedido">
+        <i class="pi pi-shopping-bag"></i>
+        Ver mi pedido
+      </a>
     </div>
   </section>
 
@@ -160,6 +174,9 @@
           <app-product-card
             [product]="product"
             [detailLink]="detailLink(product.reference)"
+            addLabel="Agregar a cotización"
+            [ignoreStock]="true"
+            [showFavorite]="false"
             (addToCart)="addRelatedToCart($event)"
             (chooseVariant)="openRelated($event)" />
         }

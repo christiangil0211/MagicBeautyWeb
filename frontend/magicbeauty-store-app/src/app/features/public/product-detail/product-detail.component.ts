@@ -1,10 +1,12 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, computed, effect, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
 import { CatalogService } from '../../../core/services/catalog.service';
+import { OrderDraftService } from '../../../core/services/order-draft.service';
+import { MAX_LINE_QUANTITY } from '../../../shared/models/order-draft.model';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { PriceListComponent } from '../../../shared/components/price-list/price-list.component';
@@ -31,9 +33,24 @@ export class ProductDetailComponent {
   private readonly catalogService = inject(CatalogService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly messageService = inject(MessageService);
+  private readonly orderDraft = inject(OrderDraftService);
+  private readonly router = inject(Router);
 
-  /** Referencia que llega de la ruta /productos/:reference (withComponentInputBinding). */
+  /** Referencia que llega de la ruta /catalogo/:reference (withComponentInputBinding). */
   readonly reference = input.required<string>();
+
+  /**
+   * Los favoritos aún no se guardan: el corazón queda oculto en el portal. El
+   * e-commerce lo activa con `data: { showFavorite: true }` en su ruta.
+   */
+  readonly showFavorite = input(false);
+
+  /**
+   * Cotización (portal, `data: { quoteMode: true }`): no se muestran existencias y
+   * se puede pedir cualquier tono y cantidad; la disponibilidad la confirma el
+   * equipo al recibir el pedido.
+   */
+  readonly quoteMode = input(false);
 
   readonly product = signal<ProductDetail | null>(null);
   readonly loading = signal(true);
@@ -79,6 +96,10 @@ export class ProductDetailComponent {
   readonly availableStock = computed(() => {
     const product = this.product();
 
+    if (this.quoteMode()) {
+      return MAX_LINE_QUANTITY;
+    }
+
     if (!product) {
       return 0;
     }
@@ -95,7 +116,7 @@ export class ProductDetailComponent {
   );
 
   /** Agotado es no tener existencias en ninguna variante activa. */
-  readonly isSoldOut = computed(() => (this.product()?.availableQuantity ?? 0) === 0);
+  readonly isSoldOut = computed(() => !this.quoteMode() && (this.product()?.availableQuantity ?? 0) === 0);
 
   readonly canAddToCart = computed(
     () => !this.isSoldOut() && !this.needsVariantChoice() && this.availableStock() > 0
@@ -110,8 +131,13 @@ export class ProductDetailComponent {
       return 'Selecciona un tono';
     }
 
-    return 'Agregar al carrito';
+    return this.quoteMode() ? 'Agregar a cotización' : 'Agregar al pedido';
   });
+
+  /** Tono sin existencias: solo bloquea fuera de la cotización. */
+  isVariantOut(variant: ProductDetailVariant): boolean {
+    return !this.quoteMode() && variant.quantity === 0;
+  }
 
   /** Categoría del breadcrumb: la primera por nombre, para que sea estable. */
   readonly breadcrumbCategory = computed(() => this.product()?.categories[0] ?? null);
@@ -127,7 +153,7 @@ export class ProductDetailComponent {
   }
 
   selectVariant(variant: ProductDetailVariant): void {
-    if (variant.quantity === 0) {
+    if (this.isVariantOut(variant)) {
       return;
     }
 
@@ -155,18 +181,26 @@ export class ProductDetailComponent {
       return;
     }
 
+    const product = this.product()!;
     const variant = this.selectedVariant();
 
-    // El módulo de carrito todavía no existe: por ahora solo se confirma la acción.
+    this.orderDraft.add(
+      {
+        productId: product.id,
+        reference: product.reference,
+        name: product.name,
+        brandName: product.brandName,
+        imageUrl: this.selectedImage()?.url ?? null,
+        variantId: variant?.id ?? null,
+        variantName: variant?.name ?? null
+      },
+      this.quantity()
+    );
+
     this.messageService.add({
       severity: 'success',
-      summary: 'Listo para el carrito',
-      detail:
-        this.quantity() +
-        ' x ' +
-        this.product()!.name +
-        (variant ? ' · ' + variant.name : '') +
-        '.'
+      summary: 'Agregado a tu pedido',
+      detail: this.quantity() + ' x ' + product.name + (variant ? ' · ' + variant.name : '') + '.'
     });
   }
 
@@ -174,25 +208,31 @@ export class ProductDetailComponent {
     this.isFavorite.update(value => !value);
   }
 
+  /** Nunca se elige un tono por el cliente: se abre su ficha para elegirlo. */
   openRelated(product: ProductCardModel): void {
-    // Nunca se elige un tono por el cliente: debe hacerlo en la ficha del producto.
-    this.messageService.add({
-      severity: 'info',
-      summary: 'Elige un tono',
-      detail: product.name + ' tiene varios tonos, hay que seleccionar uno antes de comprar.'
-    });
+    this.router.navigate(this.detailLink(product.reference));
   }
 
   addRelatedToCart(product: ProductCardModel): void {
+    this.orderDraft.add({
+      productId: product.id,
+      reference: product.reference,
+      name: product.name,
+      brandName: product.brandName,
+      imageUrl: product.mainImageUrl ?? null,
+      variantId: null,
+      variantName: null
+    });
+
     this.messageService.add({
       severity: 'success',
-      summary: 'Listo para el carrito',
-      detail: product.name + ' se puede agregar directo porque no tiene tonos.'
+      summary: 'Agregado a tu pedido',
+      detail: product.name + ' ya está en Mi pedido.'
     });
   }
 
   detailLink(reference: string): unknown[] {
-    return ['/productos', reference];
+    return ['/catalogo', reference];
   }
 
   private load(reference: string): void {

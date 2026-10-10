@@ -1,6 +1,6 @@
 <p-toast position="top-right" />
 
-<section class="showcase">
+<section class="showcase" [class.showcase--embedded]="embedded()">
   @if (!hideHeading()) {
   <header class="showcase__head">
     @if (searchTerm()) {
@@ -10,23 +10,26 @@
         @if (!loading()) {
           {{ cards().length }} {{ cards().length === 1 ? 'producto encontrado' : 'productos encontrados' }} ·
         }
-        <a routerLink="/productos">Ver todo el catálogo</a>
+        <a routerLink="/catalogo">Ver todo el catálogo</a>
       </p>
     } @else {
-      <p class="mb-eyebrow">Catálogo</p>
+      <p class="mb-eyebrow">Catálogo digital</p>
       <h1>Nuestros productos</h1>
       <p class="subtitle">Belleza que te inspira, productos que te enamoran.</p>
     }
   </header>
   }
 
+  <!-- Filtros que aporta la página que usa la vitrina (p. ej. el catálogo digital). -->
+  <ng-content select="[showcaseToolbar]" />
+
   @if (loading()) {
     <app-loader [message]="searchTerm() ? 'Buscando productos…' : 'Cargando productos…'" />
-  } @else if (cards().length === 0 && searchTerm()) {
+  } @else if (cards().length === 0 && (searchTerm() || hasFilters())) {
     <app-empty-state
       icon="pi-search"
       title="No encontramos productos"
-      message="Prueba con otra palabra, la referencia del producto o el nombre de la marca." />
+      message="Prueba con otra palabra, otra categoría o quita el filtro de marca." />
   } @else if (cards().length === 0) {
     <app-empty-state
       icon="pi-shopping-bag"
@@ -38,6 +41,11 @@
         <app-product-card
           [product]="product"
           [detailLink]="detailLink(product.reference)"
+          addLabel="Agregar a cotización"
+          [ignoreStock]="true"
+          [showFavorite]="false"
+          [showReference]="true"
+          priceLayout="columns"
           (addToCart)="onAddToCart($event)"
           (chooseVariant)="onChooseVariant($event)"
           (toggleFavorite)="onToggleFavorite($event)" />

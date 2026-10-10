@@ -56,7 +56,8 @@ import { whatsappUrl } from '../../../core/constants/store-contact';
     @media (max-width: 640px) {
       .whatsapp {
         right: max(1rem, env(safe-area-inset-right));
-        bottom: max(1rem, env(safe-area-inset-bottom));
+        /* --mb-floating-offset: alto de una barra fija inferior (pestañas del portal). */
+        bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--mb-floating-offset, 0px));
         width: 60px;
         height: 60px;
 

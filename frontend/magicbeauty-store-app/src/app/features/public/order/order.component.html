@@ -1,0 +1,198 @@
+<p-confirmdialog />
+
+<section class="order">
+  @if (isEmpty()) {
+    <app-empty-state
+      icon="pi-shopping-bag"
+      title="Tu pedido está vacío"
+      message="Agrega productos desde el catálogo digital para preparar tu pedido."
+      [boxed]="true">
+      <a class="mb-btn" routerLink="/catalogo">Ir al catálogo digital</a>
+    </app-empty-state>
+  } @else {
+    <div class="quote-switch" role="tablist" aria-label="Tipo de cotización">
+      @for (option of quoteKinds; track option.kind) {
+        <button
+          type="button"
+          role="tab"
+          class="quote-switch__tab"
+          [class.active]="quoteKind() === option.kind"
+          [attr.aria-selected]="quoteKind() === option.kind"
+          (click)="selectQuote(option.kind)">
+          <span>{{ option.label }}</span>
+          @if (pricingState() === 'ready' && quotes(); as all) {
+            <strong>{{ money(all[option.kind].total) }}</strong>
+          }
+        </button>
+      }
+    </div>
+
+    @if (pricingState() === 'loading' && !quote()) {
+      <app-loader message="Consultando precios vigentes…" />
+    } @else if (pricingState() === 'error') {
+      <div class="order__error" role="alert">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>No pudimos consultar los precios vigentes. Tu pedido sigue guardado.</span>
+        <button type="button" class="mb-btn mb-btn--outline mb-btn--sm" (click)="retry()">Reintentar</button>
+      </div>
+    } @else if (quote(); as current) {
+      <div class="order-table" [class.order-table--refreshing]="pricingState() === 'loading'" role="table" [attr.aria-label]="current.label">
+        <div class="order-table__head" role="row">
+          <span role="columnheader">Producto</span>
+          <span role="columnheader">{{ priceColumnLabel() }}</span>
+          <span role="columnheader">Cantidad</span>
+          <span role="columnheader">Total</span>
+          <span role="columnheader"><span class="sr-only">Quitar</span></span>
+        </div>
+
+        @for (item of current.lines; track item.key) {
+          <div class="line" role="row" [class.line--muted]="item.status !== 'available'">
+            <div class="line__product" role="cell">
+              <a class="line__media" [routerLink]="['/catalogo', item.line.reference]">
+                @if (item.line.imageUrl) {
+                  <img [src]="item.line.imageUrl" [alt]="item.line.name" loading="lazy" />
+                } @else {
+                  <i class="pi pi-image" aria-hidden="true"></i>
+                }
+              </a>
+
+              <div class="line__info">
+                <a class="line__name" [routerLink]="['/catalogo', item.line.reference]">{{ item.line.name }}</a>
+                <span class="line__meta">
+                  Ref. {{ item.line.reference }}
+                  @if (item.line.variantName) {
+                    · Tono: {{ item.line.variantName }}
+                  }
+                </span>
+
+                @if (item.status === 'unavailable') {
+                  <span class="line__status">Ya no está en el catálogo · no se incluye</span>
+                }
+              </div>
+            </div>
+
+            <div class="line__price" role="cell">
+              @if (item.status !== 'available') {
+                <span class="line__dash">—</span>
+              } @else if (item.unitPrice !== null) {
+                {{ money(item.unitPrice) }}
+              } @else {
+                <span class="line__pending">Por confirmar</span>
+              }
+            </div>
+
+            <div class="line__quantity" role="cell">
+              @if (item.status === 'available') {
+                <div class="stepper">
+                  <button
+                    type="button"
+                    [attr.aria-label]="'Quitar una unidad de ' + item.line.name"
+                    [disabled]="item.line.quantity <= 1"
+                    (click)="decrease(item)">
+                    <i class="pi pi-minus"></i>
+                  </button>
+                  <input
+                    #quantityInput
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    [max]="maxFor(item)"
+                    [value]="item.line.quantity"
+                    [attr.aria-label]="'Cantidad de ' + item.line.name"
+                    (change)="setQuantity(item, quantityInput.value, quantityInput)" />
+                  <button
+                    type="button"
+                    [attr.aria-label]="'Agregar una unidad de ' + item.line.name"
+                    [disabled]="item.line.quantity >= maxFor(item)"
+                    (click)="increase(item)">
+                    <i class="pi pi-plus"></i>
+                  </button>
+                </div>
+              } @else {
+                <span class="line__qty-static">{{ item.line.quantity }} u.</span>
+              }
+            </div>
+
+            <div class="line__subtotal" role="cell">
+              @if (item.subtotal !== null) {
+                {{ money(item.subtotal) }}
+              } @else {
+                <span class="line__dash">—</span>
+              }
+            </div>
+
+            <div class="line__actions" role="cell">
+              <button
+                type="button"
+                class="line__remove"
+                [attr.aria-label]="'Quitar ' + item.line.name + ' del pedido'"
+                (click)="remove(item)">
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="order__tools">
+        <button type="button" class="order__clear" (click)="confirmClear()">
+          <i class="pi pi-trash"></i>
+          Vaciar pedido
+        </button>
+        <a class="order__more" routerLink="/catalogo">Seguir agregando productos</a>
+      </div>
+
+      <div class="summary" aria-live="polite">
+        <dl class="summary__rows">
+          <div>
+            <dt>Total productos ({{ itemCount() }})</dt>
+            <dd>{{ money(current.total) }}</dd>
+          </div>
+          <div>
+            <dt>Envío</dt>
+            <dd class="summary__pending">Por confirmar</dd>
+          </div>
+          <div class="summary__total">
+            <dt>Total estimado</dt>
+            <dd>{{ money(current.total) }}</dd>
+          </div>
+        </dl>
+
+        @if (current.missingPriceCount > 0) {
+          <p class="summary__note summary__note--warn">
+            <i class="pi pi-info-circle"></i>
+            {{ current.missingPriceCount === 1
+              ? '1 producto no tiene precio para esta cotización y no se incluye en el total.'
+              : current.missingPriceCount + ' productos no tienen precio para esta cotización y no se incluyen en el total.' }}
+          </p>
+        }
+
+        @if (current.excludedCount > 0) {
+          <p class="summary__note summary__note--warn">
+            <i class="pi pi-info-circle"></i>
+            {{ current.excludedCount === 1
+              ? '1 producto ya no está en el catálogo y no se incluye.'
+              : current.excludedCount + ' productos ya no están en el catálogo y no se incluyen.' }}
+          </p>
+        }
+      </div>
+
+      @if (whatsappHref(); as href) {
+        <a class="send" [href]="href" target="_blank" rel="noopener noreferrer">
+          <i class="pi pi-whatsapp"></i>
+          Enviar pedido por WhatsApp
+        </a>
+      } @else {
+        <button type="button" class="send" disabled>
+          <i class="pi pi-whatsapp"></i>
+          {{ pricingState() === 'loading' ? 'Actualizando precios…' : 'No hay productos para cotizar' }}
+        </button>
+      }
+
+      <p class="send__note">
+        Se abrirá WhatsApp con el detalle de tu pedido ({{ current.label | lowercase }}) para que nuestro equipo lo
+        revise y te confirme disponibilidad, envío y forma de pago.
+      </p>
+    }
+  }
+</section>

@@ -1,0 +1,68 @@
+@if (banner(); as current) {
+  <section class="banner">
+    <img class="banner__image" [src]="current.image" alt="" fetchpriority="high" />
+
+    <div class="banner__inner">
+      <div class="banner__content">
+        @if (current.eyebrow) {
+          <p class="banner__eyebrow">{{ current.eyebrow }}</p>
+        }
+        <h1 class="banner__title">
+          <span class="banner__title-main">{{ current.title }}</span>{{ " " }}
+          @if (current.highlight) {
+            <span class="banner__title-highlight">{{ current.highlight }}</span>
+          }
+        </h1>
+        <p class="banner__text">{{ current.text }}</p>
+
+        <div class="banner__actions">
+          @for (action of current.actions; track action.label) {
+            @if (action.link) {
+              <a class="banner__button" [routerLink]="action.link">
+                <i [class]="action.icon"></i>
+                {{ action.label }}
+              </a>
+            } @else {
+              <button type="button" class="banner__button" (click)="scrollToContent()">
+                <i [class]="action.icon"></i>
+                {{ action.label }}
+              </button>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+}
+
+<div class="portal-body" [class.portal-body--no-banner]="!banner()">
+  <nav class="tabs" aria-label="Secciones del portal">
+    @for (tab of tabs; track tab.path) {
+      <a
+        class="tabs__link"
+        [routerLink]="tab.path"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: tab.exact }"
+        #link="routerLinkActive"
+        [attr.aria-current]="link.isActive ? 'page' : null">
+        <span class="tabs__icon">
+          <i [class]="tab.icon"></i>
+          <!-- Móvil: el texto va debajo, así que el número se apoya sobre el ícono. -->
+          @if (tab.path === '/pedido' && orderCount() > 0) {
+            <span class="tabs__count tabs__count--icon" aria-hidden="true">{{ orderCount() }}</span>
+          }
+        </span>
+        <span class="tabs__label">{{ tab.label }}</span>
+        <span class="tabs__short">{{ tab.shortLabel }}</span>
+        <!-- Escritorio: el número va al lado del texto, sin taparlo. -->
+        @if (tab.path === '/pedido' && orderCount() > 0) {
+          <span class="tabs__count tabs__count--inline" [attr.aria-label]="orderCount() + ' unidades en tu pedido'">{{ orderCount() }}</span>
+        }
+      </a>
+    }
+  </nav>
+
+  <div class="portal-content" #content>
+    <router-outlet />
+  </div>
+</div>

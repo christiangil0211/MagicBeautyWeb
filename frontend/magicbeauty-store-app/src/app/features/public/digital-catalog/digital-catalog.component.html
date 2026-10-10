@@ -1,0 +1,158 @@
+<div class="catalog-search">
+  <app-search-box
+    inputId="catalog-search"
+    placeholder="Buscar por nombre, referencia o marca…"
+    [value]="searchQuery() ?? ''" />
+</div>
+
+<div class="catalog-layout">
+  @if (filtersOpen()) {
+    <div class="filters-overlay" (click)="filtersOpen.set(false)"></div>
+  }
+
+  <aside class="filters" [class.open]="filtersOpen()" aria-label="Filtros del catálogo">
+    <div class="filters__head">
+      <h2>Filtros</h2>
+      @if (activeFilterCount() > 0) {
+        <button type="button" class="filters__clear" (click)="clearFilters()">Limpiar</button>
+      }
+      <button type="button" class="filters__close" aria-label="Cerrar filtros" (click)="filtersOpen.set(false)">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    @if (menu().length > 0) {
+      <fieldset class="filter-group">
+        <legend>Categorías</legend>
+
+        <input
+          class="mb-input filter-group__search"
+          type="search"
+          placeholder="Buscar categoría"
+          aria-label="Buscar categoría"
+          [value]="categoryQuery()"
+          (input)="categoryQuery.set($any($event.target).value)" />
+
+        <ng-template #categoryTree let-nodes let-depth="depth">
+          @for (node of nodes; track node.id) {
+            <div class="tree-row" [style.padding-left.rem]="depth * 1">
+              @if (node.children.length > 0) {
+                <button
+                  type="button"
+                  class="tree-row__toggle"
+                  [attr.aria-expanded]="isExpanded(node)"
+                  [attr.aria-label]="(isExpanded(node) ? 'Contraer ' : 'Expandir ') + node.name"
+                  (click)="toggleExpanded(node.id)">
+                  <i class="pi" [class.pi-angle-right]="!isExpanded(node)" [class.pi-angle-down]="isExpanded(node)"></i>
+                </button>
+              } @else {
+                <span class="tree-row__spacer" aria-hidden="true"></span>
+              }
+
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [checked]="selectedCategories().has(node.id)"
+                  (change)="toggleCategory(node.id)" />
+                <span class="check__label">{{ node.name }}</span>
+                <span class="check__count">({{ categoryCounts().get(node.id) ?? 0 }})</span>
+              </label>
+            </div>
+
+            @if (node.children.length > 0 && isExpanded(node)) {
+              <ng-container *ngTemplateOutlet="categoryTree; context: { $implicit: node.children, depth: depth + 1 }" />
+            }
+          }
+        </ng-template>
+        <ng-container *ngTemplateOutlet="categoryTree; context: { $implicit: visibleCategories(), depth: 0 }" />
+
+        @if (visibleCategories().length === 0) {
+          <span class="filter-group__empty">Ninguna categoría coincide.</span>
+        }
+      </fieldset>
+    }
+
+    @if (brandOptions().length > 0) {
+      <fieldset class="filter-group">
+        <legend>Marcas</legend>
+
+        @if (brandOptions().length > brandLimit) {
+          <input
+            class="mb-input filter-group__search"
+            type="search"
+            placeholder="Buscar marca"
+            aria-label="Buscar marca"
+            [value]="brandQuery()"
+            (input)="brandQuery.set($any($event.target).value)" />
+        }
+
+        @for (option of visibleBrands(); track option.name) {
+          <label class="check">
+            <input type="checkbox" [checked]="selectedBrands().has(option.name)" (change)="toggleBrand(option.name)" />
+            <span class="check__label">{{ option.name }}</span>
+            <span class="check__count">({{ option.count }})</span>
+          </label>
+        } @empty {
+          <span class="filter-group__empty">Ninguna marca coincide.</span>
+        }
+
+        @if (!brandQuery() && brandOptions().length > brandLimit) {
+          <button type="button" class="filter-group__more" (click)="showAllBrands.set(!showAllBrands())">
+            {{ showAllBrands() ? 'Ver menos' : 'Ver todas las marcas (' + brandOptions().length + ')' }}
+          </button>
+        }
+      </fieldset>
+    }
+
+    @if (priceBounds().max > 0) {
+      <fieldset class="filter-group">
+        <legend>Precio detal</legend>
+        <p-slider
+          [range]="true"
+          [min]="priceBounds().min"
+          [max]="priceBounds().max"
+          [step]="priceStep"
+          [ngModel]="priceValues()"
+          (ngModelChange)="priceValues.set($event)"
+          ariaLabel="Rango de precio detal" />
+        <p class="price-range">{{ money(priceValues()[0]) }} – {{ money(priceValues()[1]) }}</p>
+      </fieldset>
+    }
+
+    <button type="button" class="filters__apply mb-btn mb-btn--block" (click)="filtersOpen.set(false)">
+      Ver {{ resultCount() }} {{ resultCount() === 1 ? 'producto' : 'productos' }}
+    </button>
+  </aside>
+
+  <div class="catalog-results">
+    <app-public-products [embedded]="true" [hideHeading]="true" [filter]="filter()" [sort]="sort()">
+      <div class="toolbar" showcaseToolbar>
+        <button type="button" class="toolbar__filters" (click)="filtersOpen.set(true)">
+          <i class="pi pi-sliders-h"></i>
+          Filtros
+          @if (activeFilterCount() > 0) {
+            <span class="toolbar__badge">{{ activeFilterCount() }}</span>
+          }
+        </button>
+
+        <span class="toolbar__count">
+          @if (!loading()) {
+            {{ resultCount() }} {{ resultCount() === 1 ? 'producto' : 'productos' }}
+            @if (searchQuery()) {
+              para «{{ searchQuery() }}»
+            }
+          }
+        </span>
+
+        <label class="toolbar__sort">
+          <span>Ordenar</span>
+          <select class="mb-input" [value]="sort()" (change)="setSort($any($event.target).value)">
+            <option value="name">Nombre A-Z</option>
+            <option value="price-asc">Precio detal: menor a mayor</option>
+            <option value="price-desc">Precio detal: mayor a menor</option>
+          </select>
+        </label>
+      </div>
+    </app-public-products>
+  </div>
+</div>

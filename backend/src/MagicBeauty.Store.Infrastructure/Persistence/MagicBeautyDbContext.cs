@@ -28,6 +28,8 @@ public sealed class MagicBeautyDbContext(DbContextOptions<MagicBeautyDbContext> 
 
     public DbSet<RolePriceType> RolePriceTypes => Set<RolePriceType>();
 
+    public DbSet<TraditionalCatalog> TraditionalCatalogs => Set<TraditionalCatalog>();
+
     public DbSet<User> Users => Set<User>();
 
     public DbSet<UserRole> UserRoles => Set<UserRole>();

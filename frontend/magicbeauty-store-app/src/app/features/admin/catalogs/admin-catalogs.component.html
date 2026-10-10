@@ -1,0 +1,216 @@
+<p-toast position="top-right" />
+<p-confirmdialog />
+
+<section class="catalogs">
+  <app-page-header
+    eyebrow="Tienda"
+    title="Catálogos tradicionales"
+    subtitle="Los catálogos de Canva que se muestran en la pestaña Catálogo tradicional.">
+    <div class="mb-stat">
+      <strong>{{ catalogs().length }}</strong>
+      <span>en total</span>
+    </div>
+    <div class="mb-stat">
+      <strong>{{ activeCount() }}</strong>
+      <span>publicados</span>
+    </div>
+  </app-page-header>
+
+  <div class="catalogs__workspace">
+    <aside class="panel">
+      <div class="panel__head">
+        <h2>Catálogos</h2>
+        <p-button label="Nuevo" icon="pi pi-plus" size="small" [disabled]="saving()" (onClick)="newCatalog()" />
+      </div>
+
+      <p class="panel__hint">En este orden aparecen en la tienda. Selecciona uno para editarlo.</p>
+
+      @if (loading() && catalogs().length === 0) {
+        <app-loader message="Cargando catálogos…" [compact]="true" />
+      } @else if (catalogs().length === 0) {
+        <div class="panel__empty">
+          <i class="pi pi-book"></i>
+          <strong>Aún no hay catálogos</strong>
+          <span>Crea el primero con su enlace de Canva.</span>
+        </div>
+      } @else {
+        <ul class="catalog-list">
+          @for (catalog of catalogs(); track catalog.id; let first = $first; let last = $last) {
+            <li>
+              <button
+                type="button"
+                class="catalog-item"
+                [class.selected]="selectedId() === catalog.id"
+                (click)="select(catalog)">
+                <span class="catalog-item__thumb">
+                  @if (catalog.coverImageUrl) {
+                    <img [src]="catalog.coverImageUrl" alt="" />
+                  } @else {
+                    <i class="pi pi-book"></i>
+                  }
+                </span>
+                <span class="catalog-item__text">
+                  <strong>{{ catalog.name }}</strong>
+                  <small>
+                    Orden {{ catalog.displayOrder }}
+                    @if (!catalog.pdfUrl) {
+                      · sin PDF
+                    }
+                    @if (!catalog.canvaEmbeddable) {
+                      · se abre en Canva
+                    }
+                  </small>
+                </span>
+                @if (!catalog.isActive) {
+                  <p-tag value="Inactivo" severity="secondary" />
+                }
+              </button>
+
+              <div class="catalog-item__tools">
+                <button
+                  type="button"
+                  [attr.aria-label]="'Subir ' + catalog.name"
+                  [disabled]="first || saving()"
+                  (click)="move(catalog, -1, $event)">
+                  <i class="pi pi-arrow-up"></i>
+                </button>
+                <button
+                  type="button"
+                  [attr.aria-label]="'Bajar ' + catalog.name"
+                  [disabled]="last || saving()"
+                  (click)="move(catalog, 1, $event)">
+                  <i class="pi pi-arrow-down"></i>
+                </button>
+                <button
+                  type="button"
+                  [attr.aria-label]="(catalog.isActive ? 'Desactivar ' : 'Activar ') + catalog.name"
+                  [title]="catalog.isActive ? 'Desactivar' : 'Activar'"
+                  [disabled]="saving()"
+                  (click)="toggleActive(catalog, $event)">
+                  <i class="pi" [class.pi-eye]="catalog.isActive" [class.pi-eye-slash]="!catalog.isActive"></i>
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+
+    <form class="panel" [formGroup]="form" (ngSubmit)="save()">
+      <div class="panel__head">
+        <h2>{{ selectedCatalog() ? 'Editar catálogo' : 'Nuevo catálogo' }}</h2>
+        <div class="panel__actions">
+          @if (selectedCatalog()) {
+            <p-button
+              label="Eliminar"
+              icon="pi pi-trash"
+              severity="danger"
+              size="small"
+              [text]="true"
+              [disabled]="saving()"
+              (onClick)="confirmDelete()" />
+          }
+          <p-button type="submit" label="Guardar" icon="pi pi-check" size="small" [loading]="saving()" />
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="catalog-name">Nombre</label>
+          <input pInputText id="catalog-name" formControlName="name" placeholder="Ej: Catálogo de maquillaje" />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <small class="error">El nombre es obligatorio (máximo 150 caracteres).</small>
+          }
+        </div>
+
+        <div class="field">
+          <label for="catalog-order">Orden</label>
+          <p-input-number inputId="catalog-order" formControlName="displayOrder" [min]="0" [showButtons]="true" />
+        </div>
+
+        <div class="field field--full">
+          <label for="catalog-canva">Enlace de Canva</label>
+          <textarea
+            pTextarea
+            id="catalog-canva"
+            formControlName="canvaUrl"
+            rows="2"
+            placeholder="https://canva.link/… o https://www.canva.com/design/…"></textarea>
+          <small class="hint">
+            Pega el enlace que compartes desde Canva (canva.link, ver, editar o insertar). Al guardar se comprueba si Canva
+            permite mostrarlo dentro de la tienda; si no, "Ver catálogo" lo abrirá directamente en Canva.
+          </small>
+          @if (selectedCatalog(); as catalog) {
+            <small class="canva-status" [class.canva-status--external]="!catalog.canvaEmbeddable">
+              <i class="pi" [class.pi-check-circle]="catalog.canvaEmbeddable" [class.pi-external-link]="!catalog.canvaEmbeddable"></i>
+              {{ catalog.canvaEmbeddable
+                ? 'Se muestra dentro de la tienda.'
+                : 'Canva no permite mostrarlo dentro de la tienda: se abrirá en Canva. Si habilitas la inserción en Canva, vuelve a guardar.' }}
+            </small>
+          }
+          @if (form.controls.canvaUrl.touched && form.controls.canvaUrl.invalid) {
+            <small class="error">El enlace de Canva es obligatorio.</small>
+          }
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Visibilidad</h3>
+        <label class="switch">
+          <p-toggleswitch formControlName="isActive" />
+          <span>
+            <strong>Activo</strong>
+            <small>Si se apaga, el catálogo deja de verse en la tienda.</small>
+          </span>
+        </label>
+      </div>
+
+      <div class="section">
+        <h3>Archivos</h3>
+
+        <div class="grid">
+          @for (file of fileKinds; track file.kind) {
+            <div class="field">
+              <label [for]="'catalog-file-' + file.kind">{{ file.label }}</label>
+
+              @if (currentFileUrl(file.kind); as url) {
+                @if (file.kind === 'cover') {
+                  <img class="file-preview" [src]="url" alt="Portada actual" />
+                } @else {
+                  <a class="file-link" [href]="url" target="_blank" rel="noopener noreferrer">
+                    <i class="pi pi-file-pdf"></i>
+                    Ver PDF actual
+                  </a>
+                }
+              }
+
+              <input
+                type="file"
+                [id]="'catalog-file-' + file.kind"
+                [accept]="file.accept"
+                [disabled]="saving()"
+                (change)="selectFile(file.kind, $event)" />
+
+              @if (fileName(file.kind); as name) {
+                <small>{{ name }} · pendiente de guardar</small>
+              }
+              @if (pendingRemovals().includes(file.kind)) {
+                <small>Se eliminará al guardar.</small>
+              }
+              @if (currentFileUrl(file.kind) || fileName(file.kind)) {
+                <p-button
+                  [label]="file.kind === 'cover' ? 'Quitar portada' : 'Quitar PDF'"
+                  icon="pi pi-trash"
+                  severity="secondary"
+                  [text]="true"
+                  [disabled]="saving()"
+                  (onClick)="removeFile(file.kind)" />
+              }
+              <small class="hint">{{ file.hint }}</small>
+            </div>
+          }
+        </div>
+      </div>
+    </form>
+  </div>
+</section>

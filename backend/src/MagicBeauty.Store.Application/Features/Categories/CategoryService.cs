@@ -45,12 +45,31 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
     {
         var categories = await categoryRepository.GetForMenuAsync(cancellationToken);
 
+        return BuildPublicTree(categories);
+    }
+
+    /// <summary>
+    /// Todas las categorias activas, aunque no esten en el menu: son los filtros
+    /// del catalogo digital. Una categoria inactiva oculta tambien a sus hijas.
+    /// </summary>
+    public async Task<IReadOnlyList<CategoryMenuDto>> GetCatalogTreeAsync(CancellationToken cancellationToken)
+    {
+        var categories = await categoryRepository.GetAllForTreeAsync(cancellationToken);
+
+        return BuildPublicTree(categories.Where(category => category.IsActive).ToList());
+    }
+
+    /// <summary>
+    /// Arbol publico a partir de categorias ya filtradas. Una rama colgada de un
+    /// padre que no esta en la lista no se publica: el recorrido parte de las raices.
+    /// </summary>
+    private static List<CategoryMenuDto> BuildPublicTree(IReadOnlyList<Category> categories)
+    {
         var childrenByParentId = categories
             .Where(category => category.ParentCategoryId.HasValue)
             .GroupBy(category => category.ParentCategoryId!.Value)
             .ToDictionary(group => group.Key, group => group.ToList());
 
-        // Una rama activa colgada de un padre oculto no se publica: el recorrido parte de las raices.
         List<CategoryMenuDto> BuildBranch(IEnumerable<Category> nodes)
         {
             return nodes

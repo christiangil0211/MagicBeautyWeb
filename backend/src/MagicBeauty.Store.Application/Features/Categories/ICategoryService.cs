@@ -11,6 +11,9 @@ public interface ICategoryService
 
     Task<IReadOnlyList<CategoryMenuDto>> GetMenuAsync(CancellationToken cancellationToken);
 
+    /// <summary>Arbol de categorias activas para filtrar el catalogo digital.</summary>
+    Task<IReadOnlyList<CategoryMenuDto>> GetCatalogTreeAsync(CancellationToken cancellationToken);
+
     Task<IReadOnlyList<CategoryTileDto>> GetHomeTilesAsync(CancellationToken cancellationToken);
 
     Task<CategoryDto> GetByIdAsync(int id, CancellationToken cancellationToken);

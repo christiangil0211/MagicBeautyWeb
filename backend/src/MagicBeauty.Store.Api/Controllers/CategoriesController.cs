@@ -38,6 +38,15 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
     }
 
     [AllowAnonymous]
+    [HttpGet("catalog-tree")]
+    public async Task<ActionResult<IReadOnlyList<CategoryMenuDto>>> GetCatalogTree(CancellationToken cancellationToken)
+    {
+        var tree = await categoryService.GetCatalogTreeAsync(cancellationToken);
+
+        return Ok(tree);
+    }
+
+    [AllowAnonymous]
     [HttpGet("home")]
     public async Task<ActionResult<IReadOnlyList<CategoryTileDto>>> GetHomeTiles(CancellationToken cancellationToken)
     {

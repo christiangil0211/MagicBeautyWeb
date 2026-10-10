@@ -5,17 +5,12 @@ import { catchError, debounceTime, distinctUntilChanged, map, of, switchMap, tap
 
 import { CatalogService } from '../../../core/services/catalog.service';
 import { CatalogProductListItem } from '../../models/product.model';
+import { formatCop } from '../../utils/currency';
 
 /** Letras mínimas antes de sugerir: con una sola casi todo el catálogo coincide. */
 const MIN_CHARS = 2;
 const DEBOUNCE_MS = 250;
 const MAX_SUGGESTIONS = 6;
-
-const currencyFormatter = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  maximumFractionDigits: 0
-});
 
 interface TextPart {
   text: string;
@@ -64,7 +59,7 @@ export class SearchBoxComponent {
     (this.results() ?? []).slice(0, MAX_SUGGESTIONS).map(product => ({
       product,
       nameParts: highlight(product.name, this.term()),
-      price: product.prices.length > 0 ? currencyFormatter.format(product.prices[0].amount) : null
+      price: product.prices.length > 0 ? formatCop(product.prices[0].amount) : null
     }))
   );
 
@@ -159,12 +154,12 @@ export class SearchBoxComponent {
     const term = this.term().trim();
 
     this.finish();
-    this.router.navigate(['/productos'], { queryParams: { q: term || null } });
+    this.router.navigate(['/catalogo'], { queryParams: { q: term || null } });
   }
 
   openProduct(product: CatalogProductListItem): void {
     this.finish();
-    this.router.navigate(['/productos', product.reference]);
+    this.router.navigate(['/catalogo', product.reference]);
   }
 
   clear(): void {

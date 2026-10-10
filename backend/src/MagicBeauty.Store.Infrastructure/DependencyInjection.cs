@@ -26,9 +26,11 @@ public static class DependencyInjection
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IPriceTypeRepository, PriceTypeRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ITraditionalCatalogRepository, TraditionalCatalogRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
+        services.AddSingleton<ICanvaLinkInspector, CanvaLinkInspector>();
         AddEmailSender(services, configuration, isDevelopment);
         AddFileStorage(services, configuration, isDevelopment);
 

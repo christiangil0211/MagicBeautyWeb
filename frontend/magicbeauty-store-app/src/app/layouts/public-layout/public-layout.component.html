@@ -30,7 +30,7 @@
 
       <!-- El logo es el acceso al inicio desde cualquier página pública. -->
       <a class="brand" routerLink="/" aria-label="Magic Beauty Cosmetics, ir al inicio">
-        <img src="/images/logo-header.png" alt="Magic Beauty Cosmetics" />
+        <img src="/images/logo-horizontal.png" alt="Magic Beauty Cosmetics" width="610" height="100" />
       </a>
 
       <app-search-box class="desktop-search" inputId="desktop-search" [value]="searchTerm()" />
@@ -54,12 +54,15 @@
           </svg>
         </button>
 
-        <a class="mobile-header-button mobile-only" href="javascript:void(0)" aria-label="Carrito">
+        <a class="mobile-header-button mobile-only" routerLink="/pedido" aria-label="Mi pedido">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 7H6"></path>
             <circle cx="10" cy="21" r="1"></circle>
             <circle cx="18" cy="21" r="1"></circle>
           </svg>
+          @if (orderCount() > 0) {
+            <span class="order-count" aria-hidden="true">{{ orderCount() }}</span>
+          }
         </a>
 
         <button
@@ -74,31 +77,37 @@
           <span>{{ isAuthenticated() ? 'Mi cuenta' : 'Cuenta' }}</span>
         </button>
 
-        <a class="header-action desktop-only" href="javascript:void(0)">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M20.8 4.6c-1.8-1.8-4.7-1.8-6.5 0L12 6.9 9.7 4.6c-1.8-1.8-4.7-1.8-6.5 0s-1.8 4.7 0 6.5L12 20l8.8-8.9c1.8-1.8 1.8-4.7 0-6.5z"></path>
-          </svg>
-          <span>Favoritos</span>
-        </a>
+        @if (ecommerceNavigation()) {
+          <a class="header-action desktop-only" href="javascript:void(0)">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.8 4.6c-1.8-1.8-4.7-1.8-6.5 0L12 6.9 9.7 4.6c-1.8-1.8-4.7-1.8-6.5 0s-1.8 4.7 0 6.5L12 20l8.8-8.9c1.8-1.8 1.8-4.7 0-6.5z"></path>
+            </svg>
+            <span>Favoritos</span>
+          </a>
+        }
 
-        <a class="header-action desktop-only" href="javascript:void(0)">
+        <!-- El pedido temporal es el antecesor del carrito del e-commerce. -->
+        <a class="header-action desktop-only" routerLink="/pedido" routerLinkActive="active">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 7H6"></path>
             <circle cx="10" cy="21" r="1"></circle>
             <circle cx="18" cy="21" r="1"></circle>
           </svg>
-          <span>Carrito</span>
+          <span>Mi pedido</span>
+          @if (orderCount() > 0) {
+            <span class="order-count" [attr.aria-label]="orderCount() + ' unidades en tu pedido'">{{ orderCount() }}</span>
+          }
         </a>
       </div>
     </div>
 
     <!--
-      Solo categorías configuradas en el administrador y, con permiso, el back office.
-      Al inicio se vuelve desde el logo.
+      Mientras el portal es la única experiencia pública, los visitantes no ven el
+      menú (las pestañas viven en el portal). Con permiso de administración se
+      muestran las categorías, el portal como una opción más y el back office.
     -->
-    @if (menu().length > 0 || canManageStore()) {
-      <nav class="store-menu" (mouseleave)="closeMegaMenu()">
-
+    @if (showMenu()) {
+    <nav class="store-menu" (mouseleave)="closeMegaMenu()">
         @for (item of menu(); track item.id) {
           <div class="store-menu__item" (mouseenter)="openMegaMenu(item.id)" (focusin)="openMegaMenu(item.id)">
             <a class="store-menu__link" [routerLink]="categoryPath(item.slug)" routerLinkActive="active">
@@ -116,40 +125,46 @@
           </div>
         }
 
-        <!-- Back office: solo si el backend confirma que la sesión puede administrar. -->
-        @if (canManageStore()) {
-          <div class="store-menu__item store-menu__item--admin" (mouseenter)="openAdminMenu()">
-            <button type="button" class="store-menu__link store-menu__link--admin">
-              <i class="pi pi-cog"></i>
-              Gestionar y administrar
-              <i class="pi pi-angle-down"></i>
-            </button>
+      <div class="store-menu__item">
+        <a class="store-menu__link store-menu__link--portal" routerLink="/" [class.active]="onPortal()">
+          {{ portalMenuLabel }}
+        </a>
+      </div>
 
-            @if (isAdminMenuOpen()) {
-              <div class="nav-dropdown nav-dropdown--right">
-                @for (link of adminLinks; track link.path) {
-                  <div class="nav-dropdown__row">
-                    <a
-                      class="nav-dropdown__link"
-                      [routerLink]="link.path"
-                      routerLinkActive="active"
-                      (click)="closeMegaMenu()">
-                      <i [class]="link.icon"></i>
-                      {{ link.label }}
-                    </a>
-                  </div>
-                }
+      <!-- Back office: solo si el backend confirma que la sesión puede administrar. -->
+      @if (canManageStore()) {
+        <div class="store-menu__item store-menu__item--admin" (mouseenter)="openAdminMenu()">
+          <button type="button" class="store-menu__link store-menu__link--admin">
+            <i class="pi pi-cog"></i>
+            Gestionar y administrar
+            <i class="pi pi-angle-down"></i>
+          </button>
+
+          @if (isAdminMenuOpen()) {
+            <div class="nav-dropdown nav-dropdown--right">
+              @for (link of adminLinks; track link.path) {
                 <div class="nav-dropdown__row">
-                  <button type="button" class="nav-dropdown__link nav-dropdown__link--button" (click)="logout()">
-                    <i class="pi pi-sign-out"></i>
-                    Cerrar sesión
-                  </button>
+                  <a
+                    class="nav-dropdown__link"
+                    [routerLink]="link.path"
+                    routerLinkActive="active"
+                    (click)="closeMegaMenu()">
+                    <i [class]="link.icon"></i>
+                    {{ link.label }}
+                  </a>
                 </div>
+              }
+              <div class="nav-dropdown__row">
+                <button type="button" class="nav-dropdown__link nav-dropdown__link--button" (click)="logout()">
+                  <i class="pi pi-sign-out"></i>
+                  Cerrar sesión
+                </button>
               </div>
-            }
-          </div>
-        }
-      </nav>
+            </div>
+          }
+        </div>
+      }
+    </nav>
     }
   </header>
 
@@ -160,32 +175,64 @@
   <footer class="store-footer">
     <div class="store-footer__inner">
       <div class="store-footer__brand">
-        <img src="/images/logo-header.png" alt="Magic Beauty Cosmetics" />
+        <a class="store-footer__logo" routerLink="/" aria-label="Magic Beauty Cosmetics, ir al inicio">
+          <img src="/images/logo-footer-fucsia.png" alt="Magic Beauty Cosmetics" width="1536" height="1024" />
+        </a>
         <p>Belleza que te inspira, productos que te enamoran.</p>
       </div>
 
-      <div class="store-footer__column">
-        <h3>Compra</h3>
-        @for (item of menu(); track item.id) {
-          <a [routerLink]="categoryPath(item.slug)">{{ item.name }}</a>
-        }
-      </div>
+      @if (ecommerceNavigation()) {
+        <div class="store-footer__column">
+          <h3>Compra</h3>
+          @for (item of menu(); track item.id) {
+            <a [routerLink]="categoryPath(item.slug)">{{ item.name }}</a>
+          }
+        </div>
 
-      <div class="store-footer__column">
-        <h3>Información</h3>
-        <a href="javascript:void(0)">Quiénes somos</a>
-        <a href="javascript:void(0)">Nuestra tienda</a>
-        <a href="javascript:void(0)">Envíos y entregas</a>
-        <a href="javascript:void(0)">Preguntas frecuentes</a>
-      </div>
+        <div class="store-footer__column">
+          <h3>Información</h3>
+          <a href="javascript:void(0)">Quiénes somos</a>
+          <a href="javascript:void(0)">Nuestra tienda</a>
+          <a href="javascript:void(0)">Envíos y entregas</a>
+          <a href="javascript:void(0)">Preguntas frecuentes</a>
+        </div>
+      } @else {
+        <div class="store-footer__column">
+          <h3>Explora</h3>
+          @for (tab of portalTabs; track tab.path) {
+            <a [routerLink]="tab.path">{{ tab.label }}</a>
+          }
+        </div>
+      }
 
       <div class="store-footer__column">
         <h3>Contáctanos</h3>
-        <span>+57 301 166 3303</span>
-        <span>cliente.magicbeauty&#64;gmail.com</span>
+        <a [href]="whatsappHref" target="_blank" rel="noopener noreferrer">WhatsApp {{ whatsappPhone }}</a>
+        <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
+        <a class="contact-address" [href]="contact.mapsUrl" target="_blank" rel="noopener noreferrer" title="Ver en Google Maps">
+          <i class="pi pi-map-marker" aria-hidden="true"></i>
+          {{ contact.address }}
+        </a>
         @if (canManageStore()) {
           <a routerLink="/admin/categories">Administrar tienda</a>
         }
+      </div>
+
+      <div class="store-footer__column">
+        <h3>Redes sociales</h3>
+        <div class="social-links">
+          @for (social of socialLinks; track social.name) {
+            <a
+              class="social-links__item"
+              [href]="social.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              [attr.aria-label]="social.name + ' de Magic Beauty Cosmetics'"
+              [title]="social.name">
+              <i [class]="social.icon" aria-hidden="true"></i>
+            </a>
+          }
+        </div>
       </div>
     </div>
 
@@ -227,13 +274,27 @@
     </div>
 
     <nav class="mobile-menu-links">
-      @for (item of menu(); track item.id) {
-        <a [routerLink]="categoryPath(item.slug)" (click)="closeMobileMenu()">{{ item.name }}</a>
+      @for (tab of portalTabs; track tab.path) {
+        <a
+          [routerLink]="tab.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: tab.exact }"
+          (click)="closeMobileMenu()">
+          {{ tab.label }}
+        </a>
+      }
 
-        @for (child of item.children; track child.id) {
-          <a class="mobile-menu-links__child" [routerLink]="categoryPath(child.slug)" (click)="closeMobileMenu()">
-            {{ child.name }}
-          </a>
+      @if (showMenu()) {
+        <span class="mobile-menu-links__heading">Categorías</span>
+
+        @for (item of menu(); track item.id) {
+          <a [routerLink]="categoryPath(item.slug)" (click)="closeMobileMenu()">{{ item.name }}</a>
+
+          @for (child of item.children; track child.id) {
+            <a class="mobile-menu-links__child" [routerLink]="categoryPath(child.slug)" (click)="closeMobileMenu()">
+              {{ child.name }}
+            </a>
+          }
         }
       }
 
@@ -254,8 +315,12 @@
 
     <div class="mobile-help">
       <p>¿Necesitas ayuda?</p>
-      <span>+57 301 166 3303</span>
-      <span>cliente.magicbeauty&#64;gmail.com</span>
+      <a [href]="whatsappHref" target="_blank" rel="noopener noreferrer">WhatsApp {{ whatsappPhone }}</a>
+      <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
+      <a class="contact-address" [href]="contact.mapsUrl" target="_blank" rel="noopener noreferrer">
+        <i class="pi pi-map-marker" aria-hidden="true"></i>
+        {{ contact.address }}
+      </a>
     </div>
   </aside>
 

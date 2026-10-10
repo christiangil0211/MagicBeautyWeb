@@ -45,6 +45,10 @@ public sealed class CatalogService(
                     .Where(image => image.IsActive && image.IsMain && image.ProductVariantId is null)
                     .Select(image => image.Url)
                     .FirstOrDefault(),
+                CategoryIds = product.ProductCategories
+                    .Select(link => link.CategoryId)
+                    .Distinct()
+                    .ToList(),
                 Prices = MapVisiblePrices(product, visiblePriceTypes)
             })
             .ToList();

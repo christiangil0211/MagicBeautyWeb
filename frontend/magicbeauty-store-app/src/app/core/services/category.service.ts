@@ -32,6 +32,11 @@ export class CategoryService {
     return this.http.get<CategoryMenuItem[]>(`${this.apiUrl}/menu`);
   }
 
+  /** Todas las categorías activas, en árbol: filtros del catálogo digital. */
+  getCatalogTree(): Observable<CategoryMenuItem[]> {
+    return this.http.get<CategoryMenuItem[]>(`${this.apiUrl}/catalog-tree`);
+  }
+
   /** Categorías destacadas para la sección "Compra por categoría". */
   getHomeTiles(): Observable<CategoryTile[]> {
     return this.http.get<CategoryTile[]>(`${this.apiUrl}/home`);

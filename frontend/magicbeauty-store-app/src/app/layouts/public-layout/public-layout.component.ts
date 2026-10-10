@@ -1,11 +1,14 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
+import { STORE_CONTACT, STORE_SOCIAL_LINKS, whatsappDisplayPhone, whatsappUrl } from '../../core/constants/store-contact';
 import { AuthService } from '../../core/services/auth.service';
+import { OrderDraftService } from '../../core/services/order-draft.service';
 import { CategoryService } from '../../core/services/category.service';
+import { PORTAL_MENU_LABEL, PORTAL_TABS, isPortalUrl } from '../../features/public/portal/portal-navigation';
 import { CategoryMenuItem } from '../../shared/models/category.model';
 import { SearchBoxComponent } from '../../shared/components/search-box/search-box.component';
 import { WhatsappButtonComponent } from '../../shared/components/whatsapp-button/whatsapp-button.component';
@@ -18,8 +21,10 @@ import { AccountAdminLink, AccountPanelComponent } from './account-panel/account
 const ADMIN_LINKS: AccountAdminLink[] = [
   { label: 'Categorías de productos', icon: 'pi pi-sitemap', path: '/admin/categories' },
   { label: 'Productos', icon: 'pi pi-shopping-bag', path: '/admin/products' },
+  { label: 'Catálogos tradicionales', icon: 'pi pi-book', path: '/admin/catalogs' },
   { label: 'Administradores', icon: 'pi pi-users', path: '/admin/users' }
 ];
+
 
 @Component({
   selector: 'app-public-layout',
@@ -44,6 +49,34 @@ export class PublicLayoutComponent {
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly menu = signal<CategoryMenuItem[]>([]);
   readonly adminLinks = ADMIN_LINKS;
+  readonly portalTabs = PORTAL_TABS;
+  readonly portalMenuLabel = PORTAL_MENU_LABEL;
+
+  /** Unidades del pedido temporal, para el contador de "Mi pedido". */
+  readonly orderCount = inject(OrderDraftService).itemCount;
+
+  /** Contacto oficial: el mismo WhatsApp del botón flotante y del pedido. */
+  readonly whatsappHref = whatsappUrl();
+  readonly whatsappPhone = whatsappDisplayPhone();
+  readonly socialLinks = STORE_SOCIAL_LINKS;
+  /** Correo y dirección oficiales (pie de página y menú móvil). */
+  readonly contact = STORE_CONTACT;
+
+  /**
+   * Navegación del e-commerce (mega menú de categorías y favoritos). Apagada
+   * mientras el portal es la única experiencia pública; se reactiva con
+   * `data: { ecommerceNavigation: true }` en la ruta del layout.
+   */
+  readonly ecommerceNavigation = input(false);
+
+  /**
+   * Barra de menú: los visitantes no la ven mientras el portal es la única
+   * experiencia; un administrador sí, con el portal como una opción más.
+   */
+  readonly showMenu = computed(() => !!this.ecommerceNavigation() || this.canManageStore());
+
+  /** El ítem del portal se marca en cualquiera de sus pestañas. */
+  readonly onPortal = signal(false);
 
   readonly isAccountOpen = signal(false);
   readonly loginReturnUrl = signal<string | null>(null);
@@ -54,7 +87,7 @@ export class PublicLayoutComponent {
   readonly isMobileMenuOpen = signal(false);
   readonly isMobileSearchOpen = signal(false);
 
-  /** Lo buscado en /productos?q=, para que la caja muestre la búsqueda vigente. */
+  /** Lo buscado en /catalogo?q=, para que la caja muestre la búsqueda vigente. */
   readonly searchTerm = signal('');
 
   constructor() {
@@ -76,12 +109,13 @@ export class PublicLayoutComponent {
         }
       });
 
-    // La caja refleja la búsqueda de la URL; fuera de /productos queda vacía.
+    // La caja refleja la búsqueda de la URL; fuera de /catalogo queda vacía.
     const syncSearchTerm = () => {
       const tree = this.router.parseUrl(this.router.url);
-      const onProducts = tree.root.children['primary']?.segments.map(s => s.path).join('/') === 'productos';
+      const onCatalog = tree.root.children['primary']?.segments.map(s => s.path).join('/') === 'catalogo';
 
-      this.searchTerm.set(onProducts ? (tree.queryParams['q'] ?? '') : '');
+      this.searchTerm.set(onCatalog ? (tree.queryParams['q'] ?? '') : '');
+      this.onPortal.set(isPortalUrl(this.router.url));
     };
 
     syncSearchTerm();

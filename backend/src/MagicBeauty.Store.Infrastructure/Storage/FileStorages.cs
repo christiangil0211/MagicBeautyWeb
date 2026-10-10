@@ -25,6 +25,10 @@ public sealed class AzureBlobStorageOptions
     public string CategoryContainerName { get; set; } = "category-images";
     public string? CategoryPublicBaseUrl { get; set; }
 
+    /// <summary>Portadas y PDF de los catalogos tradicionales.</summary>
+    public string CatalogContainerName { get; set; } = "catalog-files";
+    public string? CatalogPublicBaseUrl { get; set; }
+
     /// <summary>Opcional: dominio propio o CDN delante del contenedor.</summary>
     public string? PublicBaseUrl { get; set; }
 
@@ -122,10 +126,30 @@ public sealed class AzureBlobFileStorage(
             ? container.Uri.ToString()
             : options.PublicBaseUrl).TrimEnd('/') + "/";
 
-    public async Task<string> SaveAsync(
+    public Task<string> SaveAsync(
         string path,
         Stream content,
         string contentType,
+        CancellationToken cancellationToken)
+        => UploadAsync(path, content, contentType, contentDisposition: null, cancellationToken);
+
+    /// <summary>
+    /// El blob vive en otro dominio, donde el atributo download del enlace no aplica:
+    /// Content-Disposition es lo que hace que el navegador lo descargue.
+    /// </summary>
+    public Task<string> SaveForDownloadAsync(
+        string path,
+        Stream content,
+        string contentType,
+        string downloadFileName,
+        CancellationToken cancellationToken)
+        => UploadAsync(path, content, contentType, BuildAttachmentDisposition(downloadFileName), cancellationToken);
+
+    private async Task<string> UploadAsync(
+        string path,
+        Stream content,
+        string contentType,
+        string? contentDisposition,
         CancellationToken cancellationToken)
     {
         await EnsureContainerAsync(cancellationToken);
@@ -139,6 +163,7 @@ public sealed class AzureBlobFileStorage(
                 HttpHeaders = new BlobHttpHeaders
                 {
                     ContentType = contentType,
+                    ContentDisposition = contentDisposition,
                     // Los nombres son unicos: el navegador y la CDN pueden guardarlos sin limite.
                     CacheControl = "public, max-age=31536000, immutable"
                 },
@@ -147,6 +172,22 @@ public sealed class AzureBlobFileStorage(
             cancellationToken);
 
         return BaseUrl + path;
+    }
+
+    /// <summary>Nombre ASCII de respaldo y el original codificado (RFC 6266).</summary>
+    public static string BuildAttachmentDisposition(string fileName)
+    {
+        var ascii = new string(fileName
+            .Normalize(System.Text.NormalizationForm.FormD)
+            .Where(ch => ch < 128 && ch != '"' && ch != '\\' && !char.IsControl(ch))
+            .ToArray());
+
+        if (string.IsNullOrWhiteSpace(ascii))
+        {
+            ascii = "archivo";
+        }
+
+        return $"attachment; filename=\"{ascii}\"; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
     }
 
     public async Task DeleteByUrlAsync(string url, CancellationToken cancellationToken)

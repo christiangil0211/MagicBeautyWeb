@@ -50,3 +50,19 @@
 .showcase__head .subtitle a:hover {
   text-decoration: underline;
 }
+
+/* Integrada en el catálogo digital: la página contenedora pone los márgenes. */
+.showcase--embedded {
+  max-width: none;
+  padding: 0;
+
+  .showcase__grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .showcase--embedded .showcase__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

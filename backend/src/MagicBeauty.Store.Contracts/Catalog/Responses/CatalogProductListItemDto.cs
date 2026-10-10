@@ -21,6 +21,12 @@ public sealed class CatalogProductListItemDto
 
     public string? MainImageUrl { get; set; }
 
+    /// <summary>
+    /// Categorias asignadas directamente al producto. Permiten filtrar y contar por
+    /// categoria en la tienda sin una consulta por cada una.
+    /// </summary>
+    public List<int> CategoryIds { get; set; } = [];
+
     /// <summary>Vacia si el producto no tiene ningun precio visible para la audiencia.</summary>
     public List<CatalogPriceDto> Prices { get; set; } = [];
 }

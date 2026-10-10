@@ -1,0 +1,147 @@
+:host {
+  display: block;
+}
+
+.catalogs {
+  display: block;
+}
+
+.catalogs__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.75rem;
+}
+
+.catalog-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--mb-surface);
+  border: 1px solid var(--mb-border-soft);
+  border-radius: var(--mb-radius-lg);
+  box-shadow: var(--mb-shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--mb-shadow);
+  }
+}
+
+.catalog-card__cover {
+  display: block;
+  width: 100%;
+  // Proporción de las portadas del mockup aprobado.
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: none;
+  background: var(--mb-pink-100);
+  cursor: pointer;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset var(--mb-focus-ring);
+  }
+}
+
+.catalog-card__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 1.5rem;
+  color: var(--mb-primary);
+  font-weight: 600;
+  text-align: center;
+
+  i {
+    font-size: 2.25rem;
+    opacity: 0.6;
+  }
+}
+
+.catalog-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.1rem 1.2rem 1.3rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+}
+
+.catalog-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  .mb-btn {
+    flex: 1 1 auto;
+    gap: 0.4rem;
+  }
+}
+
+/* Visor (el diálogo vive en body, pero su contenido es de este componente) */
+.viewer__frame {
+  position: relative;
+  width: 100%;
+  // Alto cómodo para hojear sin salir del diálogo.
+  height: min(75vh, 820px);
+  overflow: hidden;
+  border-radius: var(--mb-radius);
+  background: var(--mb-pink-100);
+
+  iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  &:fullscreen {
+    height: 100%;
+    border-radius: 0;
+  }
+}
+
+.viewer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+
+  .mb-btn {
+    gap: 0.4rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .catalogs__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+
+  .catalog-card__body {
+    padding: 0.8rem;
+
+    h2 {
+      font-size: 0.9rem;
+    }
+  }
+
+  .viewer__frame {
+    height: 70vh;
+  }
+}

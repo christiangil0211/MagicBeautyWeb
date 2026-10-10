@@ -190,3 +190,9 @@
     cursor: not-allowed;
   }
 }
+
+.product-card__reference {
+  margin-top: -0.15rem;
+  font-size: 0.72rem;
+  color: var(--mb-text-muted);
+}

@@ -166,6 +166,8 @@ export interface CatalogProductListItem {
   hasVariants: boolean;
   availableQuantity: number;
   mainImageUrl?: string | null;
+  /** Categorías asignadas directamente; los filtros suman las subcategorías. */
+  categoryIds: number[];
   prices: CatalogPrice[];
 }
 

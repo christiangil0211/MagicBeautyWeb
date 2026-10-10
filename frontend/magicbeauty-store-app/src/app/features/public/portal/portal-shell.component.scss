@@ -1,0 +1,362 @@
+:host {
+  display: block;
+}
+
+/*
+ * ===== Banner =====
+ * Mismo formato que el banner del inicio: a todo el ancho, bajo la cabecera, con
+ * la proporción de las piezas aprobadas (1920 × 700). La imagen ocupa la mitad
+ * derecha y se funde con el fondo para que el texto quede siempre legible.
+ */
+.banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: clamp(440px, 36.46vw, 700px);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 30%, rgba(255, 255, 255, 0.75), transparent 45%),
+    linear-gradient(120deg, var(--mb-pink-150) 0%, var(--mb-pink-200) 60%, #f9d3e2 100%);
+}
+
+.banner__image {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 56%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left center;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22%);
+  mask-image: linear-gradient(to right, transparent 0, #000 22%);
+}
+
+.banner__inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: var(--mb-container);
+  margin: 0 auto;
+  padding: clamp(2.5rem, 5vw, 4.5rem) var(--mb-gutter);
+}
+
+.banner__content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: min(46%, 560px);
+}
+
+.banner__eyebrow {
+  margin: 0;
+  color: var(--mb-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.banner__title {
+  margin: 0;
+  color: var(--mb-heading);
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(2.6rem, 4.2vw, 5rem);
+  font-weight: 400;
+  line-height: 1.04;
+
+  span {
+    display: block;
+  }
+}
+
+/* "Tu belleza, / también en": la primera parte en líneas cortas, como el banner. */
+.banner__title-main {
+  max-width: 10.5ch;
+}
+
+.banner__title-highlight {
+  color: var(--mb-primary);
+  white-space: nowrap;
+}
+
+.banner__text {
+  max-width: 48ch;
+  margin: 0;
+  color: var(--mb-text-secondary);
+  font-size: clamp(0.95rem, 1.15vw, 1.15rem);
+  line-height: 1.55;
+}
+
+.banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.banner__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 54px;
+  padding: 0 1.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: var(--mb-radius);
+  background: var(--mb-surface);
+  box-shadow: 0 10px 26px rgba(207, 20, 103, 0.12);
+  color: var(--mb-heading);
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+
+  i {
+    font-size: 1.05rem;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    color: var(--mb-primary);
+    box-shadow: 0 14px 30px rgba(207, 20, 103, 0.18);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--mb-focus-ring);
+  }
+}
+
+/* ===== Pestañas y contenido (ancho normal de la tienda) ===== */
+.portal-body {
+  max-width: calc(var(--mb-container) + var(--mb-gutter) * 2);
+  margin: 0 auto;
+  padding: 0 var(--mb-gutter);
+}
+
+.portal-body--no-banner {
+  padding-top: 2rem;
+}
+
+.tabs {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: -32px;
+  overflow: hidden;
+  background: var(--mb-surface);
+  border: 1px solid var(--mb-border-soft);
+  border-radius: var(--mb-radius-lg);
+  box-shadow: var(--mb-shadow-sm);
+}
+
+.portal-body--no-banner .tabs {
+  margin-top: 0;
+}
+
+.tabs__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 60px;
+  padding: 0 0.75rem;
+  border-bottom: 2px solid transparent;
+  color: var(--mb-text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+
+  & + & {
+    border-left: 1px solid var(--mb-border-soft);
+  }
+
+  &:hover {
+    color: var(--mb-primary);
+  }
+
+  &.active {
+    border-bottom-color: var(--mb-primary);
+    background: var(--mb-pink-50);
+    color: var(--mb-primary);
+    font-weight: 600;
+  }
+}
+
+.tabs__icon {
+  position: relative;
+  display: inline-flex;
+
+  i {
+    font-size: 1rem;
+  }
+}
+
+.tabs__count {
+  display: grid;
+  place-items: center;
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-primary);
+  color: var(--mb-primary-contrast);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Escritorio: pastilla al lado del texto. */
+.tabs__count--inline {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  font-size: 0.75rem;
+}
+
+/* Móvil: sobre la esquina del ícono (se activa en la barra inferior). */
+.tabs__count--icon {
+  position: absolute;
+  top: -7px;
+  right: -11px;
+  display: none;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 2px solid var(--mb-surface);
+  font-size: 10px;
+}
+
+.tabs__short {
+  display: none;
+}
+
+.portal-content {
+  padding-top: 2rem;
+  scroll-margin-top: 1rem;
+}
+
+/* ===== Tableta ===== */
+@media (max-width: 991px) {
+  .banner {
+    min-height: 420px;
+  }
+
+  .banner__image {
+    width: 62%;
+  }
+
+  .banner__content {
+    max-width: 58%;
+  }
+}
+
+/*
+ * ===== Móvil =====
+ * El texto ocupa todo el ancho y la imagen queda de fondo a la derecha; las
+ * pestañas pasan a una barra inferior fija, como en el mockup.
+ */
+@media (max-width: 640px) {
+  :host {
+    padding-bottom: 72px;
+  }
+
+  .banner {
+    min-height: 0;
+  }
+
+  .banner__image {
+    width: 78%;
+    opacity: 0.4;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 45%);
+    mask-image: linear-gradient(to right, transparent 0, #000 45%);
+  }
+
+  .banner__inner {
+    padding: 2rem 1.1rem 2.25rem;
+  }
+
+  .banner__content {
+    max-width: 100%;
+    gap: 0.7rem;
+  }
+
+  .banner__title {
+    font-size: clamp(2rem, 9vw, 2.6rem);
+  }
+
+  .banner__text {
+    font-size: 0.88rem;
+  }
+
+  .banner__actions {
+    gap: 0.6rem;
+  }
+
+  .banner__button {
+    min-height: 44px;
+    padding: 0 1rem;
+    font-size: 0.85rem;
+  }
+
+  .portal-body {
+    padding: 0 1rem;
+  }
+
+  .portal-body--no-banner {
+    padding-top: 1rem;
+  }
+
+  .tabs,
+  .portal-body--no-banner .tabs {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 25;
+    margin: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    border: none;
+    border-top: 1px solid var(--mb-border-soft);
+    border-radius: 0;
+    box-shadow: 0 -4px 18px rgba(23, 23, 23, 0.08);
+  }
+
+  .tabs__link {
+    flex-direction: column;
+    gap: 0.25rem;
+    min-height: 60px;
+    padding: 0.4rem 0.25rem;
+    border-bottom: none;
+    border-top: 2px solid transparent;
+    font-size: 0.68rem;
+
+    & + & {
+      border-left: none;
+    }
+
+    &.active {
+      border-top-color: var(--mb-primary);
+      background: transparent;
+    }
+  }
+
+  .tabs__label {
+    display: none;
+  }
+
+  .tabs__short {
+    display: block;
+  }
+
+  .tabs__count--inline {
+    display: none;
+  }
+
+  .tabs__count--icon {
+    display: grid;
+  }
+
+  .portal-content {
+    padding-top: 1.5rem;
+  }
+}

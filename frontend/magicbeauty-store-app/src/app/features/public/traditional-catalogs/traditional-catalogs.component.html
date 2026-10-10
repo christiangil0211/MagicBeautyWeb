@@ -1,0 +1,120 @@
+<section class="catalogs">
+  @if (loading()) {
+    <app-loader message="Cargando catálogos…" />
+  } @else if (failed()) {
+    <app-empty-state
+      icon="pi-exclamation-circle"
+      title="No pudimos cargar los catálogos"
+      message="Revisa tu conexión e inténtalo de nuevo."
+      [boxed]="true">
+      <button type="button" class="mb-btn mb-btn--outline" (click)="load()">Reintentar</button>
+    </app-empty-state>
+  } @else if (catalogs().length === 0) {
+    <app-empty-state
+      icon="pi-book"
+      title="Muy pronto"
+      message="Estamos preparando nuestros catálogos. Mientras tanto, consulta el catálogo digital."
+      [boxed]="true" />
+  } @else {
+    <div class="catalogs__grid">
+      @for (catalog of catalogs(); track catalog.id) {
+        <article class="catalog-card">
+          <button type="button" class="catalog-card__cover" [attr.aria-label]="'Ver ' + catalog.name" (click)="open(catalog)">
+            @if (catalog.coverImageUrl) {
+              <img [src]="catalog.coverImageUrl" [alt]="'Portada de ' + catalog.name" loading="lazy" />
+            } @else {
+              <span class="catalog-card__placeholder">
+                <i class="pi pi-book"></i>
+                <span>{{ catalog.name }}</span>
+              </span>
+            }
+          </button>
+
+          <div class="catalog-card__body">
+            <h2>{{ catalog.name }}</h2>
+
+            <div class="catalog-card__actions">
+              @if (canPreview(catalog)) {
+                <button type="button" class="mb-btn mb-btn--sm" (click)="open(catalog)">
+                  <i class="pi pi-eye"></i>
+                  Ver catálogo
+                </button>
+              } @else if (openUrl(catalog); as url) {
+                <!-- Canva no deja mostrarlo aquí: se abre directamente en Canva. -->
+                <a class="mb-btn mb-btn--sm" [href]="url" target="_blank" rel="noopener noreferrer">
+                  <i class="pi pi-external-link"></i>
+                  Ver catálogo
+                </a>
+              }
+
+              @if (catalog.pdfUrl) {
+                <a
+                  class="mb-btn mb-btn--outline mb-btn--sm"
+                  [href]="catalog.pdfUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download>
+                  <i class="pi pi-download"></i>
+                  Descargar PDF
+                </a>
+              }
+            </div>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<p-dialog
+  [visible]="viewerOpen()"
+  (visibleChange)="onViewerVisibleChange($event)"
+  [modal]="true"
+  [dismissableMask]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [header]="selected()?.name ?? 'Catálogo'"
+  styleClass="catalog-viewer"
+  [style]="{ width: 'min(1100px, 94vw)' }"
+  appendTo="body">
+  @if (selected(); as catalog) {
+    @if (viewerUrl(); as url) {
+      <div class="viewer__frame" #frame>
+        <iframe
+          [src]="url"
+          [title]="'Catálogo ' + catalog.name"
+          loading="lazy"
+          allow="fullscreen"
+          allowfullscreen></iframe>
+      </div>
+    } @else {
+      <app-empty-state
+        icon="pi-exclamation-triangle"
+        title="Este catálogo no se puede mostrar"
+        message="El enlace del catálogo no es válido. Descárgalo en PDF o vuelve más tarde." />
+    }
+
+    <div class="viewer__actions">
+      @if (openUrl(catalog); as url) {
+        <a class="mb-btn mb-btn--ghost mb-btn--sm" [href]="url" target="_blank" rel="noopener noreferrer">
+          <i class="pi pi-external-link"></i>
+          Abrir en Canva
+        </a>
+      }
+
+      @if (viewerUrl() && canFullscreen()) {
+        <button type="button" class="mb-btn mb-btn--ghost mb-btn--sm" (click)="enterFullscreen()">
+          <i class="pi pi-window-maximize"></i>
+          Pantalla completa
+        </button>
+      }
+
+      @if (catalog.pdfUrl) {
+        <a class="mb-btn" [href]="catalog.pdfUrl" target="_blank" rel="noopener noreferrer" download>
+          <i class="pi pi-download"></i>
+          Descargar PDF
+        </a>
+      }
+    </div>
+  }
+</p-dialog>

@@ -27,6 +27,18 @@ export class ProductCardComponent {
    */
   readonly detailLink = input<unknown[] | string | null>(null);
 
+  /** Texto del botón para productos sin tonos: carrito en el e-commerce, pedido en el portal. */
+  readonly addLabel = input('Agregar al carrito');
+
+  /** Los favoritos aún no se guardan: la página decide si muestra el corazón. */
+  readonly showFavorite = input(true);
+
+  /** Referencia bajo el nombre (útil para pedir por WhatsApp). */
+  readonly showReference = input(false);
+
+  /** Precios uno bajo otro o lado a lado (detal y mayorista en el portal). */
+  readonly priceLayout = input<'stack' | 'columns'>('stack');
+
   /** Producto sin tonos y con existencias: se puede agregar directo. */
   readonly addToCart = output<ProductCardModel>();
 
@@ -38,14 +50,20 @@ export class ProductCardComponent {
 
   readonly toggleFavorite = output<ProductCardModel>();
 
-  readonly isSoldOut = computed(() => !this.product().inStock);
+  /**
+   * Cotización (portal): no se muestran existencias y todo se puede agregar; la
+   * disponibilidad la confirma el equipo al recibir el pedido.
+   */
+  readonly ignoreStock = input(false);
+
+  readonly isSoldOut = computed(() => !this.ignoreStock() && !this.product().inStock);
 
   readonly actionLabel = computed(() => {
     if (this.isSoldOut()) {
       return 'Agotado';
     }
 
-    return this.product().hasVariants ? 'Elegir tono' : 'Agregar al carrito';
+    return this.product().hasVariants ? 'Elegir tono' : this.addLabel();
   });
 
   readonly actionIcon = computed(() => {

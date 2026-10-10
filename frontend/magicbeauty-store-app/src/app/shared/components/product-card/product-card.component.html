@@ -28,15 +28,17 @@
       <span class="product-card__badge">{{ product().badge }}</span>
     }
 
-    <button
-      type="button"
-      class="product-card__favorite"
-      [class.active]="product().isFavorite"
-      [attr.aria-label]="product().isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'"
-      [attr.aria-pressed]="!!product().isFavorite"
-      (click)="onToggleFavorite($event)">
-      <i class="pi" [class.pi-heart]="!product().isFavorite" [class.pi-heart-fill]="product().isFavorite"></i>
-    </button>
+    @if (showFavorite()) {
+      <button
+        type="button"
+        class="product-card__favorite"
+        [class.active]="product().isFavorite"
+        [attr.aria-label]="product().isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+        [attr.aria-pressed]="!!product().isFavorite"
+        (click)="onToggleFavorite($event)">
+        <i class="pi" [class.pi-heart]="!product().isFavorite" [class.pi-heart-fill]="product().isFavorite"></i>
+      </button>
+    }
   </div>
 
   <div class="product-card__body">
@@ -48,7 +50,11 @@
       <span class="product-card__name">{{ product().name }}</span>
     }
 
-    <app-price-list class="product-card__prices" [prices]="product().prices" />
+    @if (showReference()) {
+      <span class="product-card__reference">Ref. {{ product().reference }}</span>
+    }
+
+    <app-price-list class="product-card__prices" [prices]="product().prices" [layout]="priceLayout()" />
 
     <button
       type="button"

@@ -82,3 +82,29 @@
     font-size: 1.8rem;
   }
 }
+
+/* ===== Lado a lado (tarjetas del portal) ===== */
+:host(.price-list--columns) {
+  .price-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.9rem;
+  }
+
+  .price-list__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+
+    dd {
+      font-size: 0.95rem;
+      color: var(--mb-primary);
+    }
+  }
+
+  .price-list__row--lead dd {
+    font-size: 0.95rem;
+    letter-spacing: 0;
+    color: var(--mb-heading);
+  }
+}

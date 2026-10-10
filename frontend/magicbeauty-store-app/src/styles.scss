@@ -4,6 +4,8 @@
 @use '@fontsource/inter/500.css' as *;
 @use '@fontsource/inter/600.css' as *;
 @use '@fontsource/inter/700.css' as *;
+// Títulos del portal (mockup aprobado).
+@use '@fontsource/playfair-display/400.css' as *;
 @use 'primeicons/primeicons.css';
 
 // Piezas reutilizables: tipografÃ­a, botones, tarjetas, insignias, tablas y formularios.
@@ -153,5 +155,15 @@
 
   a {
     color: inherit;
+  }
+}
+
+/*
+ * En móvil el portal fija sus pestañas abajo: los botones flotantes (WhatsApp)
+ * suben ese alto para no quedar tapados.
+ */
+@media (max-width: 640px) {
+  body:has(app-portal-shell) {
+    --mb-floating-offset: 72px;
   }
 }
