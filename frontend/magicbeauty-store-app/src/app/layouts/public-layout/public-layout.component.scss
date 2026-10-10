@@ -825,3 +825,8 @@
     font-size: 0.85rem;
   }
 }
+/* Home campaign spans the viewport directly below the navigation. */
+.store-content:has(> app-home) {
+  max-width: none;
+  padding: 0 0 56px;
+}
