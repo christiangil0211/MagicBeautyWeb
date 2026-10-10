@@ -10,8 +10,8 @@
     </p>
 
     <div class="hero__actions">
-      <a class="btn btn--solid" [routerLink]="bannerOnly() ? '/productos' : '/nuevo'">Comprar ahora</a>
-      <a class="btn btn--ghost" [routerLink]="bannerOnly() ? '/productos' : '/ofertas'">{{ bannerOnly() ? 'Explorar productos' : 'Ver ofertas' }}</a>
+      <a class="btn btn--solid" routerLink="/productos">Comprar ahora</a>
+      <a class="btn btn--ghost" routerLink="/productos">Explorar productos</a>
     </div>
 
     <ul class="hero__badges">
@@ -107,13 +107,13 @@
   <article class="promo promo--wide">
     <h3>Brilla con Confianza</h3>
     <p>Luce tu mejor versión todos los días.</p>
-    <a class="btn btn--solid btn--sm" routerLink="/nuevo">Descubrir colección</a>
+    <a class="btn btn--solid btn--sm" routerLink="/productos">Descubrir colección</a>
   </article>
 
   <article class="promo">
     <h3>Ahorra más, vive tu magia</h3>
     <p>Combos exclusivos para ti.</p>
-    <a class="btn btn--outline btn--sm" routerLink="/ofertas">Ver combos</a>
+    <a class="btn btn--outline btn--sm" routerLink="/productos">Ver combos</a>
   </article>
 
   <article class="promo promo--soft">

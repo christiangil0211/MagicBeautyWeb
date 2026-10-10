@@ -111,3 +111,24 @@ it('returns to wholesale benefits after login and category navigation', async ()
   expect(element.querySelector('.banner__image')?.getAttribute('src')).toBe('/images/portal/banner-beneficios.jpg');
   expect(element.querySelector('.store-menu__link--portal.active')).not.toBeNull();
 });
+
+
+it('shows the full store home and header search for an authenticated visitor', async () => {
+  setup();
+  const harness = await RouterTestingHarness.create();
+  await navigateAs(harness, '/inicio', true);
+  const element = harness.fixture.nativeElement as HTMLElement;
+  expect(TestBed.inject(Router).url).toBe('/inicio');
+  expect(element.querySelector('.shop-by-category')).not.toBeNull();
+  expect(element.querySelector('.desktop-search')).not.toBeNull();
+  expect(element.querySelector('app-portal-shell')).toBeNull();
+});
+
+it('keeps anonymous visitors in the wholesale portal when opening the store home', async () => {
+  setup();
+  const harness = await RouterTestingHarness.create();
+  await navigateAs(harness, '/inicio');
+  expect(TestBed.inject(Router).url).toBe('/');
+  expect(harness.fixture.nativeElement.querySelector('app-portal-shell')).not.toBeNull();
+  expect(harness.fixture.nativeElement.querySelector('.desktop-search')).toBeNull();
+});

@@ -73,7 +73,8 @@ export class PublicLayoutComponent {
    * Barra de menú: los visitantes no la ven mientras el portal es la única
    * experiencia; un administrador sí, con el portal como una opción más.
    */
-  readonly showMenu = computed(() => !!this.ecommerceNavigation() || this.canManageStore());
+  readonly showHeaderSearch = computed(() => this.ecommerceNavigation() || this.isAuthenticated());
+  readonly showMenu = computed(() => this.ecommerceNavigation() || this.isAuthenticated());
 
   /** El ítem del portal se marca en cualquiera de sus pestañas. */
   readonly onPortal = signal(false);
@@ -129,7 +130,7 @@ export class PublicLayoutComponent {
     // La caja refleja la búsqueda de la URL; fuera de /catalogo queda vacía.
     const syncSearchTerm = () => {
       const tree = this.router.parseUrl(this.router.url);
-      const onCatalog = tree.root.children['primary']?.segments.map(s => s.path).join('/') === 'catalogo';
+      const onCatalog = ['catalogo', 'productos'].includes(tree.root.children['primary']?.segments.map(s => s.path).join('/') ?? '');
 
       this.searchTerm.set(onCatalog ? (tree.queryParams['q'] ?? '') : '');
       this.onPortal.set(isPortalUrl(this.router.url));
@@ -230,7 +231,7 @@ export class PublicLayoutComponent {
   }
 
   openMobileSearch(): void {
-    if (!this.ecommerceNavigation()) return;
+    if (!this.showHeaderSearch()) return;
     this.isMobileMenuOpen.set(false);
     this.isMobileSearchOpen.set(true);
   }

@@ -46,6 +46,7 @@ export class SearchBoxComponent {
   readonly value = input('');
   readonly placeholder = input('Busca por nombre, referencia o marca');
   readonly inputId = input('search-box');
+  readonly catalogPath = input('/catalogo');
   /** Se buscó o se eligió un producto: el panel móvil se cierra con esto. */
   readonly done = output<void>();
 
@@ -154,12 +155,12 @@ export class SearchBoxComponent {
     const term = this.term().trim();
 
     this.finish();
-    this.router.navigate(['/catalogo'], { queryParams: { q: term || null } });
+    this.router.navigate([this.catalogPath()], { queryParams: { q: term || null } });
   }
 
   openProduct(product: CatalogProductListItem): void {
     this.finish();
-    this.router.navigate(['/catalogo', product.reference]);
+    this.router.navigate([this.catalogPath(), product.reference]);
   }
 
   clear(): void {

@@ -21,7 +21,7 @@
       </div>
     </div>
 
-    <div class="main-header" [class.main-header--without-search]="!ecommerceNavigation()">
+    <div class="main-header" [class.main-header--without-search]="!showHeaderSearch()">
       <button type="button" class="mobile-menu-button mobile-only" (click)="openMobileMenu()" aria-label="Abrir menú">
         <span></span>
         <span></span>
@@ -29,16 +29,16 @@
       </button>
 
       <!-- El logo es el acceso al inicio desde cualquier página pública. -->
-      <a class="brand" routerLink="/" aria-label="Magic Beauty Cosmetics, ir al inicio">
+      <a class="brand" [routerLink]="isAuthenticated() ? '/inicio' : '/'" aria-label="Magic Beauty Cosmetics, ir al inicio">
         <img src="/images/logo-horizontal.png" alt="Magic Beauty Cosmetics" width="610" height="100" />
       </a>
 
-      @if (ecommerceNavigation()) {
-        <app-search-box class="desktop-search" inputId="desktop-search" [value]="searchTerm()" />
+      @if (showHeaderSearch()) {
+        <app-search-box class="desktop-search" inputId="desktop-search" [catalogPath]="isAuthenticated() ? '/productos' : '/catalogo'" [value]="searchTerm()" />
       }
 
       <div class="header-actions">
-        @if (ecommerceNavigation()) {
+        @if (showHeaderSearch()) {
         <button
           type="button"
           class="mobile-header-button mobile-only"
@@ -247,7 +247,7 @@
     <div class="overlay" (click)="closeMobileSearch()"></div>
   }
 
-  @if (ecommerceNavigation()) {
+  @if (showHeaderSearch()) {
   <section class="mobile-search-panel" [class.open]="isMobileSearchOpen()">
     <div class="mobile-panel-header">
       <h2>Buscar en nuestro sitio</h2>
@@ -257,6 +257,7 @@
     <div class="mobile-search-body">
       <app-search-box
         inputId="mobile-search"
+        [catalogPath]="isAuthenticated() ? '/productos' : '/catalogo'"
         placeholder="Nombre, referencia o marca"
         [value]="searchTerm()"
         (done)="closeMobileSearch()" />

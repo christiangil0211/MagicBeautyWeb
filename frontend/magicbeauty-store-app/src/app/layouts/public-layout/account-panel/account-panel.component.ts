@@ -203,13 +203,11 @@ export class AccountPanelComponent {
   }
 
   private finishLogin(): void {
-    const target = this.safeReturnUrl();
+    const target = this.safeReturnUrl() ?? '/inicio';
 
     this.close();
 
-    if (target) {
-      this.router.navigateByUrl(target);
-    }
+    this.router.navigateByUrl(target);
   }
 
   /** La contraseña no se conserva más de lo necesario. */

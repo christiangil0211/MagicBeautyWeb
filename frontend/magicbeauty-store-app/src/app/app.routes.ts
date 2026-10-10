@@ -8,7 +8,7 @@ import { adminGuard } from './core/guards/admin.guard';
 import { PORTAL_BANNERS } from './features/public/portal/portal-navigation';
 
 const authenticatedStore: CanMatchFn = (_route, segments) => {
-  if (!['categoria', 'productos'].includes(segments[0]?.path)) return false;
+  if (!['inicio', 'categoria', 'productos'].includes(segments[0]?.path)) return false;
   return inject(AuthService).ensureSession().pipe(map(session => session.isAuthenticated));
 };
 
@@ -81,6 +81,11 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./layouts/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
     children: [
+      {
+        path: 'inicio',
+        canMatch: [authenticatedStore],
+        loadComponent: () => import('./features/public/home/home.component').then(m => m.HomeComponent)
+      },
       {
         path: '',
         canMatch: [authenticatedStore],
