@@ -138,7 +138,8 @@ export class ProductsComponent {
 
   /** La tarjeta no conoce rutas: la página le indica a dónde lleva el producto. */
   detailLink(reference: string): unknown[] {
-    return ['/catalogo', reference];
+    const storeRoute = /^\/(categoria|productos)(\/|\?|#|$)/.test(this.router.url);
+    return [storeRoute ? '/productos' : '/catalogo', reference];
   }
 
   /** Solo llegan productos sin tonos y con existencias: la tarjeta ya lo verificó. */

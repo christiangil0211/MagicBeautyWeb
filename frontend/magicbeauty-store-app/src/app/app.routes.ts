@@ -1,8 +1,16 @@
 import { inject } from '@angular/core';
-import { Router, Routes } from '@angular/router';
+import { ActivatedRouteSnapshot, CanMatchFn, Router, Routes } from '@angular/router';
+
+import { map } from 'rxjs';
+import { AuthService } from './core/services/auth.service';
 
 import { adminGuard } from './core/guards/admin.guard';
 import { PORTAL_BANNERS } from './features/public/portal/portal-navigation';
+
+const authenticatedStore: CanMatchFn = (_route, segments) => {
+  if (!['categoria', 'productos'].includes(segments[0]?.path)) return false;
+  return inject(AuthService).ensureSession().pipe(map(session => session.isAuthenticated));
+};
 
 export const routes: Routes = [
   {
@@ -73,6 +81,27 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./layouts/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
     children: [
+      {
+        path: '',
+        canMatch: [authenticatedStore],
+        loadComponent: () => import('./layouts/store-layout/store-layout.component').then(m => m.StoreLayoutComponent),
+        children: [
+          {
+            path: 'categoria/:slug',
+            resolve: { categoria: (route: ActivatedRouteSnapshot) => route.paramMap.get('slug') },
+            loadComponent: () => import('./features/public/digital-catalog/digital-catalog.component').then(m => m.DigitalCatalogComponent)
+          },
+          {
+            path: 'productos',
+            loadComponent: () => import('./features/public/digital-catalog/digital-catalog.component').then(m => m.DigitalCatalogComponent)
+          },
+          {
+            path: 'productos/:reference',
+            data: { quoteMode: true },
+            loadComponent: () => import('./features/public/product-detail/product-detail.component').then(m => m.ProductDetailComponent)
+          }
+        ]
+      },
       {
         // Banner + pestañas. Cada pestaña declara su banner en `data.portalBanner`.
         path: '',

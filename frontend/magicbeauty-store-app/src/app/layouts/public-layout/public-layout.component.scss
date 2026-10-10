@@ -783,9 +783,9 @@
   }
 }
 
-/* Acceso al portal desde el menú del administrador (fucsia, como en el mockup). */
+/* Wholesale navigation shares the same active style as the other links. */
 .store-menu__link--portal {
-  color: var(--mb-primary);
+  color: var(--mb-text);
 }
 
 /* El banner del portal ocupa todo el ancho bajo la cabecera, como el del inicio. */
@@ -1020,10 +1020,14 @@
     i { color: var(--mb-primary); font-size: 0.85rem; }
   }
 
-  &[open] > summary {
+  &[open] > summary,
+  &.active > summary {
     background: var(--mb-pink-100);
     color: var(--mb-primary);
 
+  }
+
+  &[open] > summary {
     .mobile-category__arrow { transform: rotate(180deg); }
   }
 }
@@ -1071,4 +1075,9 @@
     &:hover { background: var(--mb-pink-200); }
     &:focus-visible { outline: 2px solid var(--mb-primary); outline-offset: 2px; }
   }
+}
+
+.store-content:has(> app-store-layout) {
+  max-width: none;
+  padding: 0;
 }

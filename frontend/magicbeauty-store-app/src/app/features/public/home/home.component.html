@@ -10,8 +10,8 @@
     </p>
 
     <div class="hero__actions">
-      <a class="btn btn--solid" routerLink="/nuevo">Comprar ahora</a>
-      <a class="btn btn--ghost" routerLink="/ofertas">Ver ofertas</a>
+      <a class="btn btn--solid" [routerLink]="bannerOnly() ? '/productos' : '/nuevo'">Comprar ahora</a>
+      <a class="btn btn--ghost" [routerLink]="bannerOnly() ? '/productos' : '/ofertas'">{{ bannerOnly() ? 'Explorar productos' : 'Ver ofertas' }}</a>
     </div>
 
     <ul class="hero__badges">
@@ -32,6 +32,7 @@
   </div>
 </section>
 
+@if (!bannerOnly()) {
 <!-- Estas tarjetas son exactamente las categorías marcadas como destacadas en el administrador. -->
 <section class="shop-by-category">
   <h2 class="section-title">Compra por categoría</h2>
@@ -147,3 +148,5 @@
     <span>Estamos aquí para ayudarte con mucho amor.</span>
   </div>
 </section>
+
+}

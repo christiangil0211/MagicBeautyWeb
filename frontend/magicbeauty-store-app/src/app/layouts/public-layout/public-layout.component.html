@@ -114,7 +114,7 @@
     <nav class="store-menu" (mouseleave)="closeMegaMenu()">
         @for (item of menu(); track item.id) {
           <div class="store-menu__item" (mouseenter)="openMegaMenu(item.id)" (focusin)="openMegaMenu(item.id)">
-            <a class="store-menu__link" [routerLink]="categoryPath(item.slug)" routerLinkActive="active">
+            <a class="store-menu__link" [routerLink]="categoryPath(item.slug)" [class.active]="isCategoryActive(item)">
               {{ item.name }}
               @if (item.children.length > 0) {
                 <i class="pi pi-angle-down"></i>
@@ -377,7 +377,7 @@
 <ng-template #mobileCategoryBranches let-items>
   @for (node of items; track node.id) {
     @if (node.children.length > 0) {
-      <details class="mobile-category">
+      <details class="mobile-category" [class.active]="isCategoryActive(node)">
         <summary>
           <i class="pi pi-tag" aria-hidden="true"></i>
           <span>{{ node.name }}</span>
@@ -391,7 +391,7 @@
         </div>
       </details>
     } @else {
-      <a class="mobile-category__leaf" [routerLink]="categoryPath(node.slug)" (click)="closeMobileMenu()">
+      <a class="mobile-category__leaf" [class.active]="isCategoryActive(node)" [routerLink]="categoryPath(node.slug)" (click)="closeMobileMenu()">
         <i class="pi pi-circle-fill" aria-hidden="true"></i>
         <span>{{ node.name }}</span>
       </a>

@@ -88,6 +88,7 @@
   .price-list {
     flex-direction: row;
     flex-wrap: wrap;
+    justify-content: space-between;
     gap: 0.25rem 0.9rem;
   }
 
@@ -100,6 +101,11 @@
       font-size: 0.95rem;
       color: var(--mb-primary);
     }
+  }
+
+  .price-list__row:last-child:not(:first-child) {
+    align-items: flex-end;
+    text-align: right;
   }
 
   .price-list__row--lead dd {

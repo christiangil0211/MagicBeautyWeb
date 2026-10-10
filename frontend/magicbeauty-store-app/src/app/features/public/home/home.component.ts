@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
@@ -24,6 +24,7 @@ const FAVORITES_LIMIT = 5;
   styleUrl: './home.component.scss'
 })
 export class HomeComponent {
+  readonly bannerOnly = input(false);
   private readonly categoryService = inject(CategoryService);
   private readonly catalogService = inject(CatalogService);
   private readonly messageService = inject(MessageService);

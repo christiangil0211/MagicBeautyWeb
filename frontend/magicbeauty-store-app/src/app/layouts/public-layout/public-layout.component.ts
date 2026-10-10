@@ -77,6 +77,7 @@ export class PublicLayoutComponent {
 
   /** El ítem del portal se marca en cualquiera de sus pestañas. */
   readonly onPortal = signal(false);
+  readonly activeCategorySlug = signal<string | null>(null);
 
   readonly isAccountOpen = signal(false);
   readonly loginReturnUrl = signal<string | null>(null);
@@ -132,6 +133,8 @@ export class PublicLayoutComponent {
 
       this.searchTerm.set(onCatalog ? (tree.queryParams['q'] ?? '') : '');
       this.onPortal.set(isPortalUrl(this.router.url));
+      const segments = tree.root.children['primary']?.segments ?? [];
+      this.activeCategorySlug.set(segments[0]?.path === 'categoria' ? (segments[1]?.path ?? null) : null);
     };
 
     syncSearchTerm();
@@ -207,6 +210,10 @@ export class PublicLayoutComponent {
     }
 
     this.expandedChildIds.set(expanded);
+  }
+
+  isCategoryActive(item: CategoryMenuItem): boolean {
+    return item.slug === this.activeCategorySlug() || item.children.some(child => this.isCategoryActive(child));
   }
 
   categoryPath(slug: string): string {
