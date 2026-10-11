@@ -82,6 +82,13 @@
       styleClass="mb-table"
       dataKey="id"
       [rowHover]="true"
+      [paginator]="products().length > pageSizes[0]"
+      [rows]="pageSize()"
+      [first]="first()"
+      [rowsPerPageOptions]="pageSizes"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first} a {last} de {totalRecords}"
+      (onPage)="pageChanged($event)"
       [selection]="selected()"
       (selectionChange)="selected.set($event)"
     >
