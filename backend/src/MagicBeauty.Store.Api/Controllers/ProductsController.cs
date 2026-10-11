@@ -20,6 +20,7 @@ public sealed class ProductsController(IProductService productService) : Control
         [FromQuery] int? brandId,
         [FromQuery] int? categoryId,
         [FromQuery] bool? isActive,
+        [FromQuery] bool? hasCategories,
         [FromQuery] string? search,
         CancellationToken cancellationToken)
     {
@@ -27,6 +28,7 @@ public sealed class ProductsController(IProductService productService) : Control
             brandId,
             categoryId,
             isActive,
+            hasCategories,
             search,
             cancellationToken);
 
@@ -89,6 +91,17 @@ public sealed class ProductsController(IProductService productService) : Control
         await productService.SetCategoriesAsync(id, request, cancellationToken);
 
         return NoContent();
+    }
+
+    /// <summary>Asignacion masiva: agrega una categoria a varios productos a la vez.</summary>
+    [HttpPost("categories/assign")]
+    public async Task<ActionResult<AssignCategoryToProductsResultDto>> AssignCategory(
+        AssignCategoryToProductsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await productService.AssignCategoryAsync(request, cancellationToken);
+
+        return Ok(result);
     }
 
     [HttpPut("{id:int}/prices")]

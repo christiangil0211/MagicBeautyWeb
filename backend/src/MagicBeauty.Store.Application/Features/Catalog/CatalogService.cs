@@ -27,6 +27,7 @@ public sealed class CatalogService(
             brandId,
             categoryId,
             isActive: true,
+            hasCategories: null,
             string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
             cancellationToken);
 
