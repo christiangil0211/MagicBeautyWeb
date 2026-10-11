@@ -8,6 +8,7 @@ public interface IProductRepository
         int? brandId,
         int? categoryId,
         bool? isActive,
+        bool? hasCategories,
         string? search,
         CancellationToken cancellationToken);
 
@@ -22,6 +23,16 @@ public interface IProductRepository
     Task<bool> ExistsByReferenceAsync(string reference, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ProductCategory>> GetCategoryLinksAsync(int productId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<int>> GetExistingIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken);
+
+    /// <summary>De los productos indicados, los que ya pertenecen a la categoria.</summary>
+    Task<IReadOnlyList<int>> GetIdsInCategoryAsync(
+        int categoryId,
+        IEnumerable<int> productIds,
+        CancellationToken cancellationToken);
+
+    Task AddCategoryLinksAsync(IEnumerable<ProductCategory> links, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ProductPrice>> GetPricesAsync(int productId, CancellationToken cancellationToken);
 

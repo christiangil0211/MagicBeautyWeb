@@ -28,7 +28,7 @@ public sealed class CatalogServiceTests
 
         var products = new Mock<IProductRepository>();
         products
-            .Setup(repository => repository.GetAllAsync(null, null, true, null, It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetAllAsync(null, null, true, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync([product]);
 
         // La politica solo autoriza Detal: Distribuidor no debe salir aunque el producto lo tenga.

@@ -9,6 +9,7 @@ public interface IProductService
         int? brandId,
         int? categoryId,
         bool? isActive,
+        bool? hasCategories,
         string? search,
         CancellationToken cancellationToken);
 
@@ -23,6 +24,14 @@ public interface IProductService
     Task DeleteAsync(int id, CancellationToken cancellationToken);
 
     Task SetCategoriesAsync(int id, SetProductCategoriesRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Agrega la categoria a los productos indicados en una sola operacion y
+    /// devuelve cuantos la recibieron. No cambia ningun otro dato del producto.
+    /// </summary>
+    Task<AssignCategoryToProductsResultDto> AssignCategoryAsync(
+        AssignCategoryToProductsRequest request,
+        CancellationToken cancellationToken);
 
     Task SetPricesAsync(int id, SetProductPricesRequest request, CancellationToken cancellationToken);
 

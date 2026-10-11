@@ -19,6 +19,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { CategoryService } from '../../../core/services/category.service';
 import { Category } from '../../../shared/models/category.model';
+import { UncategorizedProductsComponent } from './uncategorized-products/uncategorized-products.component';
 
 interface ParentOption {
   label: string;
@@ -42,6 +43,7 @@ interface ParentOption {
     ConfirmDialogModule,
     PageHeaderComponent,
     LoaderComponent,
+    UncategorizedProductsComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './admin-categories.component.html',
@@ -96,12 +98,30 @@ export class AdminCategoriesComponent {
   readonly saving = signal(false);
   readonly selectedId = signal<number | null>(null);
   readonly selectedNode = signal<TreeNode | null>(null);
+  private loadRequest = 0;
 
   readonly treeNodes = computed(() => this.buildTree(this.categories()));
 
   readonly selectedCategory = computed(() =>
     this.categories().find((category) => category.id === this.selectedId()),
   );
+
+  /** Rama del árbol hasta la categoría seleccionada: "Cuidado capilar", "Shampoo". */
+  readonly selectedCategoryPath = computed(() => {
+    const categories = this.categories();
+    const path: string[] = [];
+    const visited = new Set<number>();
+    let current = this.selectedCategory();
+
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id);
+      path.unshift(current.name);
+      const parentId = current.parentCategoryId ?? null;
+      current = categories.find((category) => category.id === parentId);
+    }
+
+    return path;
+  });
 
   readonly visibleInMenuCount = computed(
     () =>
@@ -187,19 +207,19 @@ export class AdminCategoriesComponent {
     this.load();
   }
 
-  load(selectAfterLoad?: number): void {
+  load(): void {
     this.loading.set(true);
+    const request = ++this.loadRequest;
 
     this.categoryService.getAll().subscribe({
       next: (categories) => {
+        // Una respuesta vieja no debe reemplazar la lista de una recarga más reciente.
+        if (request !== this.loadRequest) return;
         this.categories.set(categories);
         this.loading.set(false);
-
-        if (selectAfterLoad !== undefined) {
-          this.selectById(selectAfterLoad);
-        }
       },
       error: (error) => {
+        if (request !== this.loadRequest) return;
         this.loading.set(false);
         this.showError('No se pudieron cargar las categorías', error);
       },
@@ -208,6 +228,10 @@ export class AdminCategoriesComponent {
 
   newCategory(parentCategoryId: number | null = null): void {
     if (this.saving()) return;
+    this.startNewCategory(parentCategoryId);
+  }
+
+  private startNewCategory(parentCategoryId: number | null): void {
     this.pendingFiles.set({});
     this.pendingRemovals.set([]);
     this.selectedId.set(null);
@@ -265,6 +289,7 @@ export class AdminCategoriesComponent {
     }
     this.saving.set(true);
     let id = this.selectedId();
+    const isNew = id === null;
     try {
       if (id === null) {
         const created = await firstValueFrom(this.categoryService.create(value));
@@ -296,8 +321,16 @@ export class AdminCategoriesComponent {
           );
         }
       }
-      this.notifySaved('Los cambios se guardaron.');
-      this.load(id);
+      // Tras guardar, sea creación o edición, el formulario vuelve a "Nueva categoría"
+      // en el mismo nivel. Si siguiera sobre la categoría guardada, escribir la
+      // siguiente encima la sobrescribiría; para editar hay que volver a elegirla.
+      this.notifySaved(
+        isNew
+          ? 'Se creó "' + value.name.trim() + '". Puedes agregar otra en el mismo nivel.'
+          : 'Se guardaron los cambios de "' + value.name.trim() + '".',
+      );
+      this.startNewCategory(value.parentCategoryId);
+      this.load();
     } catch (error) {
       this.showError(
         'No se pudo completar el guardado; puedes reintentar las imágenes pendientes',
@@ -386,33 +419,6 @@ export class AdminCategoriesComponent {
       homeImageUrl: category.homeImageUrl ?? '',
       iconUrl: category.iconUrl ?? '',
     });
-  }
-
-  private selectById(id: number): void {
-    const category = this.categories().find((item) => item.id === id);
-
-    if (!category) {
-      return;
-    }
-
-    this.applyCategoryToForm(category);
-    this.selectedNode.set(this.findNode(this.treeNodes(), id));
-  }
-
-  private findNode(nodes: TreeNode[], id: number): TreeNode | null {
-    for (const node of nodes) {
-      if ((node.data as Category).id === id) {
-        return node;
-      }
-
-      const match = this.findNode(node.children ?? [], id);
-
-      if (match) {
-        return match;
-      }
-    }
-
-    return null;
   }
 
   private buildTree(categories: Category[]): TreeNode[] {

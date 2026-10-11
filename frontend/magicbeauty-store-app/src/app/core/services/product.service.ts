@@ -22,6 +22,8 @@ export interface ProductFilters {
   brandId?: number | null;
   categoryId?: number | null;
   isActive?: boolean | null;
+  /** true: con alguna categoría; false: sin ninguna. */
+  hasCategories?: boolean | null;
   search?: string | null;
 }
 
@@ -45,6 +47,10 @@ export class ProductService {
 
     if (filters.isActive != null) {
       params = params.set('isActive', filters.isActive);
+    }
+
+    if (filters.hasCategories != null) {
+      params = params.set('hasCategories', filters.hasCategories);
     }
 
     if (filters.search) {
@@ -77,6 +83,14 @@ export class ProductService {
 
   setCategories(id: number, categoryIds: number[]): Observable<void> {
     return this.http.put<void>(`${this.apiUrl}/${id}/categories`, { categoryIds });
+  }
+
+  /** Asignación masiva: agrega la categoría a los productos sin quitar las que ya tengan. */
+  assignCategory(categoryId: number, productIds: number[]): Observable<{ updatedCount: number }> {
+    return this.http.post<{ updatedCount: number }>(`${this.apiUrl}/categories/assign`, {
+      categoryId,
+      productIds
+    });
   }
 
   setPrices(id: number, prices: UpsertProductPriceRequest[]): Observable<void> {

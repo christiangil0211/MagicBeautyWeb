@@ -26,6 +26,7 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
         int? brandId,
         int? categoryId,
         bool? isActive,
+        bool? hasCategories,
         string? search,
         CancellationToken cancellationToken)
     {
@@ -72,6 +73,14 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
         if (isActive.HasValue)
         {
             query = query.Where(product => product.IsActive == isActive.Value);
+        }
+
+        if (hasCategories.HasValue)
+        {
+            // Sin categoria es no tener ningun vinculo: la relacion es muchos a muchos.
+            query = hasCategories.Value
+                ? query.Where(product => product.ProductCategories.Any())
+                : query.Where(product => !product.ProductCategories.Any());
         }
 
         // Cada palabra debe aparecer en el nombre, la referencia o la marca, sin
@@ -123,6 +132,40 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
         return await dbContext.ProductCategories
             .Where(link => link.ProductId == productId)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<int>> GetExistingIdsAsync(
+        IEnumerable<int> ids,
+        CancellationToken cancellationToken)
+    {
+        var requested = ids.Distinct().ToList();
+
+        return await dbContext.Products
+            .AsNoTracking()
+            .Where(product => requested.Contains(product.Id))
+            .Select(product => product.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<int>> GetIdsInCategoryAsync(
+        int categoryId,
+        IEnumerable<int> productIds,
+        CancellationToken cancellationToken)
+    {
+        var requested = productIds.Distinct().ToList();
+
+        return await dbContext.ProductCategories
+            .AsNoTracking()
+            .Where(link => link.CategoryId == categoryId && requested.Contains(link.ProductId))
+            .Select(link => link.ProductId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task AddCategoryLinksAsync(
+        IEnumerable<ProductCategory> links,
+        CancellationToken cancellationToken)
+    {
+        await dbContext.ProductCategories.AddRangeAsync(links, cancellationToken);
     }
 
     public async Task<IReadOnlyList<ProductPrice>> GetPricesAsync(
