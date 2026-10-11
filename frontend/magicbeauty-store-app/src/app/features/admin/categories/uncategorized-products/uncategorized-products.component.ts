@@ -6,7 +6,7 @@ import { EMPTY, Subject, catchError, finalize, of, switchMap, timer } from 'rxjs
 import { ConfirmationService, MessageService, PrimeTemplate } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { TableModule } from 'primeng/table';
+import { TableModule, TablePageEvent } from 'primeng/table';
 
 import { ProductService } from '../../../../core/services/product.service';
 import { LoaderComponent } from '../../../../shared/components/loader/loader.component';
@@ -49,6 +49,11 @@ export class UncategorizedProductsComponent {
   readonly assigning = signal(false);
   readonly search = signal('');
 
+  /** Paginación en cliente: solo cambia lo que se ve, nunca la selección. */
+  readonly pageSizes = [10, 25, 50];
+  readonly first = signal(0);
+  readonly pageSize = signal(this.pageSizes[0]);
+
   constructor() {
     this.loadRequests
       .pipe(
@@ -75,6 +80,10 @@ export class UncategorizedProductsComponent {
         // Solo se asigna lo que está a la vista: lo que la búsqueda oculta se desmarca.
         const selectedIds = new Set(this.selected().map((product) => product.id));
         this.selected.set(products.filter((product) => selectedIds.has(product.id)));
+        // Si la página actual quedó vacía (p. ej. tras asignar), se retrocede a la última.
+        if (this.first() >= products.length) {
+          this.first.set(this.lastPageStart(products.length));
+        }
       });
 
     this.load();
@@ -88,8 +97,14 @@ export class UncategorizedProductsComponent {
     const previous = this.search().trim();
     this.search.set(value);
     if (value.trim() !== previous) {
+      this.first.set(0);
       this.loadRequests.next(350);
     }
+  }
+
+  pageChanged(event: TablePageEvent): void {
+    this.first.set(event.first);
+    this.pageSize.set(event.rows);
   }
 
   clearSelection(): void {
@@ -167,6 +182,12 @@ export class UncategorizedProductsComponent {
         },
         error: (error) => this.showError('No se pudo agregar la categoría', error),
       });
+  }
+
+  private lastPageStart(total: number): number {
+    const size = this.pageSize();
+
+    return total > 0 ? Math.floor((total - 1) / size) * size : 0;
   }
 
   /** Rama completa de la categoría; si no llegó, al menos su nombre. */

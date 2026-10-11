@@ -33,14 +33,20 @@ function product(id: number, name: string, isActive = true): ProductListItem {
     categories: [],
   };
 }
-function setup(category: Category | null = shampooCategory) {
+const defaultProducts = [
+  product(301, 'Shampoo sin sal'),
+  product(302, 'Shampoo anticaspa'),
+  product(303, 'Shampoo descontinuado', false),
+  product(304, 'Mascarilla nutritiva'),
+];
+function manyProducts(count: number): ProductListItem[] {
+  return Array.from({ length: count }, (_, index) =>
+    product(401 + index, (index < 3 ? 'Tinte ' : 'Crema ') + (index + 1)),
+  );
+}
+function setup(category: Category | null = shampooCategory, initial = defaultProducts) {
   // Imita al API: lista los productos sin categoría y los retira al asignarles una.
-  let stored = [
-    product(301, 'Shampoo sin sal'),
-    product(302, 'Shampoo anticaspa'),
-    product(303, 'Shampoo descontinuado', false),
-    product(304, 'Mascarilla nutritiva'),
-  ];
+  let stored = [...initial];
   const api = {
     getAll: vi.fn((filters: ProductFilters): Observable<ProductListItem[]> => {
       const term = (filters.search ?? '').toLowerCase();
@@ -352,4 +358,71 @@ it('uses the search loader message while searching', async () => {
   component.searchChanged('shampoo');
   fixture.detectChanges();
   expect(loader()).toContain('Buscando productos…');
+});
+function goToPage(fixture: ComponentFixture<UncategorizedProductsComponent>, page: number): void {
+  Array.from(
+    (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.p-paginator-page'),
+  )
+    .find((item) => item.textContent?.trim() === String(page))!
+    .click();
+  fixture.detectChanges();
+}
+it('hides the paginator when every product fits in one page', () => {
+  const { fixture } = setup();
+
+  expect((fixture.nativeElement as HTMLElement).querySelector('.p-paginator')).toBeNull();
+  expect(rows(fixture).length).toBe(4);
+});
+it('paginates the table and keeps the selection made on other pages', () => {
+  const { fixture, component } = setup(shampooCategory, manyProducts(23));
+
+  expect(rows(fixture).length).toBe(10);
+  expect(rows(fixture)[0][1]).toBe('CAP401');
+  component.selected.set([component.products()[0], component.products()[1]]);
+
+  goToPage(fixture, 3);
+  expect(component.first()).toBe(20);
+  expect(rows(fixture).map((row) => row[1])).toEqual(['CAP421', 'CAP422', 'CAP423']);
+  expect(ids(component.selected())).toEqual([401, 402]);
+
+  component.selected.set([...component.selected(), component.products()[22]]);
+  goToPage(fixture, 1);
+  expect(ids(component.selected())).toEqual([401, 402, 423]);
+  expect(
+    (fixture.nativeElement as HTMLElement).querySelector('.panel__count')?.textContent,
+  ).toContain('3 de 23 seleccionados');
+});
+it('selects and assigns the products of every page, not only the visible one', () => {
+  const { api, confirmations, fixture, component } = setup(shampooCategory, manyProducts(23));
+
+  button(fixture, 'Seleccionar todo').click();
+  expect(component.selected().length).toBe(23);
+
+  component.confirmAssign();
+  confirmations[0].accept?.();
+  expect(api.assignCategory.mock.calls[0][1].length).toBe(23);
+});
+it('goes back to the first page when the search changes', async () => {
+  const { fixture, component } = setup(shampooCategory, manyProducts(23));
+  goToPage(fixture, 3);
+
+  component.searchChanged('tinte');
+  await wait(400);
+  fixture.detectChanges();
+
+  expect(component.first()).toBe(0);
+  expect(rows(fixture).map((row) => row[1])).toEqual(['CAP401', 'CAP402', 'CAP403']);
+});
+it('steps back to the last page with products after assigning the whole current page', () => {
+  const { confirmations, fixture, component } = setup(shampooCategory, manyProducts(23));
+  goToPage(fixture, 3);
+  component.selected.set(component.products().slice(20));
+
+  component.confirmAssign();
+  confirmations[0].accept?.();
+  fixture.detectChanges();
+
+  expect(component.products().length).toBe(20);
+  expect(component.first()).toBe(10);
+  expect(rows(fixture)[0][1]).toBe('CAP411');
 });
