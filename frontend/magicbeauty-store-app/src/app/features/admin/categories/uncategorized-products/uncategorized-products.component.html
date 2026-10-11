@@ -1,0 +1,133 @@
+<section class="panel">
+  <div class="panel__head">
+    <h2>Productos sin categoría</h2>
+    <span class="panel__count"
+      >{{ selected().length }} de {{ products().length }} seleccionados</span
+    >
+  </div>
+
+  @if (category()) {
+    <p class="panel__hint">
+      Agregando productos a:
+      <span class="category-path">
+        @for (name of categoryPath(); track $index) {
+          @if (!$first) {
+            <i class="pi pi-angle-right" aria-hidden="true"></i>
+          }
+          <span [class.category-path__current]="$last">{{ name }}</span>
+        }
+      </span>
+    </p>
+  } @else {
+    <p class="panel__hint">
+      Selecciona una categoría en el árbol, marca los productos y pulsa "Agregar categoría".
+    </p>
+  }
+
+  <div class="toolbar">
+    <span class="toolbar__search">
+      <i class="pi pi-search"></i>
+      <input
+        pInputText
+        type="text"
+        placeholder="Buscar por nombre o referencia"
+        aria-label="Buscar productos sin categoría"
+        [ngModel]="search()"
+        (ngModelChange)="searchChanged($event)"
+        (keyup.enter)="load()"
+      />
+    </span>
+
+    <div class="toolbar__actions">
+      <p-button
+        label="Quitar selección"
+        icon="pi pi-times"
+        size="small"
+        severity="secondary"
+        [text]="true"
+        [disabled]="assigning() || selected().length === 0"
+        (onClick)="clearSelection()"
+      />
+      <p-button
+        label="Seleccionar todo"
+        icon="pi pi-check-square"
+        size="small"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="assigning() || products().length === 0"
+        (onClick)="selectAll()"
+      />
+      <p-button
+        label="Agregar categoría"
+        icon="pi pi-tag"
+        size="small"
+        [loading]="assigning()"
+        (onClick)="confirmAssign()"
+      />
+    </div>
+  </div>
+
+  <div class="mb-table-wrap" [class.is-loading]="loading() || assigning()">
+    @if (assigning()) {
+      <app-loader mode="overlay" message="Agregando categoría…" />
+    } @else if (loading()) {
+      <app-loader
+        mode="overlay"
+        [message]="search().trim() ? 'Buscando productos…' : 'Cargando productos…'"
+      />
+    }
+
+    <p-table
+      [value]="products()"
+      styleClass="mb-table"
+      dataKey="id"
+      [rowHover]="true"
+      [selection]="selected()"
+      (selectionChange)="selected.set($event)"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="width: 3.5rem" class="center">
+            <span class="sr-only">Seleccionar</span>
+          </th>
+          <th style="width: 9rem">Referencia</th>
+          <th>Producto</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-product>
+        <tr>
+          <td class="center">
+            <p-tableCheckbox [value]="product" [disabled]="assigning()" />
+          </td>
+          <td>
+            <span class="reference">{{ product.reference }}</span>
+          </td>
+          <td>
+            <span class="product-name">{{ product.name }}</span>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="3">
+            @if (!loading()) {
+              <div class="panel__empty">
+                @if (search().trim()) {
+                  <i class="pi pi-search"></i>
+                  <strong>Sin resultados</strong>
+                  <span>Ningún producto sin categoría coincide con la búsqueda.</span>
+                } @else {
+                  <i class="pi pi-check-circle"></i>
+                  <strong>Todo está organizado</strong>
+                  <span>Todos los productos tienen al menos una categoría.</span>
+                }
+              </div>
+            }
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</section>

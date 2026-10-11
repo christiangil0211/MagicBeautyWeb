@@ -63,6 +63,15 @@
         placeholder="Estado"
         appendTo="body" />
 
+      <p-select
+        [options]="categoryOptions"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="categoryFilter()"
+        (ngModelChange)="categoryFilter.set($event); load()"
+        placeholder="Categoría"
+        appendTo="body" />
+
       <p-button label="Buscar" icon="pi pi-filter" size="small" (onClick)="load()" />
       <p-button
         label="Limpiar"

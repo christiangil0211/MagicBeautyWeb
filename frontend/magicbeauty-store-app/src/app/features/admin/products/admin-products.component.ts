@@ -62,11 +62,18 @@ export class AdminProductsComponent {
   readonly search = signal('');
   readonly brandFilter = signal<number | null>(null);
   readonly statusFilter = signal<boolean | null>(null);
+  readonly categoryFilter = signal<boolean | null>(null);
 
   readonly statusOptions: StatusOption[] = [
     { label: 'Todos', value: null },
     { label: 'Activos', value: true },
     { label: 'Inactivos', value: false }
+  ];
+
+  readonly categoryOptions: StatusOption[] = [
+    { label: 'Con y sin categoría', value: null },
+    { label: 'Con categoría', value: true },
+    { label: 'Sin categoría', value: false }
   ];
 
   readonly brandOptions = computed(() => [
@@ -90,7 +97,8 @@ export class AdminProductsComponent {
           switchMap(() => this.productService.getAll({
             search: this.search().trim() || null,
             brandId: this.brandFilter(),
-            isActive: this.statusFilter()
+            isActive: this.statusFilter(),
+            hasCategories: this.categoryFilter()
           })),
           catchError(error => {
             this.showError('No se pudieron cargar los productos', error);
@@ -126,6 +134,7 @@ export class AdminProductsComponent {
     this.search.set('');
     this.brandFilter.set(null);
     this.statusFilter.set(null);
+    this.categoryFilter.set(null);
     this.load();
   }
 

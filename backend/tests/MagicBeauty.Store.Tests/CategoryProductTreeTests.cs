@@ -15,7 +15,7 @@ public sealed class CategoryProductTreeTests
     public async Task CategoryReturnsOnlyItsEntireSubtreeWithoutDuplicateProducts(int categoryId, int[] expected)
     {
         using var db = await CreateDatabaseAsync();
-        var result = await new ProductRepository(db).GetAllAsync(null, categoryId, null, null, default);
+        var result = await new ProductRepository(db).GetAllAsync(null, categoryId, null, null, null, default);
         Assert.Equal(expected, result.Select(product => product.Id).Order().ToArray());
     }
 
@@ -23,7 +23,7 @@ public sealed class CategoryProductTreeTests
     public async Task BrandAndActiveFiltersStillApplyToDescendantProducts()
     {
         using var db = await CreateDatabaseAsync();
-        var result = await new ProductRepository(db).GetAllAsync(1, 1, true, null, default);
+        var result = await new ProductRepository(db).GetAllAsync(1, 1, true, null, null, default);
         Assert.Equal(new[] { 101, 102, 103 }, result.Select(product => product.Id).Order().ToArray());
     }
 
@@ -31,7 +31,7 @@ public sealed class CategoryProductTreeTests
     public async Task NoCategoryFilterStillReturnsAllProducts()
     {
         using var db = await CreateDatabaseAsync();
-        var result = await new ProductRepository(db).GetAllAsync(null, null, null, null, default);
+        var result = await new ProductRepository(db).GetAllAsync(null, null, null, null, null, default);
         Assert.Equal(6, result.Count);
     }
 

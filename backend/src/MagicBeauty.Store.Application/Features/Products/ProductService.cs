@@ -46,6 +46,7 @@ public sealed partial class ProductService(
         int? brandId,
         int? categoryId,
         bool? isActive,
+        bool? hasCategories,
         string? search,
         CancellationToken cancellationToken)
     {
@@ -53,6 +54,7 @@ public sealed partial class ProductService(
             brandId,
             categoryId,
             isActive,
+            hasCategories,
             Normalize(search),
             cancellationToken);
 
@@ -234,6 +236,55 @@ public sealed partial class ProductService(
         product.UpdatedAt = DateTime.UtcNow;
 
         await productRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<AssignCategoryToProductsResultDto> AssignCategoryAsync(
+        AssignCategoryToProductsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var productIds = (request.ProductIds ?? []).Distinct().ToList();
+
+        if (productIds.Count == 0)
+        {
+            throw new ArgumentException("Selecciona al menos un producto.");
+        }
+
+        if (!await categoryRepository.ExistsAsync(request.CategoryId, cancellationToken))
+        {
+            throw new KeyNotFoundException("La categoría no existe.");
+        }
+
+        var existing = await productRepository.GetExistingIdsAsync(productIds, cancellationToken);
+
+        if (existing.Count != productIds.Count)
+        {
+            // Todo o nada: no se asigna a una parte de la seleccion.
+            throw new InvalidOperationException(
+                "Alguno de los productos seleccionados ya no existe. Actualiza la lista e inténtalo de nuevo.");
+        }
+
+        var alreadyLinked = (await productRepository.GetIdsInCategoryAsync(
+            request.CategoryId,
+            productIds,
+            cancellationToken)).ToHashSet();
+
+        var links = productIds
+            .Where(productId => !alreadyLinked.Contains(productId))
+            .Select(productId => new ProductCategory
+            {
+                ProductId = productId,
+                CategoryId = request.CategoryId
+            })
+            .ToList();
+
+        if (links.Count > 0)
+        {
+            // Un unico guardado: o entran todos los vinculos o ninguno.
+            await productRepository.AddCategoryLinksAsync(links, cancellationToken);
+            await productRepository.SaveChangesAsync(cancellationToken);
+        }
+
+        return new AssignCategoryToProductsResultDto { UpdatedCount = links.Count };
     }
 
     public async Task SetPricesAsync(
