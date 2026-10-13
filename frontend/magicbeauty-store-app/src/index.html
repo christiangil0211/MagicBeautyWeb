@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <title>Magic Beauty Cosmetics | Maquillaje y cosméticos en Cali, al detal y al por mayor</title>
   <base href="/">
+  <!--
+    Red de seguridad para el dominio raíz: la redirección de verdad es la del
+    hosting (dominio predeterminado en Azure). Si el raíz llega a servir el sitio
+    sin ella, se pasa aquí a www, el único origen que la API acepta.
+  -->
+  <script>
+    if (location.hostname === 'magicbeautycosmetics.com') {
+      location.replace('https://www.magicbeautycosmetics.com' + location.pathname + location.search + location.hash);
+    }
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!--
     Metadatos de marca: valen para cualquier URL porque este HTML es el que recibe

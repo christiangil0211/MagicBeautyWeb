@@ -90,6 +90,25 @@ describe('index.html', () => {
     expect(html).not.toContain('name="robots"');
   });
 
+  it('sends the root domain to the canonical www origin, keeping the path', () => {
+    const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '';
+    const visit = (href: string) => {
+      const url = new URL(href);
+      let target: string | null = null;
+      const location = { hostname: url.hostname, pathname: url.pathname, search: url.search, hash: url.hash, replace: (to: string) => (target = to) };
+
+      new Function('location', script)(location);
+
+      return target;
+    };
+
+    expect(visit('https://magicbeautycosmetics.com/catalogo/ACE009?x=1#foto')).toBe(STORE_SITE_URL + '/catalogo/ACE009?x=1#foto');
+    expect(visit('https://magicbeautycosmetics.com/')).toBe(STORE_SITE_URL + '/');
+    // El dominio canónico y las vistas previas de Azure no se redirigen.
+    expect(visit('https://www.magicbeautycosmetics.com/catalogo')).toBeNull();
+    expect(visit('https://mango-beach-053c1c010-7.centralus.4.azurestaticapps.net/')).toBeNull();
+  });
+
   it('has the social preview image it announces', () => {
     expect(readFileSync(join(process.cwd(), 'public', SEO_DEFAULTS.image)).length).toBeGreaterThan(10_000);
   });

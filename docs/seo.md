@@ -80,19 +80,28 @@ Validación externa pendiente tras desplegar (no se puede hacer sin el sitio pub
 
 ### 1. Cloudflare y Azure: dominio raíz
 
-Hoy `magicbeautycosmetics.com` (sin `www`) no resuelve. Para que redirija a `www`:
+Estado comprobado el 2026-10-13:
 
-1. Azure Portal → Static Web App `mango-beach-053c1c010` → **Custom domains** → **Add** →
-   *Custom domain on other DNS* → escribir `magicbeautycosmetics.com`.
-2. Azure muestra un registro **TXT** de validación. Crearlo en Cloudflare → DNS con el nombre y
-   el valor exactos que indique Azure, y esperar a que el dominio quede *Validated*.
-3. En Cloudflare, crear un registro **CNAME** con nombre `@` y destino
+- `magicbeautycosmetics.com` (sin `www`) **no resuelve**: no tiene registro A, AAAA ni CNAME.
+- Azure **ya tiene enlazado** el dominio raíz: pidiéndoselo directamente al frontal de Azure
+  responde con un certificado válido. En el DNS existe el TXT de validación.
+- Azure lo sirve con 200, sin redirigir: `www` todavía no es el dominio predeterminado.
+
+Lo que falta:
+
+1. **Cloudflare → DNS:** crear un registro **CNAME** con nombre `@` y destino
    `mango-beach-053c1c010.4.azurestaticapps.net`, en modo **DNS only** (nube gris). Cloudflare lo
-   aplana automáticamente en el dominio raíz.
-4. En **Custom domains**, seleccionar `www.magicbeautycosmetics.com` → **Set default**. A partir de
-   ahí el dominio raíz y el dominio `azurestaticapps.net` redirigen a `www`.
+   aplana automáticamente en el dominio raíz. No tocar el CNAME de `www` ni el TXT existente.
+2. **Azure Portal → Static Web App `mango-beach-053c1c010` → Custom domains:** seleccionar
+   `www.magicbeautycosmetics.com` → **Set default**. A partir de ahí el dominio raíz y el dominio
+   `azurestaticapps.net` redirigen a `www` con un 301.
 
-No tocar el CNAME actual de `www`. El plan gratuito admite dos dominios personalizados.
+Si el dominio raíz no apareciera en *Custom domains*, añadirlo antes con *Add → Custom domain on
+other DNS* y crear en Cloudflare el TXT que indique Azure.
+
+`index.html` lleva una red de seguridad: si el dominio raíz llega a servir el sitio sin la
+redirección de Azure, el navegador pasa a `www` conservando la ruta. Es necesaria porque la API
+solo acepta el origen `www`; no sustituye al paso 2, que es el que da el 301.
 
 ### 2. Google Search Console
 
@@ -122,5 +131,6 @@ Depende de Search Console y no se puede comprobar desde el repositorio:
 
 ### 4. Azure App Service (API)
 
-- Revisar si el plan permite **Always On**. En las pruebas, la primera petición tras un rato sin
-  uso tardó más de 20 segundos.
+- Activar **Always On** (Configuration → General settings) si el plan lo permite. Medido el
+  2026-10-13: la primera petición tras un rato sin uso tardó 16,7 s; las siguientes, 0,5 s. Con
+  la API dormida, Google puede renderizar una ficha o una categoría sin sus datos.
