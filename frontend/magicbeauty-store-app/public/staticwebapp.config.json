@@ -3,7 +3,14 @@
     "rewrite": "/index.csr.html",
     "exclude": ["/images/*", "/media/*", "*.{js,css,ico,png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,txt,json,xml,pdf,map}"]
   },
+  "platform": {
+    "apiRuntime": "node:20"
+  },
   "routes": [
+    {
+      "route": "/sitemap.xml",
+      "rewrite": "/api/sitemap"
+    },
     {
       "route": "/admin",
       "rewrite": "/index.csr.html",
