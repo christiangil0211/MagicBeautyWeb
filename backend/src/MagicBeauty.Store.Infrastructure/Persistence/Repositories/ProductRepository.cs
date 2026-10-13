@@ -1,4 +1,5 @@
 using MagicBeauty.Store.Application.Common.Interfaces;
+using MagicBeauty.Store.Application.Features.Sitemap;
 using MagicBeauty.Store.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -96,6 +97,28 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
 
         return await query
             .OrderBy(product => product.Name)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ProductSitemapEntry>> GetActiveSitemapEntriesAsync(
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.Products
+            .AsNoTracking()
+            .Where(product => product.IsActive)
+            .OrderBy(product => product.Reference)
+            .Select(product => new ProductSitemapEntry(product.Reference, product.UpdatedAt))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<int>> GetCategoryIdsWithActiveProductsAsync(
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.ProductCategories
+            .AsNoTracking()
+            .Where(link => link.Product != null && link.Product.IsActive)
+            .Select(link => link.CategoryId)
+            .Distinct()
             .ToListAsync(cancellationToken);
     }
 

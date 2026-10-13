@@ -1,10 +1,12 @@
 import { inject } from '@angular/core';
-import { ActivatedRouteSnapshot, CanMatchFn, Router, Routes } from '@angular/router';
+import { ActivatedRouteSnapshot, CanActivateFn, CanMatchFn, Router, Routes } from '@angular/router';
 
 import { map } from 'rxjs';
 import { AuthService } from './core/services/auth.service';
 
 import { adminGuard } from './core/guards/admin.guard';
+import { SEO_DEFAULTS, SeoRouteData } from './core/seo/seo.model';
+import { buildStoreJsonLd, buildWebSiteJsonLd } from './core/seo/structured-data';
 import { PORTAL_BANNERS } from './features/public/portal/portal-navigation';
 
 const authenticatedStore: CanMatchFn = (_route, segments) => {
@@ -12,10 +14,31 @@ const authenticatedStore: CanMatchFn = (_route, segments) => {
   return inject(AuthService).ensureSession().pipe(map(session => session.isAuthenticated));
 };
 
+/**
+ * Los enlaces antiguos `/catalogo?categoria=slug` pasan a la página propia de la
+ * categoría, que es la que se indexa; el resto de parámetros se conserva.
+ */
+const categoryQueryToPage: CanActivateFn = route => {
+  const { categoria: slug, ...queryParams } = route.queryParams;
+
+  return slug ? inject(Router).createUrlTree(['/catalogo/categoria', slug], { queryParams }) : true;
+};
+
+/** Zonas privadas o sin valor para buscadores: nunca se indexan. */
+const NO_INDEX: { seo: SeoRouteData } = { seo: { noindex: true } };
+
+const CATALOG_SEO: SeoRouteData = {
+  description:
+    'Catálogo digital de Magic Beauty Cosmetics en Cali: maquillaje, cuidado capilar, facial y corporal al detal y al por mayor. Arma tu pedido por WhatsApp.',
+  // Las búsquedas internas (?q=) no aportan páginas propias.
+  noindexQueryParams: ['q']
+};
+
 export const routes: Routes = [
   {
     path: 'admin',
     canActivate: [adminGuard],
+    data: NO_INDEX,
     loadComponent: () =>
       import('./layouts/admin-layout/admin-layout.component').then(m => m.AdminLayoutComponent),
     children: [
@@ -84,11 +107,14 @@ export const routes: Routes = [
       {
         path: 'inicio',
         canMatch: [authenticatedStore],
+        data: NO_INDEX,
         loadComponent: () => import('./features/public/home/home.component').then(m => m.HomeComponent)
       },
       {
         path: '',
         canMatch: [authenticatedStore],
+        // Tienda con sesión: sus páginas públicas equivalentes viven en el portal.
+        data: NO_INDEX,
         loadComponent: () => import('./layouts/store-layout/store-layout.component').then(m => m.StoreLayoutComponent),
         children: [
           {
@@ -118,17 +144,35 @@ export const routes: Routes = [
             pathMatch: 'full',
             loadComponent: () =>
               import('./features/public/benefits/benefits.component').then(m => m.BenefitsComponent),
-            title: 'Magic Beauty Cosmetics',
-            data: { portalBanner: PORTAL_BANNERS.benefits }
+            title: SEO_DEFAULTS.title,
+            data: {
+              portalBanner: PORTAL_BANNERS.benefits,
+              seo: {
+                description: SEO_DEFAULTS.description,
+                jsonLd: { store: buildStoreJsonLd(), website: buildWebSiteJsonLd() }
+              } satisfies SeoRouteData
+            }
           },
           {
             path: 'catalogo',
+            canActivate: [categoryQueryToPage],
+            loadComponent: () =>
+              import('./features/public/digital-catalog/digital-catalog.component').then(
+                m => m.DigitalCatalogComponent
+              ),
+            title: 'Catálogo digital de maquillaje y cosméticos · Magic Beauty Cosmetics',
+            data: { portalBanner: PORTAL_BANNERS.digitalCatalog, seo: CATALOG_SEO }
+          },
+          {
+            // Página propia de cada categoría: el mismo catálogo con la categoría ya filtrada.
+            path: 'catalogo/categoria/:slug',
+            resolve: { categoria: (route: ActivatedRouteSnapshot) => route.paramMap.get('slug') },
             loadComponent: () =>
               import('./features/public/digital-catalog/digital-catalog.component').then(
                 m => m.DigitalCatalogComponent
               ),
             title: 'Catálogo digital · Magic Beauty Cosmetics',
-            data: { portalBanner: PORTAL_BANNERS.digitalCatalog }
+            data: { portalBanner: PORTAL_BANNERS.digitalCatalog, categoryPage: true, seo: CATALOG_SEO }
           },
           {
             path: 'catalogo/:reference',
@@ -136,6 +180,7 @@ export const routes: Routes = [
               import('./features/public/product-detail/product-detail.component').then(
                 m => m.ProductDetailComponent
               ),
+            title: 'Producto · Magic Beauty Cosmetics',
             // En el portal se cotiza: sin existencias ni topes por stock.
             data: { quoteMode: true }
           },
@@ -145,15 +190,22 @@ export const routes: Routes = [
               import('./features/public/traditional-catalogs/traditional-catalogs.component').then(
                 m => m.TraditionalCatalogsComponent
               ),
-            title: 'Catálogo tradicional · Magic Beauty Cosmetics',
-            data: { portalBanner: PORTAL_BANNERS.traditionalCatalogs }
+            title: 'Catálogos en PDF · Magic Beauty Cosmetics',
+            data: {
+              portalBanner: PORTAL_BANNERS.traditionalCatalogs,
+              seo: {
+                description:
+                  'Explora los catálogos tradicionales de Magic Beauty Cosmetics: míralos en línea o descárgalos en PDF con nuestras líneas de maquillaje y cosméticos.'
+              } satisfies SeoRouteData
+            }
           },
           {
             path: 'pedido',
             loadComponent: () =>
               import('./features/public/order/order.component').then(m => m.OrderComponent),
             title: 'Mi pedido · Magic Beauty Cosmetics',
-            data: { portalBanner: PORTAL_BANNERS.order }
+            // El pedido es personal y vive en el navegador de cada visitante.
+            data: { portalBanner: PORTAL_BANNERS.order, ...NO_INDEX }
           }
         ]
       },
@@ -167,16 +219,26 @@ export const routes: Routes = [
         redirectTo: 'catalogo/:reference'
       },
       {
-        // La categoría pasa a ser un filtro del catálogo digital.
+        // La categoría de la tienda anterior tiene su página en el catálogo digital.
         path: 'categoria/:slug',
-        redirectTo: ({ params }) =>
-          inject(Router).createUrlTree(['/catalogo'], { queryParams: { categoria: params['slug'] } })
+        redirectTo: '/catalogo/categoria/:slug'
+      },
+      {
+        // Sin sesión, el inicio de la tienda es el portal.
+        path: 'inicio',
+        redirectTo: ''
+      },
+      {
+        /*
+         * Rutas inexistentes: una página propia marcada `noindex` en vez de volver
+         * al inicio, para que los buscadores no las tomen por copias de la portada.
+         */
+        path: '**',
+        loadComponent: () =>
+          import('./features/public/not-found/not-found.component').then(m => m.NotFoundComponent),
+        title: 'Página no encontrada · Magic Beauty Cosmetics',
+        data: NO_INDEX
       }
     ]
-  },
-  {
-    // Rutas inexistentes (y las del e-commerce aún no publicadas) vuelven al inicio.
-    path: '**',
-    redirectTo: ''
   }
 ];

@@ -50,8 +50,6 @@
           "configurations": {
             "production": {
               "outputMode": "static",
-              "server": false,
-              "ssr": false,
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",

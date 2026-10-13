@@ -1,10 +1,24 @@
-import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
-import { Component, computed, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
+import { DOCUMENT, NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
+import {
+  Component,
+  DestroyRef,
+  PLATFORM_ID,
+  computed,
+  effect,
+  inject,
+  input,
+  linkedSignal,
+  signal,
+  viewChild
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { SliderModule } from 'primeng/slider';
-import { catchError, of } from 'rxjs';
+import { catchError, of, tap } from 'rxjs';
 
+import { toMetaDescription } from '../../../core/seo/seo.model';
+import { SeoService } from '../../../core/seo/seo.service';
+import { buildBreadcrumbJsonLd } from '../../../core/seo/structured-data';
 import { CategoryService } from '../../../core/services/category.service';
 import { SearchBoxComponent } from '../../../shared/components/search-box/search-box.component';
 import { CategoryMenuItem } from '../../../shared/models/category.model';
@@ -21,6 +35,7 @@ import {
   retailPrice
 } from '../../../shared/utils/catalog-filters';
 import { formatCop } from '../../../shared/utils/currency';
+import { PortalBannerService } from '../portal/portal-banner.service';
 import { ProductsComponent } from '../products/products.component';
 
 /** El rango de precio redondea su tope a este paso. */
@@ -54,11 +69,28 @@ export class DigitalCatalogComponent {
   readonly categorySlug = input<string | undefined>(undefined, { alias: 'categoria' });
   readonly brand = input<string | undefined>(undefined, { alias: 'marca' });
 
-  /** Árbol de todas las categorías activas (estén o no en el menú de la tienda). */
+  /**
+   * Página propia de una categoría (`/catalogo/categoria/:slug`, `data.categoryPage`):
+   * además de filtrar, toma el nombre de la categoría para su título y sus metadatos.
+   */
+  readonly categoryPage = input(false);
+
+  /** El árbol ya respondió: solo entonces se sabe si la categoría de la URL existe. */
+  private readonly treeLoaded = signal(false);
+
+  /**
+   * Árbol de todas las categorías activas (estén o no en el menú de la tienda).
+   * Se pide solo en el navegador: el HTML prerenderizado no congela el catálogo.
+   */
   readonly menu = toSignal(
-    inject(CategoryService)
-      .getCatalogTree()
-      .pipe(catchError(() => of([] as CategoryMenuItem[]))),
+    isPlatformBrowser(inject(PLATFORM_ID))
+      ? inject(CategoryService)
+          .getCatalogTree()
+          .pipe(
+            tap(() => this.treeLoaded.set(true)),
+            catchError(() => of([] as CategoryMenuItem[]))
+          )
+      : of([] as CategoryMenuItem[]),
     { initialValue: [] as CategoryMenuItem[] }
   );
 
@@ -208,6 +240,54 @@ export class DigitalCatalogComponent {
 
   constructor() {
     const document = inject(DOCUMENT);
+    const seo = inject(SeoService);
+    const bannerHeading = inject(PortalBannerService).heading;
+
+    // Página de categoría: su nombre pasa al encabezado, al título y a los metadatos.
+    effect(() => {
+      // Se vuelve a aplicar tras cada navegación, encima de los metadatos de la ruta.
+      seo.navigation();
+
+      const slug = this.categoryPage() ? this.categorySlug() : undefined;
+      const trail = slug ? pathTo(this.menu(), slug) : null;
+      const category = trail?.at(-1);
+
+      bannerHeading.set(category ? { title: 'Catálogo de', highlight: category.name } : null);
+
+      if (!slug || !this.treeLoaded()) {
+        return;
+      }
+
+      if (!trail || !category) {
+        // La categoría no existe o está inactiva: que no se indexe como una copia del catálogo.
+        seo.apply({ title: 'Categoría no encontrada · Magic Beauty Cosmetics', noindex: true });
+        return;
+      }
+
+      const path = '/catalogo/categoria/' + category.slug;
+      const subtree = this.subtrees().get(category.id) ?? new Set([category.id]);
+      // Sin productos (ni en sus subcategorías) la página está vacía: no se indexa hasta tenerlos.
+      const isEmpty = !this.loading() && !this.items().some(item => matchesCategories(item, subtree));
+
+      seo.apply({
+        title: `${category.name} al detal y al por mayor · Magic Beauty Cosmetics`,
+        description: toMetaDescription(
+          `${category.name} en Magic Beauty Cosmetics, Cali: consulta precios al detal y al por mayor, arma tu pedido y envíalo por WhatsApp. Envíos a toda Colombia.`
+        ),
+        path,
+        // Una búsqueda dentro de la categoría sigue siendo una búsqueda interna.
+        noindex: !!this.searchQuery()?.trim() || isEmpty,
+        jsonLd: {
+          breadcrumb: buildBreadcrumbJsonLd([
+            { name: 'Inicio', path: '/' },
+            { name: 'Catálogo digital', path: '/catalogo' },
+            ...trail.map(item => ({ name: item.name, path: '/catalogo/categoria/' + item.slug }))
+          ])
+        }
+      });
+    });
+    inject(DestroyRef).onDestroy(() => bannerHeading.set(null));
+
     effect(onCleanup => {
       if (!this.filtersOpen()) return;
       const elements = [document.documentElement, document.body];
@@ -300,6 +380,23 @@ function filterTree(items: readonly CategoryMenuItem[], query: string): Category
 
     return children.length > 0 ? [{ ...item, children }] : [];
   });
+}
+
+/** Camino desde la raíz hasta la categoría del slug (incluida); null si no existe. */
+function pathTo(items: readonly CategoryMenuItem[], slug: string): CategoryMenuItem[] | null {
+  for (const item of items) {
+    if (item.slug === slug) {
+      return [item];
+    }
+
+    const below = pathTo(item.children, slug);
+
+    if (below) {
+      return [item, ...below];
+    }
+  }
+
+  return null;
 }
 
 function findBySlug(items: readonly CategoryMenuItem[], slug: string): CategoryMenuItem | null {

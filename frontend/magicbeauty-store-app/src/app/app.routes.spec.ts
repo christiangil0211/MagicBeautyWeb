@@ -41,8 +41,8 @@ function answerAnonymousSession(): void {
 it.each([
   ['/productos?q=labial', '/catalogo?q=labial'],
   ['/productos/ACO011', '/catalogo/ACO011'],
-  ['/categoria/labios', '/catalogo?categoria=labios'],
-  ['/nuevo', '/']
+  ['/categoria/labios', '/catalogo/categoria/labios'],
+  ['/catalogo?categoria=labios', '/catalogo/categoria/labios']
 ])('redirects %s to %s', async (from, to) => {
   setup();
   const harness = await RouterTestingHarness.create();
@@ -50,7 +50,15 @@ it.each([
   expect(TestBed.inject(Router).url).toBe(to);
 });
 
-it.each(['/', '/catalogo', '/catalogos', '/pedido', '/catalogo/ACO011'])('serves the portal route %s', async url => {
+it('keeps an unknown address on its own not-found page instead of sending it home', async () => {
+  setup();
+  const harness = await RouterTestingHarness.create();
+  await navigateAs(harness, '/nuevo');
+  expect(TestBed.inject(Router).url).toBe('/nuevo');
+  expect(harness.fixture.nativeElement.querySelector('app-not-found')).not.toBeNull();
+});
+
+it.each(['/', '/catalogo', '/catalogos', '/pedido', '/catalogo/ACO011', '/catalogo/categoria/labios'])('serves the portal route %s', async url => {
   setup();
   const harness = await RouterTestingHarness.create();
   await navigateAs(harness, url);

@@ -1,6 +1,35 @@
 {
   "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/images/*", "/media/*", "*.{js,css,ico,png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,txt,json}"]
-  }
+    "rewrite": "/index.csr.html",
+    "exclude": ["/images/*", "/media/*", "*.{js,css,ico,png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,txt,json,xml,pdf,map}"]
+  },
+  "routes": [
+    {
+      "route": "/admin",
+      "rewrite": "/index.csr.html",
+      "headers": { "X-Robots-Tag": "noindex, nofollow" }
+    },
+    {
+      "route": "/admin/*",
+      "rewrite": "/index.csr.html",
+      "headers": { "X-Robots-Tag": "noindex, nofollow" }
+    },
+    {
+      "route": "/pedido",
+      "rewrite": "/index.csr.html",
+      "headers": { "X-Robots-Tag": "noindex, follow" }
+    },
+    {
+      "route": "/*.{js,css}",
+      "headers": { "Cache-Control": "public, max-age=31536000, immutable" }
+    },
+    {
+      "route": "/media/*",
+      "headers": { "Cache-Control": "public, max-age=31536000, immutable" }
+    },
+    {
+      "route": "/images/*",
+      "headers": { "Cache-Control": "public, max-age=86400" }
+    }
+  ]
 }

@@ -1,3 +1,17 @@
+/** Dominio canónico del sitio, sin barra final. Lo usan canonical, Open Graph y datos estructurados. */
+export const STORE_SITE_URL = 'https://www.magicbeautycosmetics.com';
+
+/**
+ * Dirección del local por partes, como la pide Schema.org. Solo datos
+ * confirmados: no hay código postal, coordenadas ni horario publicados.
+ */
+export const STORE_ADDRESS = {
+  streetAddress: 'Calle 13 # 44A - 26',
+  locality: 'Cali',
+  region: 'Valle del Cauca',
+  countryCode: 'CO'
+} as const;
+
 /**
  * Datos de contacto de la tienda. Único lugar donde se define el WhatsApp:
  * los componentes lo leen de aquí en vez de repetir el número.
@@ -9,7 +23,7 @@ export const STORE_CONTACT = {
   whatsappMessage:
     'Hola, estoy visitando el catálogo de Magic Beauty Cosmetics y quisiera recibir asesoría.',
   email: 'magicbeauty0615@gmail.com',
-  address: 'Calle 13 # 44A - 26, Cali',
+  address: `${STORE_ADDRESS.streetAddress}, ${STORE_ADDRESS.locality}`,
   mapsUrl: 'https://maps.app.goo.gl/y5GSuFcaVCW9nVCi8'
 } as const;
 

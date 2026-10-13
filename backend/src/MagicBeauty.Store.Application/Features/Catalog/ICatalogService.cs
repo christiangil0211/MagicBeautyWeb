@@ -15,4 +15,13 @@ public interface ICatalogService
         CancellationToken cancellationToken);
 
     Task<ProductDetailDto> GetProductDetailAsync(string reference, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Productos activos de la misma categoria que el de la referencia, sin
+    /// incluirlo. La ficha los muestra sin descargar el catalogo completo.
+    /// </summary>
+    Task<IReadOnlyList<CatalogProductListItemDto>> GetRelatedProductsAsync(
+        string reference,
+        int limit,
+        CancellationToken cancellationToken);
 }

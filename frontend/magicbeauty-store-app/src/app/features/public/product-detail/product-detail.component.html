@@ -16,7 +16,7 @@
     <a routerLink="/">Inicio</a>
     <i class="pi pi-angle-right"></i>
     @if (breadcrumbCategory(); as category) {
-      <a routerLink="/catalogo" [queryParams]="{ categoria: category.slug }">{{ category.name }}</a>
+      <a [routerLink]="['/catalogo/categoria', category.slug]">{{ category.name }}</a>
     } @else {
       <a routerLink="/catalogo">Catálogo digital</a>
     }
@@ -44,7 +44,7 @@
 
       <div class="gallery__main">
         @if (selectedImage(); as image) {
-          <img [src]="image.url" [alt]="image.altText || item.name" />
+          <img [src]="image.url" [alt]="image.altText || item.name" fetchpriority="high" decoding="async" />
         } @else {
           <span class="gallery__placeholder">
             <i class="pi pi-image"></i>

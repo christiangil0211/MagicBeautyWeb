@@ -15,6 +15,13 @@ const string CorsPolicyName = "MagicBeautyCorsPolicy";
 
 builder.Services.AddControllers();
 
+// El catalogo publico pesa cientos de KB en JSON: comprimido (Brotli o gzip) baja a una fraccion.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = ["application/json", "application/xml", "text/plain"];
+});
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.IsDevelopment());
 
@@ -74,6 +81,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseResponseCompression();
 
 if (!app.Environment.IsDevelopment())
 {

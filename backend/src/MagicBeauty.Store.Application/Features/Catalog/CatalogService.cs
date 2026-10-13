@@ -15,6 +15,9 @@ public sealed class CatalogService(
     IPriceVisibilityPolicy priceVisibilityPolicy,
     IPriceAudienceProvider priceAudienceProvider) : ICatalogService
 {
+    /// <summary>Tope de relacionados por consulta, pida lo que pida el cliente.</summary>
+    private const int MaxRelatedProducts = 20;
+
     public async Task<IReadOnlyList<CatalogProductListItemDto>> GetProductsAsync(
         int? brandId,
         int? categoryId,
@@ -32,27 +35,94 @@ public sealed class CatalogService(
             cancellationToken);
 
         return products
-            .Select(product => new CatalogProductListItemDto
-            {
-                Id = product.Id,
-                Reference = product.Reference,
-                Name = product.Name,
-                BrandName = product.Brand?.Name ?? string.Empty,
-                HasVariants = product.HasVariants,
-                AvailableQuantity = product.Variants
-                    .Where(variant => variant.IsActive)
-                    .Sum(variant => variant.Quantity),
-                MainImageUrl = product.Images
-                    .Where(image => image.IsActive && image.IsMain && image.ProductVariantId is null)
-                    .Select(image => image.Url)
-                    .FirstOrDefault(),
-                CategoryIds = product.ProductCategories
-                    .Select(link => link.CategoryId)
-                    .Distinct()
-                    .ToList(),
-                Prices = MapVisiblePrices(product, visiblePriceTypes)
-            })
+            .Select(product => ToListItem(product, visiblePriceTypes))
             .ToList();
+    }
+
+    public async Task<IReadOnlyList<CatalogProductListItemDto>> GetRelatedProductsAsync(
+        string reference,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var normalized = reference?.Trim().ToUpperInvariant() ?? string.Empty;
+
+        var product = string.IsNullOrEmpty(normalized)
+            ? null
+            : await productRepository.GetDetailByReferenceAsync(normalized, cancellationToken);
+
+        // Un producto desactivado no existe para la tienda.
+        if (product is null || !product.IsActive)
+        {
+            throw new KeyNotFoundException("El producto no existe.");
+        }
+
+        // La misma categoria del breadcrumb de la ficha: la primera por nombre.
+        var categoryId = product.ProductCategories
+            .Where(link => link.Category is not null)
+            .OrderBy(link => link.Category!.Name)
+            .Select(link => (int?)link.CategoryId)
+            .FirstOrDefault();
+
+        var visiblePriceTypes = await GetVisiblePriceTypesAsync(cancellationToken);
+
+        var take = Math.Clamp(limit, 1, MaxRelatedProducts);
+
+        var related = (await GetActiveProductsAsync(categoryId, cancellationToken))
+            .Where(candidate => candidate.Id != product.Id)
+            .Take(take)
+            .ToList();
+
+        // Una categoria con pocos productos se completa con el catalogo activo, para
+        // que la ficha no se quede sin sugerencias (asi se comportaba antes).
+        if (categoryId.HasValue && related.Count < take)
+        {
+            var shown = related.Select(candidate => candidate.Id).Append(product.Id).ToHashSet();
+
+            related.AddRange((await GetActiveProductsAsync(null, cancellationToken))
+                .Where(candidate => !shown.Contains(candidate.Id))
+                .Take(take - related.Count));
+        }
+
+        return related
+            .Select(candidate => ToListItem(candidate, visiblePriceTypes))
+            .ToList();
+    }
+
+    private Task<IReadOnlyList<Product>> GetActiveProductsAsync(int? categoryId, CancellationToken cancellationToken)
+    {
+        return productRepository.GetAllAsync(
+            brandId: null,
+            categoryId,
+            isActive: true,
+            hasCategories: null,
+            search: null,
+            cancellationToken);
+    }
+
+    private static CatalogProductListItemDto ToListItem(
+        Product product,
+        IReadOnlyList<PriceType> visiblePriceTypes)
+    {
+        return new CatalogProductListItemDto
+        {
+            Id = product.Id,
+            Reference = product.Reference,
+            Name = product.Name,
+            BrandName = product.Brand?.Name ?? string.Empty,
+            HasVariants = product.HasVariants,
+            AvailableQuantity = product.Variants
+                .Where(variant => variant.IsActive)
+                .Sum(variant => variant.Quantity),
+            MainImageUrl = product.Images
+                .Where(image => image.IsActive && image.IsMain && image.ProductVariantId is null)
+                .Select(image => image.Url)
+                .FirstOrDefault(),
+            CategoryIds = product.ProductCategories
+                .Select(link => link.CategoryId)
+                .Distinct()
+                .ToList(),
+            Prices = MapVisiblePrices(product, visiblePriceTypes)
+        };
     }
 
     public async Task<ProductDetailDto> GetProductDetailAsync(

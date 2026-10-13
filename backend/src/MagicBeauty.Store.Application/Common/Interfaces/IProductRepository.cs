@@ -1,3 +1,4 @@
+using MagicBeauty.Store.Application.Features.Sitemap;
 using MagicBeauty.Store.Domain.Entities;
 
 namespace MagicBeauty.Store.Application.Common.Interfaces;
@@ -11,6 +12,12 @@ public interface IProductRepository
         bool? hasCategories,
         string? search,
         CancellationToken cancellationToken);
+
+    /// <summary>Referencia y fecha de los productos activos, sin cargar su grafo: para el sitemap.</summary>
+    Task<IReadOnlyList<ProductSitemapEntry>> GetActiveSitemapEntriesAsync(CancellationToken cancellationToken);
+
+    /// <summary>Categorias que tienen asignado directamente al menos un producto activo.</summary>
+    Task<IReadOnlyList<int>> GetCategoryIdsWithActiveProductsAsync(CancellationToken cancellationToken);
 
     /// <summary>Grafo completo y sin seguimiento, para las lecturas de detalle.</summary>
     Task<Product?> GetDetailByIdAsync(int id, CancellationToken cancellationToken);

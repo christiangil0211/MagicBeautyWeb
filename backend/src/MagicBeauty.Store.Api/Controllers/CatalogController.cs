@@ -31,6 +31,17 @@ public sealed class CatalogController(ICatalogService catalogService) : Controll
         return Ok(products);
     }
 
+    [HttpGet("products/{reference}/related")]
+    public async Task<ActionResult<IReadOnlyList<CatalogProductListItemDto>>> GetRelated(
+        string reference,
+        [FromQuery] int limit = 5,
+        CancellationToken cancellationToken = default)
+    {
+        var products = await catalogService.GetRelatedProductsAsync(reference, limit, cancellationToken);
+
+        return Ok(products);
+    }
+
     [HttpGet("products/{reference}")]
     public async Task<ActionResult<ProductDetailDto>> GetByReference(
         string reference,
