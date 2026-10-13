@@ -6,8 +6,11 @@ on:
       - release
   pull_request:
     types: [opened, synchronize, reopened, closed]
+    # Los PR hacia develop tambien generan vista previa: permite validar en Azure antes de fusionar.
+    # Produccion solo se despliega con el push a release.
     branches:
       - release
+      - develop
 
 jobs:
   build_and_deploy_job:
@@ -29,7 +32,8 @@ jobs:
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "/frontend/magicbeauty-store-app" # App source code path
-          api_location: "" # Api source code path - optional
+          # Funciones administradas (incluidas en el plan Free): sirven /sitemap.xml bajo el dominio del sitio.
+          api_location: "/frontend/storefront-api" # Api source code path - optional
           output_location: "dist/magicbeauty-store-app/browser" # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
 
