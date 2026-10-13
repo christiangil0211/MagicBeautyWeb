@@ -4,6 +4,9 @@ import { Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
+import { publicBrandName, toMetaDescription } from '../../../core/seo/seo.model';
+import { SeoService } from '../../../core/seo/seo.service';
+import { buildBreadcrumbJsonLd, buildProductJsonLd } from '../../../core/seo/structured-data';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { OrderDraftService } from '../../../core/services/order-draft.service';
 import { MAX_LINE_QUANTITY } from '../../../shared/models/order-draft.model';
@@ -35,6 +38,7 @@ export class ProductDetailComponent {
   private readonly messageService = inject(MessageService);
   private readonly orderDraft = inject(OrderDraftService);
   private readonly router = inject(Router);
+  private readonly seo = inject(SeoService);
 
   /** Referencia que llega de la ruta /catalogo/:reference (withComponentInputBinding). */
   readonly reference = input.required<string>();
@@ -150,6 +154,23 @@ export class ProductDetailComponent {
         this.load(reference);
       }
     });
+
+    // Metadatos de la ficha: se aplican encima de los de la ruta cuando llega el producto.
+    effect(() => {
+      this.seo.navigation();
+
+      if (this.notFound()) {
+        // El hosting responde 200 a cualquier URL: es la página la que avisa que no existe.
+        this.seo.apply({ title: 'Producto no encontrado · Magic Beauty Cosmetics', noindex: true });
+        return;
+      }
+
+      const product = this.product();
+
+      if (product && !this.loading()) {
+        this.applySeo(product);
+      }
+    });
   }
 
   selectVariant(variant: ProductDetailVariant): void {
@@ -235,6 +256,36 @@ export class ProductDetailComponent {
     return ['/catalogo', reference];
   }
 
+  private applySeo(product: ProductDetail): void {
+    const path = '/catalogo/' + encodeURIComponent(product.reference);
+    const category = product.categories[0];
+    const image = product.images.find(item => item.productVariantId == null);
+    const brand = publicBrandName(product.brandName);
+
+    this.seo.apply({
+      title: [product.name, brand, 'Magic Beauty Cosmetics'].filter(part => part).join(' · '),
+      description: toMetaDescription(
+        product.description?.trim() ||
+          `${product.name}${brand ? ' de ' + brand : ''} (ref. ${product.reference}) en Magic Beauty Cosmetics, Cali. Consulta precios al detal y al por mayor y pide por WhatsApp.`
+      ),
+      path,
+      // La ficha pública es la del portal; la de la tienda con sesión no se indexa.
+      noindex: !this.router.url.startsWith('/catalogo/'),
+      type: 'product',
+      image: image?.url,
+      imageAlt: image?.altText || product.name,
+      jsonLd: {
+        product: buildProductJsonLd(product, path),
+        breadcrumb: buildBreadcrumbJsonLd([
+          { name: 'Inicio', path: '/' },
+          { name: 'Catálogo digital', path: '/catalogo' },
+          ...(category ? [{ name: category.name, path: '/catalogo/categoria/' + category.slug }] : []),
+          { name: product.name, path }
+        ])
+      }
+    });
+  }
+
   private load(reference: string): void {
     this.loading.set(true);
     this.notFound.set(false);
@@ -256,10 +307,7 @@ export class ProductDetailComponent {
     });
   }
 
-  /**
-   * No hay endpoint de relacionados y no vale la pena crearlo todavía: se toma
-   * el catálogo activo y se excluye el producto que se está viendo.
-   */
+  /** Unos pocos productos de la misma categoría: la ficha no descarga el catálogo entero. */
   private loadRelated(product: ProductDetail): void {
     // Solo en el navegador: el servidor no debe esperar el catálogo completo para
     // entregar la ficha, que es lo que importa para el SEO.
@@ -267,15 +315,8 @@ export class ProductDetailComponent {
       return;
     }
 
-    this.catalogService.getProducts().subscribe({
-      next: products => {
-        this.related.set(
-          products
-            .filter(item => item.reference !== product.reference)
-            .slice(0, RELATED_LIMIT)
-            .map(toProductCard)
-        );
-      },
+    this.catalogService.getRelatedProducts(product.reference, RELATED_LIMIT).subscribe({
+      next: products => this.related.set(products.slice(0, RELATED_LIMIT).map(toProductCard)),
       error: () => this.related.set([])
     });
   }

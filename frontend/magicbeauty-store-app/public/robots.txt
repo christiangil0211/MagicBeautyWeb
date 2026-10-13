@@ -1,0 +1,11 @@
+# Magic Beauty Cosmetics - https://www.magicbeautycosmetics.com/
+#
+# El pedido y las busquedas internas NO se bloquean aqui: llevan la etiqueta
+# "noindex", y un buscador solo puede leerla si se le permite rastrear la pagina.
+
+User-agent: *
+Disallow: /admin
+
+# El sitemap lo genera la API con los productos y categorias activos. Debe ser
+# el mismo host de apiBaseUrl (src/environments/environment.production.ts).
+Sitemap: https://api-magic-beauty-g6fpcwbzaghbgjcu.centralus-01.azurewebsites.net/sitemap.xml

@@ -180,7 +180,7 @@
     <div class="store-footer__inner">
       <div class="store-footer__brand">
         <a class="store-footer__logo" routerLink="/" aria-label="Magic Beauty Cosmetics, ir al inicio">
-          <img src="/images/logo-footer-fucsia.png" alt="Magic Beauty Cosmetics" width="1536" height="1024" />
+          <img src="/images/logo-footer-fucsia.webp" alt="Magic Beauty Cosmetics" width="600" height="400" loading="lazy" decoding="async" />
         </a>
         <p>Belleza que te inspira, productos que te enamoran.</p>
       </div>
@@ -207,6 +207,16 @@
             <a [routerLink]="tab.path">{{ tab.label }}</a>
           }
         </div>
+
+        <!-- Enlaces a la página de cada categoría: así visitantes y buscadores llegan a ellas. -->
+        @if (menu().length > 0) {
+          <div class="store-footer__column">
+            <h3>Categorías</h3>
+            @for (item of menu(); track item.id) {
+              <a [routerLink]="catalogCategoryPath(item.slug)">{{ item.name }}</a>
+            }
+          </div>
+        }
       }
 
       <div class="store-footer__column">

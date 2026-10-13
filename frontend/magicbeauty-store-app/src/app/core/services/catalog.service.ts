@@ -46,6 +46,14 @@ export class CatalogService {
     });
   }
 
+  /** Productos de la misma categoría que el de la referencia, sin incluirlo. */
+  getRelatedProducts(reference: string, limit: number): Observable<CatalogProductListItem[]> {
+    return this.http.get<CatalogProductListItem[]>(
+      `${this.apiUrl}/products/${encodeURIComponent(reference)}/related`,
+      { params: new HttpParams().set('limit', limit), transferCache: false }
+    );
+  }
+
   getProductDetail(reference: string): Observable<ProductDetail> {
     return this.http.get<ProductDetail>(`${this.apiUrl}/products/${reference}`, {
       transferCache: false

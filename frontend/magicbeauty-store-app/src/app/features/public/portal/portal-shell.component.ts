@@ -1,9 +1,10 @@
-import { Component, ElementRef, inject, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, inject, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
 import { OrderDraftService } from '../../../core/services/order-draft.service';
+import { PortalBannerService } from './portal-banner.service';
 import { PORTAL_TABS, PortalBanner } from './portal-navigation';
 
 /**
@@ -26,13 +27,23 @@ export class PortalShellComponent {
   readonly orderCount = inject(OrderDraftService).itemCount;
 
   /** Banner declarado en la ruta hija activa; el detalle de producto no tiene. */
-  readonly banner = toSignal(
+  private readonly routeBanner = toSignal(
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd),
       map(() => this.currentBanner())
     ),
     { initialValue: this.currentBanner() }
   );
+
+  private readonly heading = inject(PortalBannerService).heading;
+
+  /** El de la ruta, con el título propio de la página si lo declaró (una categoría). */
+  readonly banner = computed<PortalBanner | null>(() => {
+    const banner = this.routeBanner();
+    const heading = this.heading();
+
+    return banner && heading ? { ...banner, ...heading } : banner;
+  });
 
   /** Botones sin enlace: llevan al contenido de la pestaña, bajo el banner. */
   scrollToContent(): void {

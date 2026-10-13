@@ -1,5 +1,5 @@
-import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
-import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import { DOCUMENT, NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
+import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -109,11 +109,14 @@ export class PublicLayoutComponent {
       }));
     });
 
-    this.categoryService.getMenu().subscribe({
-      next: menu => this.menu.set(menu),
-      // Si la API no responde, la tienda sigue navegable sin el menú de categorías.
-      error: () => this.menu.set([])
-    });
+    // Solo en el navegador: el HTML prerenderizado no consulta la API ni congela el menú.
+    if (isPlatformBrowser(inject(PLATFORM_ID))) {
+      this.categoryService.getMenu().subscribe({
+        next: menu => this.menu.set(menu),
+        // Si la API no responde, la tienda sigue navegable sin el menú de categorías.
+        error: () => this.menu.set([])
+      });
+    }
 
     this.auth.ensureSession().subscribe();
 
@@ -219,6 +222,11 @@ export class PublicLayoutComponent {
 
   categoryPath(slug: string): string {
     return '/categoria/' + slug;
+  }
+
+  /** Página pública de la categoría dentro del catálogo digital. */
+  catalogCategoryPath(slug: string): string {
+    return '/catalogo/categoria/' + slug;
   }
 
   openMobileMenu(): void {
