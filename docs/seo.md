@@ -14,7 +14,8 @@ solo y qué pasos manuales quedan fuera del repositorio.
 | Metadatos de marca sin JavaScript | `src/index.html` | Los recibe quien no ejecuta JavaScript (WhatsApp, Facebook) en cualquier URL. |
 | Prerenderizado | `app.routes.server.ts` | `/`, `/catalogo` y `/catalogos` se generan como HTML en el build. |
 | Rastreo | `public/robots.txt` | Permite todo salvo `/admin` y declara el sitemap. |
-| Sitemap | API: `GET /sitemap.xml` (`SitemapController`, `SitemapService`) | Páginas del portal, categorías activas y productos activos, generado en cada consulta. |
+| Sitemap | API: `GET /sitemap.xml` (`SitemapController`, `SitemapService`) | Páginas del portal, categorías con productos y productos activos, generado en cada consulta. |
+| Sitemap en el dominio del sitio | `frontend/storefront-api` + regla `/sitemap.xml` en `staticwebapp.config.json` | Función administrada que entrega el XML del API en `https://www.magicbeautycosmetics.com/sitemap.xml`. |
 | Hosting | `public/staticwebapp.config.json` | Fallback a `index.csr.html`, cabeceras `X-Robots-Tag` y caché. |
 
 ### Qué se indexa y qué no
@@ -39,6 +40,30 @@ de parámetros. El pie de página enlaza las categorías del menú.
 Una categoría sin productos activos (ni en sus subcategorías) no aparece en el sitemap y su
 página se marca `noindex`: vuelve a indexarse sola en cuanto se le asignan productos desde el
 administrador. Los productos sin categoría se indexan igual por su ficha.
+
+### Sitemap
+
+`https://www.magicbeautycosmetics.com/sitemap.xml` es la dirección que se declara en `robots.txt`
+y la que se registra en Search Console.
+
+- **Quién lo genera:** el API (.NET), en cada consulta, con las páginas del portal, las categorías
+  que tienen productos activos y los productos activos. Las URL son siempre absolutas sobre
+  `Store:PublicUrl` (`https://www.magicbeautycosmetics.com`).
+- **Quién lo sirve en el dominio del sitio:** una función administrada de Azure Static Web Apps
+  (`frontend/storefront-api`, `GET /api/sitemap`). `staticwebapp.config.json` reescribe
+  `/sitemap.xml` hacia ella. La función pide el XML al API y lo devuelve sin modificarlo.
+- **Por qué hace falta la función:** Search Console solo acepta sitemaps alojados en el dominio de
+  la propiedad, y una reescritura de Static Web Apps no puede apuntar a otro host. Enlazar el
+  App Service como backend exige el plan Standard; las funciones administradas están en el Free.
+- **Actualización:** un producto o una categoría nuevos aparecen sin desplegar nada. La función
+  reutiliza la última respuesta buena hasta 10 minutos y la respuesta se sirve con una hora de
+  caché, así que el retraso máximo es de alrededor de una hora.
+- **Si el API no responde:** la función entrega la última copia buena que tenga; si no tiene
+  ninguna, responde `503` con `Retry-After`, nunca HTML.
+
+La función lee el sitemap del host de `apiBaseUrl`. Si el API cambia de dominio hay que actualizar
+`environment.production.ts` y `storefront-api/src/sitemap-proxy.js` a la vez: una prueba falla si
+no coinciden.
 
 ### Renderizado
 
@@ -69,6 +94,8 @@ que Google recomienda para aplicaciones de una sola página.
   estructurados, `robots.txt`, `staticwebapp.config.json`, `index.html` y qué rutas se prerenderizan.
 - Backend (`dotnet test`): `SitemapTests.cs` cubre el contenido del sitemap, que nunca lista
   productos inactivos, y el endpoint de productos relacionados.
+- Función del sitemap (`npm test` en `frontend/storefront-api`): devuelve el XML del API sin
+  cambios, nunca reenvía HTML ni un XML cortado, y conserva la última copia buena si el API falla.
 
 Validación externa pendiente tras desplegar (no se puede hacer sin el sitio publicado):
 
@@ -115,11 +142,10 @@ Depende de Search Console y no se puede comprobar desde el repositorio:
 
 - Que Google renderice las fichas y categorías a tiempo. Si la inspección muestra la página vacía,
   la causa más probable es el arranque en frío de la API (ver riesgos).
-- La lectura del sitemap. Está en el host de la API, así que Google lo descubre por `robots.txt`
-  y no se puede enviar desde el formulario de la propiedad. Si se le da a la API un subdominio
-  propio (por ejemplo `api.magicbeautycosmetics.com`), la propiedad de dominio lo cubre y se puede
-  enviar. En ese caso hay que actualizar `environment.production.ts` y `robots.txt` a la vez: una
-  prueba falla si no coinciden.
+- La lectura del sitemap. Se registra en *Sitemaps* con la dirección completa
+  `https://www.magicbeautycosmetics.com/sitemap.xml`. La dirección del host de la API
+  (`...azurewebsites.net/sitemap.xml`) no se puede registrar: queda fuera de la propiedad y
+  Search Console la rechaza como "Dirección de sitemap no válida".
 - Cuánto tarda la indexación y qué páginas elige Google.
 
 ### 3. Ficha de Google Maps

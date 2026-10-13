@@ -6,6 +6,6 @@
 User-agent: *
 Disallow: /admin
 
-# El sitemap lo genera la API con los productos y categorias activos. Debe ser
-# el mismo host de apiBaseUrl (src/environments/environment.production.ts).
-Sitemap: https://api-magic-beauty-g6fpcwbzaghbgjcu.centralus-01.azurewebsites.net/sitemap.xml
+# Lo genera el API con los productos y categorias activos; el sitio lo sirve en
+# su propio dominio a traves de una funcion (frontend/storefront-api).
+Sitemap: https://www.magicbeautycosmetics.com/sitemap.xml
