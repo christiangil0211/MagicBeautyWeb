@@ -209,5 +209,5 @@
 </aside>
 
 @if (submitting()) {
-  <app-loader mode="fullscreen" message="Iniciando sesión…" />
+  <app-loader mode="fullscreen" [message]="loaderMessage()" />
 }

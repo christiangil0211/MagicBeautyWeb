@@ -1,10 +1,17 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap, timeout } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ANONYMOUS_SESSION, LoginResponse, Session } from '../../shared/models/session.model';
+
+/**
+ * Espera máxima de login, verificación y cambio de contraseña. Supera el peor caso
+ * del API (~105 s reintentando abrir la base mientras Azure SQL se reactiva, más
+ * 15 s de SMTP) para no cortar un inicio de sesión que iba a funcionar.
+ */
+export const AUTH_REQUEST_TIMEOUT_MS = 130_000;
 
 /**
  * Refleja en la UI la sesión que mantiene el backend (cookie HttpOnly). Solo sirve
@@ -61,6 +68,7 @@ export class AuthService {
    */
   login(email: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
+      timeout(AUTH_REQUEST_TIMEOUT_MS),
       switchMap(response =>
         response.status === 'AUTHENTICATED'
           ? this.refresh().pipe(map(() => response))
@@ -73,14 +81,14 @@ export class AuthService {
   changeTemporaryPassword(email: string, temporaryPassword: string, newPassword: string): Observable<Session> {
     return this.http
       .post<LoginResponse>(`${this.apiUrl}/change-temporary-password`, { email, temporaryPassword, newPassword })
-      .pipe(switchMap(() => this.refresh()));
+      .pipe(timeout(AUTH_REQUEST_TIMEOUT_MS), switchMap(() => this.refresh()));
   }
 
   /** Confirma el correo con el código recibido y abre la sesión. */
   verifyEmail(email: string, code: string): Observable<Session> {
     return this.http
       .post<LoginResponse>(`${this.apiUrl}/verify-email`, { email, code })
-      .pipe(switchMap(() => this.refresh()));
+      .pipe(timeout(AUTH_REQUEST_TIMEOUT_MS), switchMap(() => this.refresh()));
   }
 
   logout(): Observable<void> {
