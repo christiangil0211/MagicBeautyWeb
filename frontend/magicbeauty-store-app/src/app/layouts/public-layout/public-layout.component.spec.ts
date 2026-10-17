@@ -2,8 +2,10 @@
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
+import { vi } from 'vitest';
 import { AuthService } from '../../core/services/auth.service';
 import { CategoryService } from '../../core/services/category.service';
+import { CategoryMenuItem } from '../../shared/models/category.model';
 import { PublicLayoutComponent } from './public-layout.component';
 
 it('opens every nested level on hover and keeps ancestors open', async () => {
@@ -45,19 +47,57 @@ it('opens every nested level on hover and keeps ancestors open', async () => {
   expect(child.querySelector('.nav-dropdown__sublist')).toBeNull();
 });
 
-function createPortalLayout(canManageStore: boolean) {
+function createPortalLayout(
+  canManageStore: boolean,
+  menu: CategoryMenuItem[] = [{ id: 1, slug: 'root', name: 'Root', children: [] }],
+  isAuthenticated = signal(canManageStore)
+) {
+  const getMenu = vi.fn(() => of(menu));
   TestBed.configureTestingModule({
     imports: [PublicLayoutComponent],
     providers: [provideRouter([]),
       { provide: AuthService, useValue: {
-        canManageStore: signal(canManageStore), isAuthenticated: signal(canManageStore), session: signal(null), ensureSession: () => of(null)
+        canManageStore: signal(canManageStore), isAuthenticated, session: signal(null), ensureSession: () => of(null)
       } },
-      { provide: CategoryService, useValue: { getMenu: () => of([{ id: 1, slug: 'root', name: 'Root', children: [] }]) } }
+      { provide: CategoryService, useValue: { getMenu } }
     ]
   });
 
-  return TestBed.createComponent(PublicLayoutComponent);
+  const fixture = TestBed.createComponent(PublicLayoutComponent);
+  return Object.assign(fixture, { getMenu });
 }
+
+it('does not request the category menu for visitors, who never see it', async () => {
+  const fixture = createPortalLayout(false);
+  await fixture.whenStable();
+
+  expect(fixture.getMenu).not.toHaveBeenCalled();
+});
+
+it('requests the menu once, when the session turns out to be authenticated', async () => {
+  const isAuthenticated = signal(false);
+  const fixture = createPortalLayout(false, undefined, isAuthenticated);
+  await fixture.whenStable();
+  expect(fixture.getMenu).not.toHaveBeenCalled();
+
+  isAuthenticated.set(true);
+  await fixture.whenStable();
+  isAuthenticated.set(false);
+  await fixture.whenStable();
+  isAuthenticated.set(true);
+  await fixture.whenStable();
+
+  expect(fixture.getMenu).toHaveBeenCalledTimes(1);
+  expect(fixture.componentInstance.menu().map(item => item.slug)).toEqual(['root']);
+});
+
+it('requests the menu when the ecommerce navigation is enabled', async () => {
+  const fixture = createPortalLayout(false);
+  fixture.componentRef.setInput('ecommerceNavigation', true);
+  await fixture.whenStable();
+
+  expect(fixture.getMenu).toHaveBeenCalledTimes(1);
+});
 
 it('hides the whole navigation menu from visitors while the portal is the only experience', async () => {
   const fixture = createPortalLayout(false);
@@ -144,8 +184,7 @@ it('locks page scrolling while the mobile menu is open and restores it on close 
 
 
 it('offers a recursive expandable mobile category tree and links for every level', async () => {
-  const fixture = createPortalLayout(true);
-  fixture.componentInstance.menu.set([{ id: 10, name: 'Root', slug: 'root', children: [
+  const fixture = createPortalLayout(true, [{ id: 10, name: 'Root', slug: 'root', children: [
     { id: 11, name: 'Child', slug: 'child', children: [
       { id: 12, name: 'Grandchild', slug: 'grandchild', children: [
         { id: 13, name: 'Leaf', slug: 'leaf', children: [] }

@@ -1,5 +1,5 @@
 import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
-import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -109,10 +109,19 @@ export class PublicLayoutComponent {
       }));
     });
 
-    this.categoryService.getMenu().subscribe({
-      next: menu => this.menu.set(menu),
-      // Si la API no responde, la tienda sigue navegable sin el menú de categorías.
-      error: () => this.menu.set([])
+    // El menú solo se pide cuando se va a mostrar: los visitantes del portal no lo
+    // ven, y pedirlo en cada visita era una consulta a la base sin uso.
+    let menuRequested = false;
+    effect(() => {
+      if (menuRequested || !this.showMenu()) return;
+      menuRequested = true;
+      untracked(() =>
+        this.categoryService.getMenu().subscribe({
+          next: menu => this.menu.set(menu),
+          // Si la API no responde, la tienda sigue navegable sin el menú de categorías.
+          error: () => this.menu.set([])
+        })
+      );
     });
 
     this.auth.ensureSession().subscribe();
