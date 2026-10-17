@@ -23,12 +23,34 @@ public sealed class SmtpEmailOptions
 
     public string? From { get; set; }
 
+    /// <summary>
+    /// SmtpClient.Timeout no aplica a SendMailAsync: sin este limite un servidor de
+    /// correo colgado retendria el login hasta que el navegador se rinda.
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 15;
+
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Host) && !string.IsNullOrWhiteSpace(From);
 }
 
 public sealed class SmtpEmailSender(SmtpEmailOptions options) : IEmailSender
 {
     public async Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(options.TimeoutSeconds));
+
+        try
+        {
+            await SendCoreAsync(to, subject, body, timeout.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Sin reintento: quien llama no guarda nada si el envio falla.
+            throw new TimeoutException("El servidor de correo no respondio a tiempo.");
+        }
+    }
+
+    private async Task SendCoreAsync(string to, string subject, string body, CancellationToken cancellationToken)
     {
         using var message = new MailMessage(options.From!, to, subject, body)
         {

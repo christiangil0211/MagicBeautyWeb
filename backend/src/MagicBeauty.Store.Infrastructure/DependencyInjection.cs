@@ -19,8 +19,10 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
+        // Azure SQL serverless se pausa: el primer acceso tarda en reactivarla y la
+        // apertura de la conexion se reintenta dentro de un presupuesto acotado.
         services.AddDbContext<MagicBeautyDbContext>(options =>
-            options.UseSqlServer(connectionString));
+            options.UseResilientSqlServer(connectionString, DatabaseRetryPolicy.Default));
 
         services.AddScoped<IBrandRepository, BrandRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
