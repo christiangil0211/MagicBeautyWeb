@@ -10,13 +10,13 @@ import { EMAIL_PATTERN, PASSWORD_RULES } from '../../../shared/utils/account-rul
 import { authErrorMessage } from '../../../shared/utils/auth-errors';
 
 /**
- * Si la base estaba en pausa, el API tarda en reactivarla: el loader lo explica en
- * lugar de dejar al usuario frente a un "Iniciando sesión…" que no avanza.
+ * Si la base estaba en pausa, el API tarda más: el loader lo explica en lugar de
+ * dejar al usuario frente a un "Iniciando sesión…" que no avanza. La espera nunca
+ * pasa de AUTH_REQUEST_TIMEOUT_MS (15 s).
  */
 export const AUTH_WAIT_MESSAGES = [
   { afterMs: 0, text: 'Iniciando sesión…' },
-  { afterMs: 8_000, text: 'Esto está tardando más de lo normal. Estamos activando el servicio; puede tardar hasta dos minutos…' },
-  { afterMs: 45_000, text: 'Seguimos intentándolo. No cierres esta ventana…' }
+  { afterMs: 5_000, text: 'Está tardando un poco más de lo normal. Un momento, por favor…' }
 ] as const;
 
 export interface AccountAdminLink {

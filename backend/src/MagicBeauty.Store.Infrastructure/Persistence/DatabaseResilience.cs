@@ -10,45 +10,41 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace MagicBeauty.Store.Infrastructure.Persistence;
 
 /// <summary>
-/// Cuanto se insiste en abrir la conexion mientras Azure SQL serverless se reactiva
-/// tras una pausa (del orden de un minuto). La ventana manda: no empieza un intento
-/// nuevo pasado <see cref="RetryWindow"/>, asi que la espera maxima de una operacion
-/// es la ventana mas un Connect Timeout (30 s en Azure).
+/// Un reintento como maximo, y solo si el primer intento fallo rapido: un reintento
+/// tras <see cref="RetryDelay"/> empieza solo si cabe antes de <see cref="RetryWindow"/>.
+/// El limite total de una peticion no lo da esta politica sino el token de cancelacion
+/// (presupuesto de autenticacion en el API, desconexion del navegador).
 /// </summary>
-public sealed record DatabaseRetryPolicy(int MaxRetryCount, TimeSpan MaxRetryDelay, TimeSpan RetryWindow)
+public sealed record DatabaseRetryPolicy(int MaxRetryCount, TimeSpan RetryDelay, TimeSpan RetryWindow)
 {
     /// <summary>
-    /// EF Core 10 espera al menos 5 s antes de reintentar -2 y 40613, asi que las esperas
-    /// reales son ~5, 6, 8, 12 y 15 s. Con timeouts de 30 s caben 3 intentos (0-30,
-    /// 35-65 y 71-101 s); con 40613 inmediatos, unos 7 hasta el segundo 61. Peor caso
-    /// ~105 s, por debajo del limite de 230 s de App Service.
+    /// Azure SQL rechaza con 40613 mientras se reactiva y recomienda esperar unos 5 s
+    /// antes de reintentar. Si el primer intento fallo al instante, el segundo empieza
+    /// a los 5 s y puede esperar dentro del presupuesto a que la base termine de
+    /// reactivarse. Si el primero ya tardo mas de 3 s, no se reintenta.
     /// </summary>
     public static readonly DatabaseRetryPolicy Default =
-        new(MaxRetryCount: 8, MaxRetryDelay: TimeSpan.FromSeconds(10), RetryWindow: TimeSpan.FromSeconds(75));
+        new(MaxRetryCount: 1, RetryDelay: TimeSpan.FromSeconds(5), RetryWindow: TimeSpan.FromSeconds(8));
 }
 
 /// <summary>
-/// Reintenta solo los fallos transitorios ocurridos al ABRIR la conexion. En ese
+/// Reintenta solo los fallos de disponibilidad ocurridos al ABRIR la conexion. En ese
 /// momento todavia no se envio ningun comando, de modo que repetir no puede duplicar
 /// inserciones de inventario, productos ni codigos de verificacion. Un fallo a mitad
-/// de una consulta o de un SaveChanges se propaga igual que antes.
+/// de una consulta o de un SaveChanges, o una cancelacion, se propagan sin reintento.
+/// Deriva de la estrategia base publica de EF: la lista de errores es la nuestra.
 /// </summary>
-public sealed class ConnectionOpenRetryingExecutionStrategy : SqlServerRetryingExecutionStrategy
+public sealed class ConnectionOpenRetryingExecutionStrategy : ExecutionStrategy
 {
-    /// <summary>SqlClient usa -2 para "Timeout expired", tanto al conectar como al ejecutar.</summary>
-    public const int TimeoutErrorNumber = -2;
-
-    private readonly TimeSpan retryWindow;
+    private readonly DatabaseRetryPolicy policy;
     private readonly Stopwatch elapsed = new();
 
     public ConnectionOpenRetryingExecutionStrategy(
         ExecutionStrategyDependencies dependencies,
         DatabaseRetryPolicy policy)
-        // EF Core 10 no considera transitorio el -2; se agrega aqui y ShouldRetryOn
-        // lo limita a la apertura, donde no hay comando que se pueda repetir.
-        : base(dependencies, policy.MaxRetryCount, policy.MaxRetryDelay, [TimeoutErrorNumber])
+        : base(dependencies, policy.MaxRetryCount, policy.RetryDelay)
     {
-        retryWindow = policy.RetryWindow;
+        this.policy = policy;
     }
 
     protected override void OnFirstExecution()
@@ -59,14 +55,18 @@ public sealed class ConnectionOpenRetryingExecutionStrategy : SqlServerRetryingE
 
     protected override bool ShouldRetryOn(Exception exception)
     {
-        return ConnectionOpenFailureInterceptor.FailedWhileOpening(exception) && base.ShouldRetryOn(exception);
+        return ConnectionOpenFailureInterceptor.FailedWhileOpening(exception) &&
+               DatabaseAvailability.IsTransientSqlError(exception);
     }
 
     protected override TimeSpan? GetNextDelay(Exception lastException)
     {
-        var delay = base.GetNextDelay(lastException);
+        if (ExceptionsEncountered.Count > policy.MaxRetryCount)
+        {
+            return null;
+        }
 
-        return delay is { } value && elapsed.Elapsed + value <= retryWindow ? value : null;
+        return elapsed.Elapsed + policy.RetryDelay <= policy.RetryWindow ? policy.RetryDelay : null;
     }
 }
 
@@ -152,11 +152,28 @@ public sealed class ConnectionOpenFailureInterceptor : DbConnectionInterceptor
 /// <summary>Clasifica los errores de base de datos que significan "no disponible por ahora".</summary>
 public static class DatabaseAvailability
 {
+    /// <summary>SqlClient usa -2 para "Timeout expired", tanto al conectar como al ejecutar.</summary>
+    public const int TimeoutErrorNumber = -2;
+
     /// <summary>
-    /// Reintentos agotados, timeouts y errores transitorios de SQL Server (40613 base
-    /// no disponible, 40501 limitacion, conexion cortada...). No incluye errores de
-    /// negocio ni violaciones de restricciones. Un TimeoutException solo cuenta si no
-    /// lo envolvio una excepcion de negocio, que ya trae su propio mensaje.
+    /// Errores de disponibilidad de Azure SQL, explicitos y sin depender de APIs
+    /// internas de EF Core. No incluye login fallido (18456), base inexistente ni
+    /// errores de datos (clave duplicada, restricciones), que no se arreglan esperando.
+    /// </summary>
+    public static readonly IReadOnlySet<int> TransientErrorNumbers = new HashSet<int>
+    {
+        TimeoutErrorNumber,
+        40613, // La base no esta disponible: serverless reactivandose o en conmutacion.
+        40197, // Error del servicio al procesar la peticion (reconfiguracion).
+        40501, // Servicio ocupado.
+        49918, 49919, 49920, // Recursos insuficientes o demasiadas operaciones.
+        64, 233, 10053, 10054, 10060 // Conexion cortada o rechazada por la red.
+    };
+
+    /// <summary>
+    /// Reintentos agotados, timeouts y errores transitorios de SQL Server. Un
+    /// TimeoutException solo cuenta si no lo envolvio una excepcion de negocio, que
+    /// ya trae su propio mensaje.
     /// </summary>
     public static bool IsTemporarilyUnavailable(Exception exception)
     {
@@ -171,9 +188,18 @@ public static class DatabaseAvailability
             {
                 return true;
             }
+        }
 
+        return IsTransientSqlError(exception);
+    }
+
+    /// <summary>Algun SqlException de la cadena trae un error de <see cref="TransientErrorNumbers"/>.</summary>
+    public static bool IsTransientSqlError(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
             if (current is SqlException sql &&
-                (IsTimeout(sql) || IsTransient(sql)))
+                sql.Errors.Cast<SqlError>().Any(error => TransientErrorNumbers.Contains(error.Number)))
             {
                 return true;
             }
@@ -196,19 +222,6 @@ public static class DatabaseAvailability
         }
 
         return numbers.Count == 0 ? "ninguno" : string.Join(",", numbers.Distinct());
-    }
-
-    private static bool IsTimeout(SqlException exception)
-    {
-        return exception.Errors.Cast<SqlError>().Any(error => error.Number == ConnectionOpenRetryingExecutionStrategy.TimeoutErrorNumber);
-    }
-
-    private static bool IsTransient(SqlException exception)
-    {
-        // Misma lista que usa la estrategia de reintentos de EF Core.
-#pragma warning disable EF1001
-        return Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerTransientExceptionDetector.ShouldRetryOn(exception);
-#pragma warning restore EF1001
     }
 }
 

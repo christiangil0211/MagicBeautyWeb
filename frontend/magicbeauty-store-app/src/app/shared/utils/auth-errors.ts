@@ -3,8 +3,8 @@ import { TimeoutError } from 'rxjs';
 
 export const AUTH_ERROR_MESSAGES = {
   network: 'No pudimos conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.',
-  timeout: 'El servidor tardó demasiado en responder. Inténtalo de nuevo en unos segundos.',
-  unavailable: 'El servicio se está activando. Espera unos segundos e inténtalo de nuevo.',
+  timeout: 'El servicio está tardando en responder. Inténtalo nuevamente en unos segundos.',
+  unavailable: 'El servicio está tardando en responder. Inténtalo nuevamente en unos segundos.',
   unexpected: 'Ocurrió un error inesperado. Inténtalo de nuevo más tarde.',
   tooManyAttempts: 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.'
 } as const;

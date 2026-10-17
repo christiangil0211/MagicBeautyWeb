@@ -51,7 +51,7 @@ public sealed class AuthResilienceTests
     public async Task PersistentDatabaseFailureEndsInAGeneric503AfterBoundedRetries()
     {
         await using var server = new UnresponsiveServer();
-        var policy = new DatabaseRetryPolicy(MaxRetryCount: 1, MaxRetryDelay: TimeSpan.FromMilliseconds(20), RetryWindow: TimeSpan.FromSeconds(30));
+        var policy = new DatabaseRetryPolicy(MaxRetryCount: 1, RetryDelay: TimeSpan.FromMilliseconds(20), RetryWindow: TimeSpan.FromSeconds(30));
         await using var db = server.CreateContext(policy);
         var service = CreateService(db, Mock.Of<IEmailSender>());
 
@@ -69,7 +69,9 @@ public sealed class AuthResilienceTests
     {
         using var smtp = new TcpListener(IPAddress.Loopback, 0);
         smtp.Start();
-        _ = smtp.AcceptTcpClientAsync(); // Acepta y nunca saluda.
+        // Acepta y nunca saluda. La conexion se guarda: si el GC la cerrara, SmtpClient
+        // veria un corte (500) y no un servidor colgado.
+        var accepted = smtp.AcceptTcpClientAsync();
 
         var sender = new SmtpEmailSender(new SmtpEmailOptions
         {
@@ -92,6 +94,7 @@ public sealed class AuthResilienceTests
         Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(10));
         // Igual que antes: si el correo no sale, no queda un codigo que el usuario no recibio.
         Assert.Empty(await db.EmailVerificationCodes.ToListAsync());
+        (await accepted).Dispose();
     }
 
     [Fact]

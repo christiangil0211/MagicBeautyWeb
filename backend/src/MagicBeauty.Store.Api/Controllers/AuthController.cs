@@ -1,5 +1,6 @@
 using System.Security.Claims;
 
+using MagicBeauty.Store.Api.Filters;
 using MagicBeauty.Store.Api.Security;
 using MagicBeauty.Store.Application.Features.Accounts;
 using MagicBeauty.Store.Contracts.Auth.Requests;
@@ -26,6 +27,7 @@ public sealed class AuthController(
     private const string InvalidCredentialsMessage = "Correo o contrasena incorrectos.";
 
     [HttpPost("login")]
+    [AuthRequestBudget]
     [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
     public async Task<ActionResult<LoginResponse>> Login(
         LoginRequest request,
@@ -38,6 +40,7 @@ public sealed class AuthController(
 
     /// <summary>Primer ingreso: cambia la contrasena temporal por una propia y abre la sesion.</summary>
     [HttpPost("change-temporary-password")]
+    [AuthRequestBudget]
     [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
     public async Task<ActionResult<LoginResponse>> ChangeTemporaryPassword(
         ChangeTemporaryPasswordRequest request,
@@ -83,6 +86,7 @@ public sealed class AuthController(
     }
 
     [HttpPost("verify-email")]
+    [AuthRequestBudget]
     [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
     public async Task<ActionResult<LoginResponse>> VerifyEmail(
         VerifyEmailRequest request,

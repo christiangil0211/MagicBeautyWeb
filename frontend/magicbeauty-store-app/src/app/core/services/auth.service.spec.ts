@@ -17,10 +17,27 @@ describe('AuthService', () => {
     vi.useRealTimers();
   });
 
-  it('waits longer than the API retry budget before giving up on a login', () => {
-    // Peor caso del API: ~105 s reintentando abrir la base + 15 s de SMTP.
-    expect(AUTH_REQUEST_TIMEOUT_MS).toBeGreaterThan(120_000);
-    expect(AUTH_REQUEST_TIMEOUT_MS).toBeLessThan(230_000); // Límite de App Service.
+  it('gives up after 15 s, just after the API budget of 13 s', () => {
+    expect(AUTH_REQUEST_TIMEOUT_MS).toBe(15_000);
+    expect(AUTH_REQUEST_TIMEOUT_MS).toBeGreaterThan(13_000);
+  });
+
+  it('counts the session check after a login inside the same 15 s', () => {
+    const http = TestBed.inject(HttpTestingController);
+    const error = vi.fn();
+
+    TestBed.inject(AuthService).login('a@example.invalid', 'x').subscribe({ error });
+    vi.advanceTimersByTime(10_000);
+    http.expectOne(r => r.url.endsWith('/auth/login')).flush({ status: 'AUTHENTICATED' });
+    const session = http.expectOne(r => r.url.endsWith('/auth/session'));
+
+    vi.advanceTimersByTime(AUTH_REQUEST_TIMEOUT_MS - 10_000);
+    expect(error).toHaveBeenCalledWith(expect.any(TimeoutError));
+
+    // La consulta de sesión es compartida y no se corta: si llega tarde, la UI se
+    // entera de que el login sí funcionó.
+    session.flush({ isAuthenticated: true, displayName: 'a@example.invalid', canManageStore: false });
+    expect(TestBed.inject(AuthService).isAuthenticated()).toBe(true);
   });
 
   it.each<[string, (auth: AuthService) => Observable<unknown>, string]>([

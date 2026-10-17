@@ -7,11 +7,12 @@ import { environment } from '../../../environments/environment';
 import { ANONYMOUS_SESSION, LoginResponse, Session } from '../../shared/models/session.model';
 
 /**
- * Espera máxima de login, verificación y cambio de contraseña. Supera el peor caso
- * del API (~105 s reintentando abrir la base mientras Azure SQL se reactiva, más
- * 15 s de SMTP) para no cortar un inicio de sesión que iba a funcionar.
+ * Espera máxima visible de login, verificación y cambio de contraseña, incluida la
+ * consulta de sesión posterior. El API corta a los 13 s y responde 503; este límite
+ * cubre lo que el API no controla (red, arranque en frío). Al vencer se cancela la
+ * petición, y la cancelación llega hasta EF Core y SqlClient en el API.
  */
-export const AUTH_REQUEST_TIMEOUT_MS = 130_000;
+export const AUTH_REQUEST_TIMEOUT_MS = 15_000;
 
 /**
  * Refleja en la UI la sesión que mantiene el backend (cookie HttpOnly). Solo sirve
@@ -68,12 +69,12 @@ export class AuthService {
    */
   login(email: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
-      timeout(AUTH_REQUEST_TIMEOUT_MS),
       switchMap(response =>
         response.status === 'AUTHENTICATED'
           ? this.refresh().pipe(map(() => response))
           : of(response)
-      )
+      ),
+      timeout(AUTH_REQUEST_TIMEOUT_MS)
     );
   }
 
@@ -81,14 +82,14 @@ export class AuthService {
   changeTemporaryPassword(email: string, temporaryPassword: string, newPassword: string): Observable<Session> {
     return this.http
       .post<LoginResponse>(`${this.apiUrl}/change-temporary-password`, { email, temporaryPassword, newPassword })
-      .pipe(timeout(AUTH_REQUEST_TIMEOUT_MS), switchMap(() => this.refresh()));
+      .pipe(switchMap(() => this.refresh()), timeout(AUTH_REQUEST_TIMEOUT_MS));
   }
 
   /** Confirma el correo con el código recibido y abre la sesión. */
   verifyEmail(email: string, code: string): Observable<Session> {
     return this.http
       .post<LoginResponse>(`${this.apiUrl}/verify-email`, { email, code })
-      .pipe(timeout(AUTH_REQUEST_TIMEOUT_MS), switchMap(() => this.refresh()));
+      .pipe(switchMap(() => this.refresh()), timeout(AUTH_REQUEST_TIMEOUT_MS));
   }
 
   logout(): Observable<void> {

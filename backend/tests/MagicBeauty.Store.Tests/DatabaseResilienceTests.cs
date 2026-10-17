@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 
+using MagicBeauty.Store.Api.Filters;
 using MagicBeauty.Store.Domain.Entities;
 using MagicBeauty.Store.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
@@ -10,66 +12,26 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Xunit;
 
 /// <summary>
-/// Reintentos al abrir la conexion. El "servidor" acepta TCP y nunca responde, de modo
-/// que SqlClient produce un timeout de conexion real (error -2), como el de Azure SQL
-/// mientras se reactiva. No reproduce la reactivacion de Azure en si.
+/// Reintentos y cancelacion al abrir la conexion. El "servidor" acepta TCP y nunca
+/// responde, de modo que SqlClient produce un timeout de conexion real (error -2),
+/// como Azure SQL mientras se reactiva. No reproduce la reactivacion de Azure en si.
 /// </summary>
 public sealed class DatabaseResilienceTests
 {
     private static readonly DatabaseRetryPolicy FastPolicy =
-        // EF Core 10 impone 5 s antes de reintentar -2/40613: un solo reintento mantiene la suite rapida.
-        new(MaxRetryCount: 1, MaxRetryDelay: TimeSpan.FromMilliseconds(20), RetryWindow: TimeSpan.FromSeconds(30));
-
-    /// <summary>
-    /// Lo que decide EF Core 10 por si solo: 40613 es transitorio y -2 no. Por eso la
-    /// estrategia agrega -2, y solo para la apertura de la conexion.
-    /// </summary>
-    [Theory]
-    [InlineData(40613, true)]
-    [InlineData(ConnectionOpenRetryingExecutionStrategy.TimeoutErrorNumber, false)]
-    public void EfCoreDefaultTransientDetection(int number, bool transient)
-    {
-#pragma warning disable EF1001
-        Assert.Equal(transient, Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerTransientExceptionDetector.ShouldRetryOn(SqlExceptions.Create(number)));
-#pragma warning restore EF1001
-    }
-
-    /// <summary>El presupuesto de DatabaseRetryPolicy.Default parte de esta espera minima.</summary>
-    [Theory]
-    [InlineData(40613)]
-    [InlineData(ConnectionOpenRetryingExecutionStrategy.TimeoutErrorNumber)]
-    public void EfCoreWaitsAtLeastFiveSecondsBeforeRetryingResumeErrors(int number)
-    {
-        var options = new DbContextOptionsBuilder<MagicBeautyDbContext>();
-        options.UseSqlServer("Server=sin-uso;Database=sin-uso", sql => sql.ExecutionStrategy(
-            dependencies => new DelayProbe(dependencies)));
-        using var db = new MagicBeautyDbContext(options.Options);
-        var probe = (DelayProbe)db.Database.CreateExecutionStrategy();
-
-        var delay = probe.NextDelayAfter(SqlExceptions.Create(number));
-
-        Assert.NotNull(delay);
-        Assert.InRange(delay.Value, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(6));
-    }
-
-    private sealed class DelayProbe(ExecutionStrategyDependencies dependencies)
-        : SqlServerRetryingExecutionStrategy(dependencies, 8, TimeSpan.FromMilliseconds(20), [ConnectionOpenRetryingExecutionStrategy.TimeoutErrorNumber])
-    {
-        public TimeSpan? NextDelayAfter(Exception exception)
-        {
-            ExceptionsEncountered.Add(exception);
-            return GetNextDelay(exception);
-        }
-    }
+        new(MaxRetryCount: 1, RetryDelay: TimeSpan.FromMilliseconds(20), RetryWindow: TimeSpan.FromSeconds(30));
 
     [Fact]
-    public void ProductionBudgetFitsBeforeAppServiceAndBrowserGiveUp()
+    public void ProductionPolicyRetriesOnceAndFitsInsideTheAuthBudget()
     {
-        // Ultimo intento posible: empieza al cierre de la ventana y dura un Connect Timeout (30 s en Azure).
-        var worstCase = DatabaseRetryPolicy.Default.RetryWindow + TimeSpan.FromSeconds(30);
+        var policy = DatabaseRetryPolicy.Default;
 
-        Assert.True(worstCase <= TimeSpan.FromSeconds(105));
-        Assert.True(worstCase < TimeSpan.FromSeconds(230)); // Limite de peticion de App Service.
+        Assert.Equal(1, policy.MaxRetryCount);
+        Assert.Equal(TimeSpan.FromSeconds(5), policy.RetryDelay);
+        // El reintento solo empieza si cabe dentro del presupuesto de autenticacion.
+        Assert.True(policy.RetryWindow < AuthRequestBudget.Default.Timeout);
+        // Angular espera 15 s: el API tiene que contestar antes.
+        Assert.True(AuthRequestBudget.Default.Timeout < TimeSpan.FromSeconds(15));
     }
 
     [Fact]
@@ -81,7 +43,7 @@ public sealed class DatabaseResilienceTests
         var failure = await Assert.ThrowsAsync<RetryLimitExceededException>(() => db.Brands.AnyAsync());
 
         var sql = Assert.IsType<SqlException>(failure.InnerException);
-        Assert.Equal(ConnectionOpenRetryingExecutionStrategy.TimeoutErrorNumber, sql.Number);
+        Assert.Equal(DatabaseAvailability.TimeoutErrorNumber, sql.Number);
         Assert.True(ConnectionOpenFailureInterceptor.FailedWhileOpening(sql));
         Assert.Equal(1 + FastPolicy.MaxRetryCount, server.Connections);
     }
@@ -99,7 +61,7 @@ public sealed class DatabaseResilienceTests
     }
 
     [Fact]
-    public async Task RecoversWhenTheDatabaseAnswersOnALaterAttempt()
+    public async Task RecoversWhenTheDatabaseAnswersOnTheSecondAttempt()
     {
         await using var server = new UnresponsiveServer();
         await using var db = server.CreateContext(FastPolicy);
@@ -123,12 +85,23 @@ public sealed class DatabaseResilienceTests
     }
 
     [Fact]
-    public async Task StopsStartingAttemptsOnceTheWindowIsSpent()
+    public async Task DoesNotRetryWhenTheFirstAttemptWasAlreadySlow()
+    {
+        // Connect Timeout=1: el primer intento ya consumio mas que la ventana de 0,5 s.
+        await using var server = new UnresponsiveServer();
+        var policy = new DatabaseRetryPolicy(MaxRetryCount: 1, RetryDelay: TimeSpan.FromMilliseconds(20), RetryWindow: TimeSpan.FromSeconds(0.5));
+        await using var db = server.CreateContext(policy);
+
+        await Assert.ThrowsAsync<RetryLimitExceededException>(() => db.Brands.AnyAsync());
+
+        Assert.Equal(1, server.Connections);
+    }
+
+    [Fact]
+    public async Task NeverRetriesMoreThanTheConfiguredCount()
     {
         await using var server = new UnresponsiveServer();
-        // Connect Timeout=1 y 5 s de espera minima de EF: el segundo intento empieza ~6 s
-        // y el tercero empezaria ~12 s, fuera de la ventana de 8 s.
-        var policy = new DatabaseRetryPolicy(MaxRetryCount: 8, MaxRetryDelay: TimeSpan.FromMilliseconds(20), RetryWindow: TimeSpan.FromSeconds(8));
+        var policy = new DatabaseRetryPolicy(MaxRetryCount: 1, RetryDelay: TimeSpan.FromMilliseconds(20), RetryWindow: TimeSpan.FromMinutes(1));
         await using var db = server.CreateContext(policy);
 
         await Assert.ThrowsAsync<RetryLimitExceededException>(() => db.Brands.AnyAsync());
@@ -136,13 +109,51 @@ public sealed class DatabaseResilienceTests
         Assert.Equal(2, server.Connections);
     }
 
+    [Fact]
+    public async Task CancellationStopsASlowOpenAtOnceWithoutRetrying()
+    {
+        // Connect Timeout=30, como en Azure: sin cancelacion la apertura esperaria 30 s.
+        await using var server = new UnresponsiveServer();
+        await using var db = server.CreateContext(DatabaseRetryPolicy.Default, connectTimeoutSeconds: 30);
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        var watch = Stopwatch.StartNew();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => db.Brands.AnyAsync(cancellation.Token));
+
+        Assert.InRange(watch.Elapsed, TimeSpan.FromSeconds(0.9), TimeSpan.FromSeconds(3));
+        // Ni reintento ni apertura nueva despues de cancelar.
+        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        Assert.Equal(1, server.Connections);
+    }
+
+    [Fact]
+    public async Task CancellationAlsoInterruptsTheWaitBeforeTheRetry()
+    {
+        await using var server = new UnresponsiveServer();
+        var policy = new DatabaseRetryPolicy(MaxRetryCount: 1, RetryDelay: TimeSpan.FromSeconds(30), RetryWindow: TimeSpan.FromMinutes(1));
+        await using var db = server.CreateContext(policy);
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        var attempts = 0;
+        var watch = Stopwatch.StartNew();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            db.Database.CreateExecutionStrategy().ExecuteAsync<int>(_ =>
+            {
+                attempts++;
+                throw SqlExceptions.Create(40613, openedConnection: false);
+            }, cancellation.Token));
+
+        Assert.Equal(1, attempts);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(3));
+    }
+
     [Theory]
     [InlineData(40613)] // Base no disponible: Azure SQL reactivandose.
-    [InlineData(ConnectionOpenRetryingExecutionStrategy.TimeoutErrorNumber)]
+    [InlineData(DatabaseAvailability.TimeoutErrorNumber)]
     public async Task TransientFailuresAfterTheConnectionOpenedAreNotRetried(int number)
     {
         // A mitad de un comando no se sabe si el servidor aplico la escritura: repetir
-        // podria duplicar un movimiento de inventario.
+        // podria duplicar un movimiento de inventario o un codigo de verificacion.
         await using var server = new UnresponsiveServer();
         await using var db = server.CreateContext(FastPolicy);
         var attempts = 0;
@@ -160,8 +171,9 @@ public sealed class DatabaseResilienceTests
 
     [Theory]
     [InlineData(40613, true)]
-    [InlineData(ConnectionOpenRetryingExecutionStrategy.TimeoutErrorNumber, true)]
+    [InlineData(DatabaseAvailability.TimeoutErrorNumber, true)]
     [InlineData(18456, false)] // Login fallido: configuracion, no disponibilidad.
+    [InlineData(4060, false)]  // Base inexistente o sin permiso: esperar no lo arregla.
     public async Task OpenFailuresAreRetriedOnlyWhenTransient(int number, bool retried)
     {
         await using var server = new UnresponsiveServer();
@@ -189,10 +201,13 @@ public sealed class DatabaseResilienceTests
     [Theory]
     [InlineData(40613, true)]
     [InlineData(40501, true)]
-    [InlineData(ConnectionOpenRetryingExecutionStrategy.TimeoutErrorNumber, true)]
+    [InlineData(10054, true)]
+    [InlineData(DatabaseAvailability.TimeoutErrorNumber, true)]
     [InlineData(18456, false)]
+    [InlineData(4060, false)]
     [InlineData(2627, false)] // Clave duplicada.
     [InlineData(547, false)]  // Restriccion de clave foranea.
+    [InlineData(0, false)]    // Cancelado por el usuario.
     public void ClassifiesOnlyAvailabilityErrorsAsTemporary(int number, bool unavailable)
     {
         Assert.Equal(unavailable, DatabaseAvailability.IsTemporarilyUnavailable(SqlExceptions.Create(number)));
@@ -224,15 +239,16 @@ internal sealed class UnresponsiveServer : IAsyncDisposable
 
     public int Connections => Volatile.Read(ref connections);
 
-    public string ConnectionString =>
+
+    public string ConnectionString(int connectTimeoutSeconds = 1) =>
         $"Server=tcp:127.0.0.1,{((IPEndPoint)listener.LocalEndpoint).Port};Database=Prueba;User ID=prueba;Password=prueba;" +
         // Sin pool: cada intento abre una conexion nueva, como en Azure (PoolBlockingPeriod=Auto).
-        "Connect Timeout=1;Pooling=false;Encrypt=false";
+        $"Connect Timeout={connectTimeoutSeconds};Pooling=false;Encrypt=false";
 
-    public MagicBeautyDbContext CreateContext(DatabaseRetryPolicy policy)
+    public MagicBeautyDbContext CreateContext(DatabaseRetryPolicy policy, int connectTimeoutSeconds = 1)
     {
         var options = new DbContextOptionsBuilder<MagicBeautyDbContext>();
-        options.UseResilientSqlServer(ConnectionString, policy);
+        options.UseResilientSqlServer(ConnectionString(connectTimeoutSeconds), policy);
 
         return new MagicBeautyDbContext(options.Options);
     }
@@ -250,6 +266,7 @@ internal sealed class UnresponsiveServer : IAsyncDisposable
                 {
                     clients.Add(client);
                 }
+
             }
         }
         catch (OperationCanceledException)

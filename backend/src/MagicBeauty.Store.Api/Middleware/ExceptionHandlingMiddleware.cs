@@ -12,7 +12,7 @@ public sealed class ExceptionHandlingMiddleware(
     ILogger<ExceptionHandlingMiddleware> logger)
 {
     public const string UnavailableMessage =
-        "El servicio no está disponible en este momento. Inténtalo de nuevo en unos segundos.";
+        "El servicio está tardando en responder. Inténtalo nuevamente en unos segundos.";
 
     public const string UnexpectedMessage =
         "Ocurrió un error inesperado. Inténtalo de nuevo más tarde.";
