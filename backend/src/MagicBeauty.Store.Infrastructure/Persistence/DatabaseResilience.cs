@@ -126,6 +126,22 @@ public sealed class ConnectionOpenFailureInterceptor : DbConnectionInterceptor
         return Task.CompletedTask;
     }
 
+    // Apertura cancelada (presupuesto o navegador): ya no esta "abriendo". Sin esto la
+    // entrada quedaba y un fallo posterior de esa conexion pasaria por fallo de apertura.
+    public override void ConnectionCanceled(DbConnection connection, ConnectionEndEventData eventData)
+    {
+        opening.Remove(connection);
+    }
+
+    public override Task ConnectionCanceledAsync(
+        DbConnection connection,
+        ConnectionEndEventData eventData,
+        CancellationToken cancellationToken = default)
+    {
+        opening.Remove(connection);
+        return Task.CompletedTask;
+    }
+
     public override void ConnectionFailed(DbConnection connection, ConnectionErrorEventData eventData)
     {
         MarkIfOpening(connection, eventData.Exception);

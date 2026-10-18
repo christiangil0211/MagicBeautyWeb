@@ -53,6 +53,27 @@
         Cerrar sesión
       </button>
     </div>
+  } @else if (sessionPending()) {
+    <div class="account-panel__body">
+      <p class="account-panel__note">
+        <i class="pi pi-clock"></i>
+        {{ info() }}
+      </p>
+
+      @if (error(); as message) {
+        <p class="account-panel__error">{{ message }}</p>
+      }
+
+      <button type="button" class="account-panel__button" [disabled]="submitting()" (click)="retrySession()">
+        {{ submitting() ? 'Cargando…' : 'Cargar mi cuenta' }}
+      </button>
+
+      <div class="account-panel__secondary">
+        <button type="button" class="account-panel__link" (click)="backToCredentials()">
+          Usar otra cuenta
+        </button>
+      </div>
+    </div>
   } @else if (step() === 'credentials') {
     <div class="account-panel__body">
       <p class="account-panel__hint">Ingresa con tu correo y contraseña.</p>

@@ -242,8 +242,11 @@ internal sealed class UnresponsiveServer : IAsyncDisposable
 
     public string ConnectionString(int connectTimeoutSeconds = 1) =>
         $"Server=tcp:127.0.0.1,{((IPEndPoint)listener.LocalEndpoint).Port};Database=Prueba;User ID=prueba;Password=prueba;" +
-        // Sin pool: cada intento abre una conexion nueva, como en Azure (PoolBlockingPeriod=Auto).
-        $"Connect Timeout={connectTimeoutSeconds};Pooling=false;Encrypt=false";
+        // Con pool, como produccion; NeverBlock equivale a PoolBlockingPeriod=Auto en un host
+        // de Azure SQL. Cada servidor usa un puerto propio, asi que cada prueba tiene su pool.
+        // Sin pool, las aperturas canceladas ocuparian el cupo global de SqlClient para
+        // aperturas no agrupadas y harian fallar a otras pruebas en paralelo.
+        $"Connect Timeout={connectTimeoutSeconds};Pooling=true;PoolBlockingPeriod=NeverBlock;Encrypt=false";
 
     public MagicBeautyDbContext CreateContext(DatabaseRetryPolicy policy, int connectTimeoutSeconds = 1)
     {
