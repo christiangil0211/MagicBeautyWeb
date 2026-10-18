@@ -1,11 +1,29 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Observable, finalize } from 'rxjs';
 
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
-import { AuthService } from '../../../core/services/auth.service';
+import { AuthService, SessionCheck } from '../../../core/services/auth.service';
 import { EMAIL_PATTERN, PASSWORD_RULES } from '../../../shared/utils/account-rules';
+import { authErrorMessage } from '../../../shared/utils/auth-errors';
+
+/**
+ * Si la base estaba en pausa, el API tarda más: el loader lo explica en lugar de
+ * dejar al usuario frente a un "Iniciando sesión…" que no avanza. La espera nunca
+ * pasa de AUTH_REQUEST_TIMEOUT_MS (15 s).
+ */
+export const AUTH_WAIT_MESSAGES = [
+  { afterMs: 0, text: 'Iniciando sesión…' },
+  { afterMs: 5_000, text: 'Está tardando un poco más de lo normal. Un momento, por favor…' }
+] as const;
+
+/** Las credenciales ya se aceptaron: ninguno de estos es un error de login. */
+export const SESSION_MESSAGES = {
+  pending: 'Iniciaste sesión, pero tu cuenta aún no termina de cargar. Espera unos segundos o pulsa «Cargar mi cuenta».',
+  rejected: 'Tu navegador no conservó la sesión. Revisa que permita las cookies de este sitio e inténtalo de nuevo.'
+} as const;
 
 export interface AccountAdminLink {
   label: string;
@@ -29,6 +47,8 @@ type LoginStep = 'credentials' | 'code' | 'new-password';
 export class AccountPanelComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private waitTimers: ReturnType<typeof setTimeout>[] = [];
 
   readonly open = input(false);
   readonly adminLinks = input<AccountAdminLink[]>([]);
@@ -57,8 +77,24 @@ export class AccountPanelComponent {
   );
   readonly showPassword = signal(false);
   readonly submitting = signal(false);
+  readonly loaderMessage = signal<string>(AUTH_WAIT_MESSAGES[0].text);
   readonly error = signal<string | null>(null);
   readonly info = signal<string | null>(null);
+
+  /** El API aceptó las credenciales pero la sesión aún no se pudo cargar. */
+  readonly sessionPending = signal(false);
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.clearWaitTimers());
+
+    // La consulta de sesión sigue tras el plazo: si llega tarde, el login termina solo,
+    // sin otro POST.
+    effect(() => {
+      if (this.sessionPending() && this.isAuthenticated()) {
+        untracked(() => this.finishLogin());
+      }
+    });
+  }
 
   close(): void {
     this.resetForm();
@@ -83,36 +119,28 @@ export class AccountPanelComponent {
       return;
     }
 
-    this.submitting.set(true);
-    this.error.set(null);
     this.info.set(null);
 
-    this.auth.login(email, password).subscribe({
-      next: response => {
-        this.submitting.set(false);
+    this.send(this.auth.login(email, password), 'No pudimos iniciar sesión. Inténtalo de nuevo.', outcome => {
+      const response = outcome.response;
 
-        if (response.status === 'VERIFICATION_REQUIRED') {
-          this.step.set('code');
-          this.code.set('');
-          this.info.set('Te enviamos un código de 6 dígitos a ' + (response.email ?? email) + '.');
-          return;
-        }
-
-        if (response.status === 'PASSWORD_CHANGE_REQUIRED') {
-          // La temporal se conserva en memoria solo hasta completar el cambio.
-          this.step.set('new-password');
-          this.newPassword.set('');
-          this.confirmPassword.set('');
-          this.showPassword.set(false);
-          return;
-        }
-
-        this.finishLogin();
-      },
-      error: (response: HttpErrorResponse) => {
-        this.submitting.set(false);
-        this.error.set(this.messageFrom(response, 'No pudimos iniciar sesión. Inténtalo de nuevo.'));
+      if (response.status === 'VERIFICATION_REQUIRED') {
+        this.step.set('code');
+        this.code.set('');
+        this.info.set('Te enviamos un código de 6 dígitos a ' + (response.email ?? email) + '.');
+        return;
       }
+
+      if (response.status === 'PASSWORD_CHANGE_REQUIRED') {
+        // La temporal se conserva en memoria solo hasta completar el cambio.
+        this.step.set('new-password');
+        this.newPassword.set('');
+        this.confirmPassword.set('');
+        this.showPassword.set(false);
+        return;
+      }
+
+      this.afterSessionCheck(outcome.session ?? 'pending');
     });
   }
 
@@ -128,19 +156,9 @@ export class AccountPanelComponent {
       return;
     }
 
-    this.submitting.set(true);
-    this.error.set(null);
-
-    this.auth.verifyEmail(this.email().trim(), code).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.finishLogin();
-      },
-      error: (response: HttpErrorResponse) => {
-        this.submitting.set(false);
-        this.error.set(this.messageFrom(response, 'No pudimos verificar el código.'));
-      }
-    });
+    this.send(this.auth.verifyEmail(this.email().trim(), code), 'No pudimos verificar el código.', check =>
+      this.afterSessionCheck(check)
+    );
   }
 
   /** Primer ingreso con contraseña temporal: el usuario elige la suya y entra. */
@@ -158,21 +176,11 @@ export class AccountPanelComponent {
       return;
     }
 
-    this.submitting.set(true);
-    this.error.set(null);
-
-    this.auth
-      .changeTemporaryPassword(this.email().trim(), this.password(), this.newPassword())
-      .subscribe({
-        next: () => {
-          this.submitting.set(false);
-          this.finishLogin();
-        },
-        error: (response: HttpErrorResponse) => {
-          this.submitting.set(false);
-          this.error.set(this.messageFrom(response, 'No pudimos guardar tu contraseña.'));
-        }
-      });
+    this.send(
+      this.auth.changeTemporaryPassword(this.email().trim(), this.password(), this.newPassword()),
+      'No pudimos guardar tu contraseña.',
+      check => this.afterSessionCheck(check)
+    );
   }
 
   newRuleMet(test: (value: string) => boolean): boolean {
@@ -186,6 +194,7 @@ export class AccountPanelComponent {
   }
 
   backToCredentials(): void {
+    this.sessionPending.set(false);
     this.step.set('credentials');
     this.code.set('');
     this.password.set('');
@@ -195,11 +204,43 @@ export class AccountPanelComponent {
     this.info.set(null);
   }
 
+  /** Solo vuelve a consultar la sesión (no consulta la base): nunca repite el POST de login. */
+  retrySession(): void {
+    if (this.submitting()) {
+      return;
+    }
+
+    this.send(this.auth.confirmSession(), 'No pudimos cargar tu cuenta.', check => this.afterSessionCheck(check));
+  }
+
   logout(): void {
     this.auth.logout().subscribe(() => {
       this.close();
       this.router.navigateByUrl('/');
     });
+  }
+
+  /**
+   * Las credenciales ya se aceptaron. Solo una sesión confirmada cierra el panel; si
+   * no llegó a tiempo se avisa sin error, y si el navegador no guardó la cookie se
+   * explica, conservando lo escrito para volver a intentar.
+   */
+  private afterSessionCheck(check: SessionCheck): void {
+    if (check === 'confirmed') {
+      this.finishLogin();
+      return;
+    }
+
+    if (check === 'pending') {
+      this.password.set('');
+      this.sessionPending.set(true);
+      this.info.set(SESSION_MESSAGES.pending);
+      return;
+    }
+
+    this.sessionPending.set(false);
+    this.step.set('credentials');
+    this.error.set(SESSION_MESSAGES.rejected);
   }
 
   private finishLogin(): void {
@@ -218,16 +259,54 @@ export class AccountPanelComponent {
     this.newPassword.set('');
     this.confirmPassword.set('');
     this.showPassword.set(false);
+    this.sessionPending.set(false);
     this.error.set(null);
     this.info.set(null);
   }
 
-  private messageFrom(response: HttpErrorResponse, fallback: string): string {
-    if (response.status === 429 && !response.error?.error) {
-      return 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.';
-    }
+  /**
+   * Un envío a la vez: bloquea el formulario, muestra el loader con avisos si tarda
+   * y lo libera siempre (respuesta, error, timeout o cierre del componente). Lo
+   * escrito se conserva si falla; no se reintenta solo para no sumar intentos fallidos.
+   */
+  private send<T>(request: Observable<T>, fallback: string, onSuccess: (value: T) => void): void {
+    this.submitting.set(true);
+    this.error.set(null);
+    this.startWaitMessages();
 
-    return (response.error?.error as string | undefined) ?? fallback;
+    request
+      .pipe(
+        finalize(() => this.stopWaiting()),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: value => {
+          this.stopWaiting();
+          onSuccess(value);
+        },
+        error: (failure: unknown) => {
+          this.stopWaiting();
+          this.error.set(authErrorMessage(failure, fallback));
+        }
+      });
+  }
+
+  private startWaitMessages(): void {
+    this.clearWaitTimers();
+    this.loaderMessage.set(AUTH_WAIT_MESSAGES[0].text);
+    this.waitTimers = AUTH_WAIT_MESSAGES.slice(1).map(stage =>
+      setTimeout(() => this.loaderMessage.set(stage.text), stage.afterMs)
+    );
+  }
+
+  private stopWaiting(): void {
+    this.clearWaitTimers();
+    this.submitting.set(false);
+  }
+
+  private clearWaitTimers(): void {
+    this.waitTimers.forEach(timer => clearTimeout(timer));
+    this.waitTimers = [];
   }
 
   /** Solo rutas internas: evita redirecciones abiertas a otros sitios. */

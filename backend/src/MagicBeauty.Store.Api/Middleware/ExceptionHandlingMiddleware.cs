@@ -1,5 +1,9 @@
-﻿using System.Net;
+using System.Data.Common;
+using System.Net;
 using System.Text.Json;
+
+using MagicBeauty.Store.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace MagicBeauty.Store.Api.Middleware;
 
@@ -7,6 +11,15 @@ public sealed class ExceptionHandlingMiddleware(
     RequestDelegate next,
     ILogger<ExceptionHandlingMiddleware> logger)
 {
+    public const string UnavailableMessage =
+        "El servicio está tardando en responder. Inténtalo nuevamente en unos segundos.";
+
+    public const string UnexpectedMessage =
+        "Ocurrió un error inesperado. Inténtalo de nuevo más tarde.";
+
+    /// <summary>Lo que se sugiere esperar al cliente tras un 503.</summary>
+    public const int RetryAfterSeconds = 30;
+
     public async Task InvokeAsync(HttpContext context)
     {
         try
@@ -21,25 +34,67 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Unhandled exception.");
+            var (statusCode, message) = Classify(exception);
 
-            var statusCode = exception switch
+            if (statusCode == HttpStatusCode.ServiceUnavailable)
             {
-                KeyNotFoundException => HttpStatusCode.NotFound,
-                ArgumentException => HttpStatusCode.BadRequest,
-                InvalidOperationException => HttpStatusCode.BadRequest,
-                _ => HttpStatusCode.InternalServerError
-            };
+                // Solo tipo y numeros de error: el mensaje de SqlClient puede nombrar el servidor.
+                logger.LogWarning(
+                    "Dependencia no disponible ({ExceptionType}, errores SQL: {SqlErrors}) en {Method} {Path}",
+                    exception.GetType().Name,
+                    DatabaseAvailability.DescribeSqlErrors(exception),
+                    context.Request.Method,
+                    context.Request.Path);
 
-            var response = new
+                context.Response.Headers.RetryAfter = RetryAfterSeconds.ToString();
+            }
+            else
             {
-                error = exception.Message
-            };
+                logger.LogError(exception, "Unhandled exception.");
+            }
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)statusCode;
 
-            await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = message }));
         }
+    }
+
+    /// <summary>
+    /// Los mensajes de negocio (404/400) se conservan; lo técnico nunca sale del API.
+    /// </summary>
+    public static (HttpStatusCode StatusCode, string Message) Classify(Exception exception)
+    {
+        if (DatabaseAvailability.IsTemporarilyUnavailable(exception))
+        {
+            return (HttpStatusCode.ServiceUnavailable, UnavailableMessage);
+        }
+
+        // Errores de SQL o de EF no transitorios: su texto puede revelar el esquema.
+        if (IsDataAccessFailure(exception))
+        {
+            return (HttpStatusCode.InternalServerError, UnexpectedMessage);
+        }
+
+        return exception switch
+        {
+            KeyNotFoundException => (HttpStatusCode.NotFound, exception.Message),
+            ArgumentException => (HttpStatusCode.BadRequest, exception.Message),
+            InvalidOperationException => (HttpStatusCode.BadRequest, exception.Message),
+            _ => (HttpStatusCode.InternalServerError, UnexpectedMessage)
+        };
+    }
+
+    private static bool IsDataAccessFailure(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is DbException or DbUpdateException)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -23,12 +23,41 @@ public sealed class SmtpEmailOptions
 
     public string? From { get; set; }
 
+    /// <summary>
+    /// SmtpClient.Timeout no aplica a SendMailAsync: sin este limite un servidor de
+    /// correo colgado retendria la peticion. En el login manda ademas el presupuesto
+    /// de autenticacion (13 s), que cancela el envio si se agota antes.
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 10;
+
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Host) && !string.IsNullOrWhiteSpace(From);
 }
 
 public sealed class SmtpEmailSender(SmtpEmailOptions options) : IEmailSender
 {
     public async Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(options.TimeoutSeconds));
+
+        try
+        {
+            await SendCoreAsync(to, subject, body, timeout.Token);
+        }
+        // Al cancelar, SmtpClient no siempre lanza OperationCanceledException: corta la
+        // conexion y lanza SmtpException ("Failure sending mail"). Lo que decide es el token.
+        catch (Exception) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+        catch (Exception) when (timeout.IsCancellationRequested)
+        {
+            // Sin reintento: quien llama no guarda nada si el envio falla.
+            throw new TimeoutException("El servidor de correo no respondio a tiempo.");
+        }
+    }
+
+    private async Task SendCoreAsync(string to, string subject, string body, CancellationToken cancellationToken)
     {
         using var message = new MailMessage(options.From!, to, subject, body)
         {

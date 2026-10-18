@@ -1,5 +1,5 @@
 import { DOCUMENT, NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -109,14 +109,22 @@ export class PublicLayoutComponent {
       }));
     });
 
-    // Solo en el navegador: el HTML prerenderizado no consulta la API ni congela el menú.
-    if (isPlatformBrowser(inject(PLATFORM_ID))) {
-      this.categoryService.getMenu().subscribe({
-        next: menu => this.menu.set(menu),
-        // Si la API no responde, la tienda sigue navegable sin el menú de categorías.
-        error: () => this.menu.set([])
-      });
-    }
+    // El menú solo se pide en el navegador (el HTML prerenderizado no consulta la API
+    // ni congela el menú) y cuando se va a mostrar: los visitantes del portal no lo
+    // ven, y pedirlo en cada visita era una consulta a la base sin uso.
+    const isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+    let menuRequested = false;
+    effect(() => {
+      if (!isBrowser || menuRequested || !this.showMenu()) return;
+      menuRequested = true;
+      untracked(() =>
+        this.categoryService.getMenu().subscribe({
+          next: menu => this.menu.set(menu),
+          // Si la API no responde, la tienda sigue navegable sin el menú de categorías.
+          error: () => this.menu.set([])
+        })
+      );
+    });
 
     this.auth.ensureSession().subscribe();
 

@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of, shareReplay } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import {
@@ -18,22 +18,30 @@ export class TraditionalCatalogService {
   private readonly apiUrl = `${environment.apiBaseUrl}/traditional-catalogs`;
 
   /**
-   * PDF destacado (banner y Beneficios): el del primer catálogo publicado que lo
-   * tenga, en el orden de la administración. Se consulta una vez por visita; si
-   * falla, se vuelve a intentar en el siguiente uso.
+   * Catálogos públicos: una sola consulta por visita, compartida entre el PDF
+   * destacado (Beneficios) y la pestaña de catálogos. Si falla, el siguiente uso la
+   * repite; cualquier cambio desde la administración la descarta.
    */
-  private readonly featuredPdfUrl$ = this.getPublic().pipe(
-    map(catalogs => catalogs.find(catalog => catalog.pdfUrl)?.pdfUrl ?? null),
-    shareReplay({ bufferSize: 1, refCount: false })
-  );
+  private publicCatalogs$: Observable<PublicTraditionalCatalog[]> | null = null;
 
   /** Tienda: solo catálogos activos, en el orden configurado. */
   getPublic(): Observable<PublicTraditionalCatalog[]> {
-    return this.http.get<PublicTraditionalCatalog[]>(`${this.apiUrl}/public`);
+    this.publicCatalogs$ ??= this.http
+      .get<PublicTraditionalCatalog[]>(`${this.apiUrl}/public`)
+      .pipe(shareReplay({ bufferSize: 1, refCount: false }));
+
+    return this.publicCatalogs$;
   }
 
+  /**
+   * PDF destacado (banner y Beneficios): el del primer catálogo publicado que lo
+   * tenga, en el orden de la administración.
+   */
   getFeaturedPdfUrl(): Observable<string | null> {
-    return this.featuredPdfUrl$.pipe(catchError(() => of(null)));
+    return this.getPublic().pipe(
+      map(catalogs => catalogs.find(catalog => catalog.pdfUrl)?.pdfUrl ?? null),
+      catchError(() => of(null))
+    );
   }
 
   getAll(): Observable<TraditionalCatalog[]> {
@@ -41,25 +49,30 @@ export class TraditionalCatalogService {
   }
 
   create(request: SaveTraditionalCatalogRequest): Observable<TraditionalCatalog> {
-    return this.http.post<TraditionalCatalog>(this.apiUrl, request);
+    return this.changed(this.http.post<TraditionalCatalog>(this.apiUrl, request));
   }
 
   update(id: number, request: SaveTraditionalCatalogRequest): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/${id}`, request);
+    return this.changed(this.http.put<void>(`${this.apiUrl}/${id}`, request));
   }
 
   delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+    return this.changed(this.http.delete<void>(`${this.apiUrl}/${id}`));
   }
 
   uploadFile(id: number, kind: TraditionalCatalogFile, file: File): Observable<TraditionalCatalog> {
     const form = new FormData();
     form.append('file', file, file.name);
 
-    return this.http.put<TraditionalCatalog>(`${this.apiUrl}/${id}/${kind}`, form);
+    return this.changed(this.http.put<TraditionalCatalog>(`${this.apiUrl}/${id}/${kind}`, form));
   }
 
   deleteFile(id: number, kind: TraditionalCatalogFile): Observable<TraditionalCatalog> {
-    return this.http.delete<TraditionalCatalog>(`${this.apiUrl}/${id}/${kind}`);
+    return this.changed(this.http.delete<TraditionalCatalog>(`${this.apiUrl}/${id}/${kind}`));
+  }
+
+  /** Tras un cambio (aunque falle a medias) la tienda vuelve a pedir la lista. */
+  private changed<T>(request: Observable<T>): Observable<T> {
+    return request.pipe(finalize(() => (this.publicCatalogs$ = null)));
   }
 }

@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 
+using MagicBeauty.Store.Api.Filters;
 using MagicBeauty.Store.Api.Middleware;
 using MagicBeauty.Store.Api.Security;
 using MagicBeauty.Store.Api.Services;
@@ -26,6 +27,9 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.IsDevelopment());
 
 builder.Services.AddStoreAuthentication(builder.Environment);
+
+// Login, verificacion y cambio de contrasena terminan en 13 s como maximo.
+builder.Services.AddAuthRequestBudget();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IPriceAudienceProvider, HttpContextPriceAudienceProvider>();
