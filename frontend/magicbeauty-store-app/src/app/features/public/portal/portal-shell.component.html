@@ -1,4 +1,52 @@
 @if (banner(); as current) {
+  @if (current.campaignImage) {
+    <!-- Carrusel del inicio: un banner a la vez, rota solo y se elige con los puntos (o deslizando en móvil). -->
+    <div class="home-carousel" role="region" aria-roledescription="carrusel" aria-label="Novedades de Magic Beauty"
+      (mouseenter)="bannerHovered.set(true)" (mouseleave)="bannerHovered.set(false)"
+      (focusin)="onCarouselFocusIn($event)" (focusout)="onCarouselFocusOut($event)">
+      <!-- Un solo banner en el DOM; se recrea al cambiar para repetir la animación de entrada. -->
+      @for (slide of [slides[activeSlide()]]; track slide.id) {
+      <section class="home-slide" [attr.data-slide]="slide.id" aria-labelledby="home-slide-title" aria-roledescription="diapositiva">
+        <h1 id="home-slide-title" class="home-slide__title">{{ slide.title }}</h1>
+        <div class="home-slide__media" [style.--slide-bg]="'url(' + slide.image + ')'" (pointerdown)="onSwipeStart($event)" (pointerup)="onSwipeEnd($event)">
+          <!-- El marco guarda la proporción de la imagen: las zonas de los botones se miden contra él. -->
+          <div class="home-slide__frame">
+          @if (slide.link) {
+            <a class="home-slide__link" [routerLink]="slide.link.link" [attr.aria-label]="slide.link.label">
+              <img [src]="slide.image" [width]="slide.width" [height]="slide.height" [alt]="slide.alt" [attr.fetchpriority]="activeSlide() === 0 ? 'high' : null" decoding="async" draggable="false" />
+            </a>
+          } @else {
+            <img [src]="slide.image" [width]="slide.width" [height]="slide.height" [alt]="slide.alt" [attr.fetchpriority]="activeSlide() === 0 ? 'high' : null" decoding="async" draggable="false" />
+          }
+          @for (spot of slide.hotspots ?? []; track spot.link) {
+            <a class="home-slide__hotspot" [routerLink]="spot.link" [attr.aria-label]="spot.label"
+              [style.left.%]="spot.left" [style.top.%]="spot.top" [style.width.%]="spot.width" [style.height.%]="spot.height"></a>
+          }
+          </div>
+          <div class="home-dots" role="group" aria-label="Elegir banner">
+            @for (item of slides; track item.id; let i = $index) {
+              <button type="button" class="home-dots__dot" [attr.aria-label]="'Ir al banner de ' + item.name" [attr.aria-current]="activeSlide() === i ? 'true' : null" (click)="showSlide(i)"></button>
+            }
+          </div>
+        </div>
+        @if (slide.note || slide.mobileCtas?.length) {
+          <div class="home-slide__details">
+            @if (slide.note) {
+              <p><strong>{{ slide.note.strong }}</strong> {{ slide.note.text }}</p>
+            }
+            @if (slide.mobileCtas?.length) {
+              <div class="home-slide__ctas">
+                @for (cta of slide.mobileCtas; track cta.link; let first = $first) {
+                  <a class="home-slide__cta" [class.home-slide__cta--outline]="!first" [routerLink]="cta.link">{{ cta.label }} <i class="pi pi-angle-right" aria-hidden="true"></i></a>
+                }
+              </div>
+            }
+          </div>
+        }
+      </section>
+      }
+    </div>
+  } @else {
   <section class="banner">
     <img class="banner__image" [src]="current.image" alt="" fetchpriority="high" />
 
@@ -33,6 +81,7 @@
       </div>
     </div>
   </section>
+  }
 }
 
 <div class="portal-body" [class.portal-body--no-banner]="!banner()">

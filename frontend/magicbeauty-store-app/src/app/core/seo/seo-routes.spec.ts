@@ -8,6 +8,10 @@ import { routes } from '../../app.routes';
 import { SEO_DEFAULTS } from './seo.model';
 import { SeoTitleStrategy } from './seo-title.strategy';
 
+// La primera navegación de cada archivo carga las páginas completas del catálogo (~4 s);
+// con la máquina ocupada supera los 5 s por defecto y la prueba falla sin motivo real.
+vi.setConfig({ testTimeout: 15000 });
+
 const SITE = 'https://www.magicbeautycosmetics.com';
 
 const PRODUCT = {
@@ -311,4 +315,20 @@ describe('category pages', () => {
     await vi.waitFor(() => expect(heading()).toBe('Catálogo mayorista'));
     expect(document.title).toBe('Catálogo digital de maquillaje y cosméticos · Magic Beauty Cosmetics');
   });
+});
+
+ it('serves the independent campaign with indexable SEO and four calendar options', async () => {
+  const page = await open('/calendarios-de-adviento');
+  expect(page.url).toBe('/calendarios-de-adviento');
+  expect(page.element.querySelector('app-advent-calendar')).not.toBeNull();
+  expect(page.element.querySelector('app-portal-shell')).toBeNull();
+  expect(page.element.querySelectorAll('.calendar-card').length).toBe(4);
+  expect(page.title).toBe('Calendarios de Adviento 2026 · Magic Beauty Cosmetics');
+  expect(page.canonical).toBe(SITE + '/calendarios-de-adviento');
+  expect(page.robots).toBe('index, follow');
+  expect(page.description).toContain('Trendy, Purpure, Bloomshell');
+  expect(page.ogTitle).toBe(page.title);
+  expect(page.ogImage).toBe(SITE + SEO_DEFAULTS.image);
+  expect(page.jsonLd.some(item => item['@type'] === 'BreadcrumbList')).toBe(true);
+  expect(page.jsonLd.some(item => item['@type'] === 'Product' || item['@type'] === 'Offer')).toBe(false);
 });

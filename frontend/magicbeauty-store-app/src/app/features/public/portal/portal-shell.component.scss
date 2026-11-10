@@ -12,7 +12,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  min-height: clamp(440px, 36.46vw, 700px);
+  min-height: clamp(440px, 36.46vw, 560px);
   overflow: hidden;
   background:
     radial-gradient(circle at 18% 30%, rgba(255, 255, 255, 0.75), transparent 45%),
@@ -22,13 +22,13 @@
 .banner__image {
   position: absolute;
   top: 0;
-  right: 0;
-  width: 56%;
+  right: max(0px, calc((100% - var(--mb-container)) / 2));
+  width: min(56%, calc(var(--mb-container) * 0.56));
   height: 100%;
   object-fit: cover;
   object-position: left center;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22%);
-  mask-image: linear-gradient(to right, transparent 0, #000 22%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22%, #000 85%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 22%, #000 85%, transparent 100%);
 }
 
 .banner__inner {
@@ -76,7 +76,7 @@
 
 .banner__title-highlight {
   color: var(--mb-primary);
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .banner__text {
@@ -359,4 +359,84 @@
   .portal-content {
     padding-top: 1.5rem;
   }
+}
+
+/* Full supplied artwork: keep its proportions and equal outer margins at any zoom. */
+
+/*
+ * ===== Carrusel del inicio =====
+ * Imágenes completas (texto dibujado), una a la vez. Los puntos van sobre la imagen,
+ * en una cápsula oscura translúcida; el activo se alarga.
+ */
+.home-carousel { background: var(--mb-bg-store); }
+.home-slide { animation: banner-appear 250ms ease-out; }
+.home-slide__title { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/*
+ * A todo el ancho de la pantalla, con la proporción 3:1 del banner. En monitores más
+ * anchos que la imagen, los lados se rellenan con la misma imagen difuminada.
+ */
+.home-slide__media { position: relative; overflow: hidden; width: 100%; touch-action: pan-y; }
+/* El relleno difuminado solo hace falta cuando la pantalla es más ancha que el banner. */
+.home-slide__media::before {
+  display: none; content: ''; position: absolute; inset: -40px;
+  /* Estirada a lo ancho: así cada lado toma los colores del borde del banner y no hay corte. */
+  background: var(--slide-bg) center / 100% 100% no-repeat; filter: blur(40px);
+}
+/* Llena el ancho hasta su tamaño real (2172 px); solo en monitores más anchos aparecen los lados difuminados. */
+.home-slide__frame { position: relative; max-width: 2172px; margin-inline: auto; }
+@media (min-width: 2173px) { .home-slide__media::before { display: block; } }
+.home-slide__media img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+.home-slide__link { display: block; }
+.home-slide__link:focus-visible, .home-slide__hotspot:focus-visible { outline: 3px solid var(--mb-primary-hover); outline-offset: -3px; }
+
+/* Botones dibujados en la imagen: enlaces reales encima, con un brillo suave al pasar. */
+.home-slide__hotspot { position: absolute; border-radius: 999px; transition: box-shadow 0.15s ease, background 0.15s ease; }
+.home-slide__hotspot:hover { background: rgba(255, 255, 255, 0.12); box-shadow: 0 6px 18px rgba(207, 20, 103, 0.25); }
+.home-slide__hotspot:focus-visible { outline-offset: 2px; }
+
+.home-dots {
+  position: absolute; left: 50%; bottom: clamp(4px, 0.7vw, 10px); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 2px; padding: 3px 8px; border-radius: 999px;
+  background: rgba(40, 40, 46, 0.55); backdrop-filter: blur(2px);
+}
+.home-dots__dot {
+  display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0;
+  background: transparent; cursor: pointer;
+}
+.home-dots__dot::before {
+  content: ''; width: 8px; height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.75);
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.home-dots__dot:hover::before { background: #fff; }
+.home-dots__dot[aria-current='true'] { width: 34px; }
+.home-dots__dot[aria-current='true']::before { width: 24px; background: #fff; }
+.home-dots__dot:focus-visible { outline: 2px solid #fff; outline-offset: -2px; border-radius: 999px; }
+
+.home-slide__details { max-width: 1280px; margin-inline: auto; padding: 12px 24px 40px; text-align: center; }
+.home-slide__details p { margin: 0; color: var(--mb-text-secondary); font-size: 13px; line-height: 1.5; }
+.home-slide__details strong { color: var(--mb-wine); }
+.home-slide__ctas { display: none; }
+.home-slide:not(:has(.home-slide__details)) .home-slide__media { margin-bottom: 40px; }
+
+@keyframes banner-appear { from { opacity: 0.6; } to { opacity: 1; } }
+
+@media (max-width: 640px) {
+  /* La imagen queda pequeña: los puntos salen debajo para no tapar sus botones. */
+  .home-dots { position: static; transform: none; width: fit-content; margin: 8px auto 0; padding: 1px 6px; }
+  .home-dots__dot { width: 18px; height: 18px; }
+  .home-dots__dot::before { width: 6px; height: 6px; }
+  .home-dots__dot[aria-current='true'] { width: 26px; }
+  .home-dots__dot[aria-current='true']::before { width: 18px; }
+  .home-slide__details { padding: 12px 16px 20px; }
+  .home-slide:not(:has(.home-slide__details)) .home-slide__media { margin-bottom: 20px; }
+  .home-slide__ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
+  .home-slide__cta { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 44px; padding: 10px 22px; border: 1px solid var(--mb-primary); border-radius: var(--mb-radius-pill); background: var(--mb-primary); color: white; font-weight: 600; text-decoration: none; }
+  .home-slide__cta:hover { background: var(--mb-primary-hover); }
+  .home-slide__cta--outline { background: var(--mb-surface); color: var(--mb-primary-hover); }
+  .home-slide__cta--outline:hover { background: var(--mb-primary-soft); }
+  .home-slide__cta:focus-visible { outline: 3px solid var(--mb-primary-hover); outline-offset: 3px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-slide { animation: none; }
+  .home-dots__dot::before { transition: none; }
 }

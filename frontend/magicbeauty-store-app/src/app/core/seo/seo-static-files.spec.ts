@@ -162,14 +162,17 @@ describe('index.html', () => {
 describe('prerendered routes', () => {
   const prerendered = serverRoutes.filter(route => route.renderMode !== undefined && route.path !== '**').map(route => route.path);
 
-  it('prerenders only portal pages that exist and are indexable', () => {
+  it('prerenders portal pages and the public campaign without live catalog data', () => {
     const portal = routes
       .find(route => route.path === '')!
       .children!.flatMap(route => route.children ?? [])
       .filter(route => route.data?.['portalBanner'] && !route.data?.['seo']?.noindex)
       .map(route => route.path);
 
-    expect(prerendered).toEqual(['', 'catalogo', 'catalogos']);
+    expect(prerendered).toEqual(['', 'catalogo', 'catalogos', 'calendarios-de-adviento']);
+    const campaign = routes.find(route => route.path === '')!.children!.find(route => route.path === 'calendarios-de-adviento')!;
+    expect(campaign.data?.['seo']?.noindex).not.toBe(true);
+    portal.push(campaign.path);
     prerendered.forEach(path => expect(portal).toContain(path));
   });
 

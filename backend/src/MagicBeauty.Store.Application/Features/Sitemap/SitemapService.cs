@@ -16,7 +16,7 @@ public sealed class SitemapService(
     /// Paginas fijas del portal. El pedido, las busquedas y el administrador no
     /// se listan: son privadas o estan marcadas como noindex.
     /// </summary>
-    private static readonly string[] PortalPaths = ["/", "/catalogo", "/catalogos"];
+    private static readonly string[] PortalPaths = ["/", "/catalogo", "/catalogos", "/calendarios-de-adviento"];
 
     public async Task<string> BuildXmlAsync(string siteUrl, CancellationToken cancellationToken)
     {

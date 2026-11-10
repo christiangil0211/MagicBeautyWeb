@@ -789,7 +789,8 @@
 }
 
 /* El banner del portal ocupa todo el ancho bajo la cabecera, como el del inicio. */
-.store-content:has(> app-portal-shell) {
+.store-content:has(> app-portal-shell),
+.store-content:has(> app-advent-calendar) {
   max-width: none;
   padding: 0 0 56px;
 }

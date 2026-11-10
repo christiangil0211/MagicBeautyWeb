@@ -11,6 +11,7 @@ export const serverRoutes: ServerRoute[] = [
   { path: '', renderMode: RenderMode.Prerender },
   { path: 'catalogo', renderMode: RenderMode.Prerender },
   { path: 'catalogos', renderMode: RenderMode.Prerender },
+  { path: 'calendarios-de-adviento', renderMode: RenderMode.Prerender },
   {
     // Fichas, categorías, pedido y administrador dependen de datos vivos o de la sesión.
     path: '**',
