@@ -34,6 +34,7 @@ export interface PortalBannerAction {
  * `data` de la ruta para que la página contenedora pinte el banner que toca.
  */
 export interface PortalBanner {
+  campaignImage?: string;
   eyebrow?: string;
   title: string;
   /** Final del título, en fucsia y en su propia línea. */
@@ -46,6 +47,7 @@ export interface PortalBanner {
 
 export const PORTAL_BANNERS = {
   benefits: {
+    campaignImage: '/images/campaigns/banner-calendarios-2026.webp',
     eyebrow: 'Hazte mayorista',
     title: 'Tu belleza, también en',
     highlight: 'grandes cantidades',

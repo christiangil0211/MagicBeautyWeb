@@ -1,0 +1,153 @@
+@let item = calendar();
+@let info = detail();
+<div class="detail-backdrop" (pointerdown)="onBackdropDown($event)" (click)="onBackdropClick($event)">
+  <div class="detail" role="dialog" aria-modal="true" [attr.aria-labelledby]="titleId()" [attr.data-calendar]="item.id" cdkTrapFocus>
+    <button #closeButton type="button" class="detail__close" [attr.aria-label]="'Cerrar detalles de ' + item.name" (click)="close()">
+      <i class="pi pi-times" aria-hidden="true"></i>
+    </button>
+
+    <div class="detail__body">
+      <!-- Galería: las mismas fotos de la tarjeta, completas (object-fit: contain). -->
+      <figure class="detail-gallery" role="group" [attr.aria-label]="'Imágenes de ' + item.name"
+        (keydown.arrowleft)="move(-1)" (keydown.arrowright)="move(1)">
+        <div class="detail-gallery__stage">
+          <img class="detail-gallery__image" [src]="item.images[index()]"
+            [alt]="item.name + ' — imagen ' + (index() + 1) + ' de ' + item.images.length + (item.conceptualImages ? ' — propuesta conceptual' : '')"
+            width="600" height="700" decoding="async" />
+          @if (item.images.length > 1) {
+            <button type="button" class="detail-gallery__arrow detail-gallery__arrow--previous" [attr.aria-label]="'Imagen anterior de ' + item.name" (click)="move(-1)"><i class="pi pi-angle-left" aria-hidden="true"></i></button>
+            <button type="button" class="detail-gallery__arrow detail-gallery__arrow--next" [attr.aria-label]="'Imagen siguiente de ' + item.name" (click)="move(1)"><i class="pi pi-angle-right" aria-hidden="true"></i></button>
+          }
+          @if (item.conceptualImages) {
+            <span class="detail-gallery__concept">Imagen conceptual</span>
+          }
+        </div>
+        @if (item.images.length > 1) {
+          <div class="detail-gallery__thumbnails">
+            @for (image of item.images; track image; let i = $index) {
+              <button type="button" class="detail-gallery__thumbnail" [attr.aria-label]="'Ver imagen ' + (i + 1) + ' de ' + item.name" [attr.aria-pressed]="index() === i" (click)="select(i)">
+                <img [src]="image" alt="" width="120" height="120" loading="lazy" decoding="async" />
+              </button>
+            }
+          </div>
+          <figcaption class="detail-gallery__counter">
+            <span aria-live="polite">{{ index() + 1 }} de {{ item.images.length }}</span>
+            <span class="detail-gallery__dots" aria-hidden="true">
+              @for (image of item.images; track image; let i = $index) {
+                <span [class.is-active]="index() === i"></span>
+              }
+            </span>
+          </figcaption>
+        }
+      </figure>
+
+      <div class="detail__info">
+        <p class="detail__brand">{{ info.brand }}</p>
+        <div class="detail__heading">
+          <h2 class="detail__title" [id]="titleId()">{{ info.title }}@if (info.highlight) {{{ " " }}<span>{{ info.highlight }}</span>}</h2>
+          <span class="detail__status" [class]="'detail__status--' + info.status"><i [class]="'pi ' + status().icon" aria-hidden="true"></i>{{ status().label }}</span>
+        </div>
+        <p class="detail__description">{{ info.description }}</p>
+
+        <div class="detail__grid">
+          <section class="detail-features" aria-labelledby="detail-features-title">
+            <h3 id="detail-features-title">Características</h3>
+            <ul>
+              @for (feature of info.features; track feature.text) {
+                <li>
+                  <i [class]="'pi ' + feature.icon" aria-hidden="true"></i>
+                  <span>@if (feature.label) { <strong>{{ feature.label }}</strong> }{{ feature.text }}</span>
+                </li>
+              }
+            </ul>
+          </section>
+
+          <div class="detail__commerce">
+            @if (hasPrices()) {
+              <section class="detail-prices" aria-label="Precios al detal">
+                @if (item.soldOut) {
+                  <p class="detail-prices__note"><i class="pi pi-info-circle" aria-hidden="true"></i> Precios de la campaña. Agotado: no se reciben nuevas separaciones.</p>
+                }
+                <dl class="detail-prices__main">
+                  <div><dt>Precio detal</dt><dd>{{ money(item.retail!) }}</dd></div>
+                  <div class="detail-prices__deposit"><dt>Separación</dt><dd>{{ money(item.deposit!) }}</dd></div>
+                </dl>
+                <p class="detail-prices__balance">
+                  <i class="pi pi-wallet" aria-hidden="true"></i>
+                  <span><strong>Saldo restante: {{ money(item.retail! - item.deposit!) }}</strong>
+                  <small>Se paga cuando se confirme la disponibilidad.</small></span>
+                </p>
+              </section>
+
+              @if (item.wholesale !== undefined && item.wholesaleDeposit !== undefined) {
+                <section class="detail-wholesale" aria-labelledby="detail-wholesale-title">
+                  <h3 id="detail-wholesale-title">Condiciones mayoristas</h3>
+                  <dl>
+                    <div><dt>Precio mayorista:</dt><dd><strong>{{ money(item.wholesale) }}</strong> por unidad</dd></div>
+                    <div><dt>Separación mayorista:</dt><dd><strong>{{ money(item.wholesaleDeposit) }}</strong> por unidad</dd></div>
+                    <div><dt>Saldo mayorista:</dt><dd><strong>{{ money(item.wholesale - item.wholesaleDeposit) }}</strong> por unidad</dd></div>
+                    @if (item.wholesaleMinimum) {
+                      <div><dt>Compra mínima:</dt><dd>{{ item.wholesaleMinimum }} unidades</dd></div>
+                    }
+                  </dl>
+                </section>
+              }
+            } @else {
+              <section class="detail-prices detail-prices--pending" aria-label="Precio y separación">
+                <dl class="detail-prices__main">
+                  <div><dt>Precio</dt><dd>Pendiente</dd></div>
+                  <div class="detail-prices__deposit"><dt>Separación</dt><dd>Pendiente</dd></div>
+                </dl>
+                <p class="detail-prices__balance">
+                  <i class="pi pi-info-circle" aria-hidden="true"></i>
+                  <span><strong>Aún sin reservas</strong>
+                  <small>Compartiremos precio y condiciones cuando estén confirmados. Puedes consultarnos por WhatsApp.</small></span>
+                </p>
+              </section>
+            }
+          </div>
+        </div>
+
+        <!-- Mismas condiciones de la landing: se reutiliza el mismo listado, sin otra versión del texto. -->
+        @if (conditions().length > 0) {
+          <details class="detail-conditions">
+            <summary>
+              <i class="pi pi-list" aria-hidden="true"></i>
+              <span>Condiciones comerciales</span>
+              <i class="pi pi-angle-down" aria-hidden="true"></i>
+            </summary>
+            <dl>
+              @for (condition of conditions(); track condition.title) {
+                <div>
+                  <dt>{{ condition.title }}</dt>
+                  <dd>
+                    <p>{{ condition.text }}</p>
+                    @if (condition.notice) { <p><strong>💗 Ten en cuenta:</strong> {{ condition.notice }}</p> }
+                    @if (condition.closing) { <p>{{ condition.closing }}</p> }
+                  </dd>
+                </div>
+              }
+            </dl>
+          </details>
+        }
+      </div>
+    </div>
+
+    <footer class="detail__actions">
+      @if (instagramUrl(); as instagram) {
+        <a class="detail-button" [class.detail-button--outline]="!item.soldOut" [href]="instagram" target="_blank" rel="noopener noreferrer">
+          <i class="pi pi-instagram" aria-hidden="true"></i>
+          {{ item.soldOut ? info.ctaLabel : 'Síguenos para conocer novedades' }}
+        </a>
+      }
+      @if (!item.soldOut && item.whatsapp) {
+        <a class="detail-button detail-button--whatsapp" [href]="item.whatsapp" target="_blank" rel="noopener noreferrer"
+          [attr.aria-label]="info.ctaLabel + ' — ' + item.name + ' (WhatsApp)'">
+          <i class="pi pi-whatsapp" aria-hidden="true"></i>
+          {{ info.ctaLabel }}
+          <i class="pi pi-angle-right" aria-hidden="true"></i>
+        </a>
+      }
+    </footer>
+  </div>
+</div>

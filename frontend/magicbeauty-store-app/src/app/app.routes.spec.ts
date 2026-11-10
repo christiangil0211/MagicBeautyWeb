@@ -6,6 +6,10 @@ import { RouterTestingHarness } from '@angular/router/testing';
 
 import { routes } from './app.routes';
 
+// La primera navegación de cada archivo carga las páginas completas del catálogo (~4 s);
+// con la máquina ocupada supera los 5 s por defecto y la prueba falla sin motivo real.
+vi.setConfig({ testTimeout: 15000 });
+
 async function navigateAs(harness: RouterTestingHarness, url: string, authenticated = false) {
   let settled = false;
   const navigation = harness.navigateByUrl(url);
@@ -116,7 +120,7 @@ it('returns to wholesale benefits after login and category navigation', async ()
   expect(TestBed.inject(Router).url).toBe('/');
   expect(element.querySelector('app-store-layout')).toBeNull();
   expect(element.querySelector('app-portal-shell')).not.toBeNull();
-  expect(element.querySelector('.banner__image')?.getAttribute('src')).toBe('/images/portal/banner-beneficios.jpg');
+  expect(element.querySelector('.home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendarios-2026.webp');
   expect(element.querySelector('.store-menu__link--portal.active')).not.toBeNull();
 });
 
@@ -139,4 +143,13 @@ it('keeps anonymous visitors in the wholesale portal when opening the store home
   expect(TestBed.inject(Router).url).toBe('/');
   expect(harness.fixture.nativeElement.querySelector('app-portal-shell')).not.toBeNull();
   expect(harness.fixture.nativeElement.querySelector('.desktop-search')).toBeNull();
+});
+
+it.each([false, true])('keeps the campaign public regardless of session (%s)', async authenticated => {
+  setup();
+  const harness = await RouterTestingHarness.create();
+  await navigateAs(harness, '/calendarios-de-adviento', authenticated);
+  expect(TestBed.inject(Router).url).toBe('/calendarios-de-adviento');
+  expect(harness.fixture.nativeElement.querySelector('app-advent-calendar')).not.toBeNull();
+  expect(harness.fixture.nativeElement.querySelector('app-portal-shell')).toBeNull();
 });

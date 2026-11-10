@@ -6,7 +6,7 @@ import { AuthService } from './core/services/auth.service';
 
 import { adminGuard } from './core/guards/admin.guard';
 import { SEO_DEFAULTS, SeoRouteData } from './core/seo/seo.model';
-import { buildStoreJsonLd, buildWebSiteJsonLd } from './core/seo/structured-data';
+import { buildBreadcrumbJsonLd, buildStoreJsonLd, buildWebSiteJsonLd } from './core/seo/structured-data';
 import { PORTAL_BANNERS } from './features/public/portal/portal-navigation';
 
 const authenticatedStore: CanMatchFn = (_route, segments) => {
@@ -104,6 +104,17 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./layouts/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
     children: [
+      {
+        path: 'calendarios-de-adviento',
+        loadComponent: () => import('./features/public/advent-calendar/advent-calendar.component').then(m => m.AdventCalendarComponent),
+        title: 'Calendarios de Adviento 2026 · Magic Beauty Cosmetics',
+        data: {
+          seo: {
+            description: 'Descubre los calendarios de Adviento 2026 de Trendy, Purpure, Bloomshell y Magic Beauty Cosmetics. Consulta precios, condiciones y separación por WhatsApp.',
+            jsonLd: { breadcrumb: buildBreadcrumbJsonLd([{ name: 'Inicio', path: '/' }, { name: 'Calendarios de Adviento 2026', path: '/calendarios-de-adviento' }]) }
+          } satisfies SeoRouteData
+        }
+      },
       {
         path: 'inicio',
         canMatch: [authenticatedStore],

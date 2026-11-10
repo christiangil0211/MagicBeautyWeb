@@ -1,0 +1,23 @@
+:host { display: block; width: min(100% - 48px, 1500px); margin: 0 auto 24px; }
+.campaign-social { position: relative; isolation: isolate; overflow: hidden; padding: 30px 210px; border: 1px solid var(--mb-border-pink); border-radius: 28px; background: radial-gradient(ellipse at 5% 100%, #f7bad4, transparent 30%), radial-gradient(ellipse at 100% 100%, #f8c5da, transparent 30%), linear-gradient(110deg, #fff0f6, #fffafc 52%, #fff0f6); text-align: center; }
+.campaign-social__content { position: relative; z-index: 1; }
+.campaign-social__eyebrow { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; color: var(--mb-primary-hover); font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+.campaign-social h2 { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: clamp(25px, 2.4vw, 36px); line-height: 1.15; color: var(--mb-heading); letter-spacing: -0.035em; }
+.campaign-social h2 span { color: var(--mb-primary); }
+.campaign-social__description { max-width: 88ch; margin: 12px auto 18px; font-size: 14px; line-height: 1.5; color: var(--mb-text); }
+.campaign-social__cta { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 46px; padding: 10px 26px; border-radius: var(--mb-radius-pill); background: var(--mb-primary); color: white; font-size: 15px; font-weight: 700; text-decoration: none; }
+.campaign-social__cta > i:first-child { font-size: 23px; }
+.campaign-social__cta:hover { background: var(--mb-primary-hover); }
+.campaign-social__cta:focus-visible { outline: 3px solid var(--mb-primary-hover); outline-offset: 4px; }
+.campaign-social__art, .campaign-social__ornaments { position: absolute; pointer-events: none; color: var(--mb-primary); }
+.campaign-social__art { left: 36px; bottom: -10px; width: 150px; height: 205px; }
+.campaign-social__phone { display: grid; place-items: center; width: 100px; height: 170px; margin: 10px auto; border: 4px solid var(--mb-wine); border-radius: 20px; background: linear-gradient(145deg, white, #f8b9d4); box-shadow: 8px 10px 20px #8a3e5d24; transform: rotate(-10deg); }
+.campaign-social__phone i { font-size: 54px; }
+.campaign-social__heart { position: absolute; top: 4px; right: 0; font-size: 25px; transform: rotate(12deg); }
+.campaign-social__gift { position: absolute; bottom: 0; left: -10px; font-size: 83px; color: var(--mb-primary-hover); }
+.campaign-social__ornaments { right: 40px; bottom: 20px; width: 120px; height: 130px; }
+.campaign-social__ornaments i { position: absolute; left: 0; top: 0; font-size: 52px; color: var(--mb-wine); transform: rotate(-14deg); }
+.campaign-social__ornaments span { position: absolute; bottom: 0; right: 0; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle at 32% 25%, #fff, #f58db7 35%, #cf1467); box-shadow: 0 8px 14px #8a3e5d26; }
+@media (max-width: 1100px) { .campaign-social { padding-inline: 160px; } .campaign-social__art { left: 10px; } .campaign-social__ornaments { right: 14px; width: 100px; } }
+@media (max-width: 900px) { .campaign-social { padding: 28px 24px; } .campaign-social__art, .campaign-social__ornaments { display: none; } }
+@media (max-width: 700px) { :host { width: calc(100% - 28px); margin-bottom: 20px; } .campaign-social { padding: 24px 16px; border-radius: 20px; } .campaign-social__eyebrow { font-size: 10px; letter-spacing: 0.1em; } .campaign-social__description { font-size: 14px; } .campaign-social__cta { width: 100%; box-sizing: border-box; padding-inline: 12px; font-size: 14px; gap: 8px; } }
