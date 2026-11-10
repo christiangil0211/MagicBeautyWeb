@@ -1,0 +1,141 @@
+<section class="campaign-hero" aria-labelledby="campaign-title">
+  <div class="campaign-hero__inner">
+    <div class="campaign-hero__copy">
+      <p class="campaign-eyebrow">Colección especial</p>
+      <h1 id="campaign-title">Calendarios de <br>Adviento <span>2026</span></h1>
+      <p class="campaign-hero__description">Descubre nuestras 4 alternativas de calendarios de Adviento: Trendy, Purpure, Bloomshell y el calendario propio de <strong>Magic Beauty Cosmetics.</strong></p>
+      <ul class="campaign-highlights" aria-label="Sobre la colección">
+        <li><i class="pi pi-gift" aria-hidden="true"></i><span>4 opciones<br>para ti</span></li>
+        <li><i class="pi pi-heart" aria-hidden="true"></i><span>Distintos<br>presupuestos</span></li>
+        <li><i class="pi pi-verified" aria-hidden="true"></i><span>Marcas top y<br>sorpresas únicas</span></li>
+      </ul>
+      <a class="campaign-button campaign-hero__cta" href="#coleccion">Explora la colección <i class="pi pi-angle-right" aria-hidden="true"></i></a>
+    </div>
+    <div class="campaign-hero__visual" aria-label="Las cuatro propuestas de la colección">
+      <span class="campaign-sparkle campaign-sparkle--one" aria-hidden="true">✦</span>
+      <span class="campaign-sparkle campaign-sparkle--two" aria-hidden="true">✧</span>
+      <div class="campaign-hero__previews">
+        @for (calendar of calendars; track calendar.id) {
+          <div class="calendar-preview" [class.calendar-preview--own]="calendar.id === 'magic-beauty'" role="button" tabindex="0" aria-haspopup="dialog" [attr.aria-label]="'Ver detalles de ' + calendar.name" (click)="openDetail(calendar, $event)" (keydown.enter)="openDetail(calendar, $event)" (keydown.space)="$event.preventDefault(); openDetail(calendar, $event)">
+            <img [src]="calendar.images[0]" [alt]="calendar.name + (calendar.id === 'magic-beauty' ? ' — imagen conceptual' : ' — Calendario de Adviento 2026')" width="240" height="300" decoding="async" />
+            <span>{{ calendar.name }}</span>
+            @if (calendar.soldOut) { <small>Agotado</small> }
+          </div>
+        }
+      </div>
+      <p class="campaign-hero__asset-note">Trendy agotado. Las imágenes de Magic Beauty representan una propuesta conceptual.</p>
+    </div>
+  </div>
+</section>
+
+<section id="coleccion" class="campaign-collection campaign-container" aria-labelledby="collection-title">
+  <header class="campaign-section-heading">
+    <h2 id="collection-title">Nuestra colección de <span>Calendarios de Adviento</span></h2>
+    <p>Cuatro opciones, un mismo propósito: vivir la magia del beauty cada día.</p>
+  </header>
+  <div class="calendar-grid">
+    @for (calendar of calendars; track calendar.id) {
+      <article class="calendar-card" [attr.data-calendar]="calendar.id" [attr.aria-labelledby]="'calendar-' + calendar.id">
+        <figure class="calendar-gallery" role="group" [attr.aria-label]="'Imágenes de ' + calendar.name">
+          <div class="calendar-gallery__stage">
+            <button type="button" class="calendar-gallery__open" [attr.aria-label]="'Ver detalles de ' + calendar.name" aria-haspopup="dialog" (click)="openDetail(calendar, $event)">
+              <img class="calendar-gallery__image" [src]="calendar.images[imageIndex(calendar)]" [alt]="calendar.name + ' — imagen ' + (imageIndex(calendar) + 1) + (calendar.id === 'magic-beauty' ? ' — propuesta conceptual' : '')" width="600" height="750" loading="lazy" decoding="async" />
+            </button>
+            @if (calendar.images.length > 1) {
+              <button type="button" class="calendar-gallery__arrow calendar-gallery__arrow--previous" [attr.aria-label]="'Imagen anterior de ' + calendar.name" (click)="moveImage(calendar, -1)"><i class="pi pi-angle-left" aria-hidden="true"></i></button>
+              <button type="button" class="calendar-gallery__arrow calendar-gallery__arrow--next" [attr.aria-label]="'Imagen siguiente de ' + calendar.name" (click)="moveImage(calendar, 1)"><i class="pi pi-angle-right" aria-hidden="true"></i></button>
+            }
+          </div>
+          <div class="calendar-gallery__thumbnails">
+            @for (image of calendar.images; track image; let index = $index) {
+              <button type="button" class="calendar-gallery__thumbnail" [attr.aria-label]="'Ver imagen ' + (index + 1) + ' de ' + calendar.name" [attr.aria-pressed]="imageIndex(calendar) === index" (click)="selectImage(calendar, index)"><img [src]="image" alt="" width="60" height="60" loading="lazy" decoding="async" /></button>
+            }
+          </div>
+          <figcaption><span aria-live="polite">Imagen {{ imageIndex(calendar) + 1 }} de {{ calendar.images.length }}</span>@if (calendar.id === 'magic-beauty') { <span> · Imagen conceptual</span> }</figcaption>
+        </figure>
+        <h3 class="calendar-card__brand" [id]="'calendar-' + calendar.id" [class.calendar-card__brand--purpure]="calendar.id === 'purpure'" [class.calendar-card__brand--own]="calendar.id === 'magic-beauty'"><button type="button" class="calendar-card__open" aria-haspopup="dialog" (click)="openDetail(calendar, $event)">{{ calendar.name }}</button></h3>
+        @if (calendar.soldOut) {
+          <div class="calendar-card__pending"><span class="pending-badge">Agotado</span><p>{{ calendar.description }}</p>
+            @if (instagramUrl) {
+              <a class="trendy-follow" [href]="instagramUrl" target="_blank" rel="noopener noreferrer"><i class="pi pi-instagram" aria-hidden="true"></i><span>¿No alcanzaste? Síguenos para conocer novedades</span></a>
+            }
+          </div>
+        } @else if (calendar.retail !== undefined && calendar.deposit !== undefined) {
+          <dl class="retail-prices">
+            <div><dt>Detal:</dt><dd>{{ money(calendar.retail) }}</dd></div>
+            <div><dt>Separación:</dt><dd>{{ money(calendar.deposit) }}</dd></div>
+          </dl>
+          <div class="wholesale-prices">
+            <p><strong>Mayorista:</strong> {{ money(calendar.wholesale!) }} por unidad</p>
+            <p><strong>Separación mayorista:</strong> {{ money(calendar.wholesaleDeposit!) }} por unidad</p>
+            <p><strong>Mínimo mayorista:</strong> 3 unidades</p>
+          </div>
+        } @else {
+          <div class="calendar-card__pending">
+            <span class="pending-badge"><i class="pi pi-calendar" aria-hidden="true"></i> Próximamente</span>
+            <p class="pending-price">Precio pendiente</p>
+            <p>{{ calendar.description }}</p>
+          </div>
+        }
+        @if (!calendar.soldOut) {
+        <a class="calendar-card__cta" [class.campaign-button]="calendar.retail !== undefined" [class.campaign-button--outline]="calendar.retail === undefined" [href]="calendar.whatsapp" target="_blank" rel="noopener noreferrer" [attr.aria-label]="(calendar.retail !== undefined ? 'Solicitar separación de ' : 'Consultar lanzamiento de ') + calendar.name + ' por WhatsApp'">
+          <i class="pi pi-whatsapp" aria-hidden="true"></i>
+          {{ calendar.retail !== undefined ? 'Separar por WhatsApp' : 'Consultar lanzamiento' }}
+          <i class="pi pi-angle-right" aria-hidden="true"></i>
+        </a>
+        }
+      </article>
+    }
+  </div>
+</section>
+
+@if (instagramUrl) {
+  <app-campaign-social-follow [instagramUrl]="instagramUrl" />
+}
+
+<section class="campaign-how" aria-labelledby="reservation-title">
+  <div class="campaign-how__inner campaign-container">
+    <header>
+      <h2 id="reservation-title">¿Cómo separar tu <span>calendario?</span></h2>
+      <p>Es muy fácil y rápido. Sigue estos pasos:</p>
+    </header>
+    <ol class="reservation-steps">
+      @for (step of steps; track step.title; let index = $index) {
+        <li class="reservation-step">
+          <span class="reservation-step__icon"><i [class]="'pi ' + step.icon" aria-hidden="true"></i></span>
+          <h3>{{ index + 1 }}. {{ step.title }}</h3><p>{{ step.text }}</p>
+        </li>
+      }
+    </ol>
+  </div>
+</section>
+
+<section class="campaign-conditions campaign-container" aria-labelledby="conditions-title">
+  <header class="campaign-section-heading">
+    <h2 id="conditions-title">Condiciones de la campaña</h2>
+    <p>Conoce los aspectos más importantes antes de realizar tu separación.</p>
+  </header>
+  <div class="campaign-conditions__grid">
+    @for (condition of conditions; track condition.title) {
+      <details class="campaign-condition">
+        <summary><i [class]="'pi ' + condition.icon" aria-hidden="true"></i><span><strong>{{ condition.title }}</strong><small>{{ condition.description }}</small></span><i class="pi pi-angle-down" aria-hidden="true"></i></summary>
+        <p>{{ condition.text }}</p>
+        @if (condition.notice) {
+          <p><strong>💗 Ten en cuenta:</strong> {{ condition.notice }}</p>
+        }
+        @if (condition.closing) {
+          <p>{{ condition.closing }}</p>
+        }
+      </details>
+    }
+  </div>
+</section>
+
+@if (selected(); as current) {
+  <app-calendar-detail-modal
+    [calendar]="current.calendar"
+    [startIndex]="current.startIndex"
+    [conditions]="conditions"
+    [instagramUrl]="instagramUrl"
+    (closed)="closeDetail()" />
+}

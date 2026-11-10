@@ -39,6 +39,7 @@ public sealed class SitemapTests
                 Site + "/",
                 Site + "/catalogo",
                 Site + "/catalogos",
+                Site + "/calendarios-de-adviento",
                 Site + "/catalogo/categoria/maquillaje",
                 Site + "/catalogo/categoria/labios",
                 Site + "/catalogo/LAB201",
