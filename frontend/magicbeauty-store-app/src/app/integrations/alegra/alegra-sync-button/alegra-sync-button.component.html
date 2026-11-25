@@ -1,0 +1,110 @@
+@if (enabled()) {
+  <p-button
+    label="Actualizar desde Alegra"
+    icon="pi pi-sync"
+    severity="secondary"
+    [outlined]="true"
+    (onClick)="openDialog()" />
+
+  <p-dialog
+    header="Actualizar desde Alegra"
+    [modal]="true"
+    [visible]="open()"
+    (visibleChange)="$event ? null : close()"
+    [closable]="step() !== 'running'"
+    [closeOnEscape]="step() !== 'running'"
+    [draggable]="false"
+    [style]="{ width: 'min(92vw, 560px)' }"
+    appendTo="body">
+    @switch (step()) {
+      @case ('confirm') {
+        <div class="alegra-intro">
+          <p>
+            Se traerán los productos de Alegra y se actualizarán en la tienda. Cada producto se cruza por su
+            <strong>id de Alegra</strong>; la primera vez se asocia por la referencia.
+          </p>
+          <ul>
+            <li><i class="pi pi-tag" aria-hidden="true"></i> Nombre, descripción y estado (activo / inactivo).</li>
+            <li><i class="pi pi-dollar" aria-hidden="true"></i> Precio de la lista configurada.</li>
+            <li><i class="pi pi-box" aria-hidden="true"></i> Inventario (los productos con tonos no se tocan).</li>
+            <li><i class="pi pi-plus-circle" aria-hidden="true"></i> Las referencias que no existan se crean <strong>inactivas</strong> para revisarlas.</li>
+          </ul>
+        </div>
+      }
+      @case ('running') {
+        <app-loader message="Actualizando productos desde Alegra… puede tardar unos minutos." [compact]="true" />
+      }
+      @case ('result') {
+        @if (result(); as summary) {
+          <div class="alegra-stats" aria-label="Resumen de la actualización">
+            <div class="alegra-stat"><strong>{{ summary.total }}</strong><span>leídos</span></div>
+            <div class="alegra-stat alegra-stat--ok"><strong>{{ summary.updated }}</strong><span>actualizados</span></div>
+            <div class="alegra-stat alegra-stat--ok"><strong>{{ summary.created }}</strong><span>creados</span></div>
+            <div class="alegra-stat"><strong>{{ summary.unchanged }}</strong><span>sin cambios</span></div>
+            <div class="alegra-stat" [class.alegra-stat--warn]="summary.skipped > 0"><strong>{{ summary.skipped }}</strong><span>omitidos</span></div>
+            <div class="alegra-stat" [class.alegra-stat--error]="summary.failed > 0"><strong>{{ summary.failed }}</strong><span>con error</span></div>
+          </div>
+
+          @if (summary.linked > 0) {
+            <p class="alegra-note">
+              <i class="pi pi-link" aria-hidden="true"></i>
+              {{ summary.linked === 1 ? '1 producto se asoció' : summary.linked + ' productos se asociaron' }}
+              a su ítem de Alegra por la referencia. Desde ahora se actualizan por el id de Alegra.
+            </p>
+          }
+
+          @if (summary.created > 0) {
+            <p class="alegra-note">
+              <i class="pi pi-info-circle" aria-hidden="true"></i>
+              Los productos creados quedaron inactivos: asígnales categorías e imágenes y actívalos.
+            </p>
+          }
+
+          @if (summary.issues.length > 0) {
+            <ul class="alegra-issues">
+              @for (issue of summary.issues; track $index) {
+                <li [class]="'alegra-issue alegra-issue--' + issue.kind">
+                  <span class="alegra-issue__kind">{{ issueLabels[issue.kind] }}</span>
+                  <span class="alegra-issue__text">
+                    @if (issue.reference) {
+                      <strong>{{ issue.reference }}</strong>
+                    }
+                    @if (issue.name) {
+                      {{ issue.name }} ·
+                    }
+                    {{ issue.message }}
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+        }
+      }
+      @case ('error') {
+        <p class="alegra-error">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          {{ errorMessage() }}
+        </p>
+      }
+    }
+
+    <ng-template #footer>
+      @switch (step()) {
+        @case ('confirm') {
+          <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="close()" />
+          <p-button label="Actualizar ahora" icon="pi pi-sync" (onClick)="run()" />
+        }
+        @case ('running') {
+          <p-button label="Actualizando…" icon="pi pi-spin pi-spinner" [disabled]="true" />
+        }
+        @case ('error') {
+          <p-button label="Cerrar" severity="secondary" [text]="true" (onClick)="close()" />
+          <p-button label="Reintentar" icon="pi pi-refresh" (onClick)="run()" />
+        }
+        @default {
+          <p-button label="Cerrar" (onClick)="close()" />
+        }
+      }
+    </ng-template>
+  </p-dialog>
+}
