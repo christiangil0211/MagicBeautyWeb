@@ -83,10 +83,19 @@ describe('staticwebapp.config.json', () => {
 
   it('serves the client-side shell, not the prerendered home, for application routes', () => {
     expect(config.navigationFallback.rewrite).toBe('/index.csr.html');
-    const pages = config.routes.filter(item => item.rewrite && item.route !== '/sitemap.xml');
+    const pages = config.routes.filter(item => item.rewrite && item.rewrite.startsWith('/index'));
 
     expect(pages.length).toBeGreaterThan(0);
     expect(pages.every(item => item.rewrite === '/index.csr.html')).toBe(true);
+  });
+
+  it('sends product and category URLs to the function that adds their SEO data and real 404s', () => {
+    expect(rule('/catalogo/*')?.rewrite).toBe('/api/seo-page');
+    // Las únicas funciones: sitemap y fichas. Nada más se reescribe hacia /api.
+    expect(config.routes.filter(item => item.rewrite?.startsWith('/api/')).map(item => item.route)).toEqual([
+      '/sitemap.xml',
+      '/catalogo/*'
+    ]);
   });
 
   it('never answers robots.txt or a sitemap with the application HTML', () => {
