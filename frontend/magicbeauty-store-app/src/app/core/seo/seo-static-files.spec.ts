@@ -77,16 +77,29 @@ describe('sitemap.xml', () => {
 describe('staticwebapp.config.json', () => {
   const config = JSON.parse(read('public/staticwebapp.config.json')) as {
     navigationFallback: { rewrite: string; exclude: string[] };
-    routes: { route: string; rewrite?: string; redirect?: string; headers?: Record<string, string> }[];
+    routes: { route: string; rewrite?: string; redirect?: string; statusCode?: number; headers?: Record<string, string> }[];
   };
   const rule = (route: string) => config.routes.find(item => item.route === route);
 
   it('serves the client-side shell, not the prerendered home, for application routes', () => {
     expect(config.navigationFallback.rewrite).toBe('/index.csr.html');
-    const pages = config.routes.filter(item => item.rewrite && item.route !== '/sitemap.xml');
+    const pages = config.routes.filter(item => item.rewrite && item.rewrite.startsWith('/index'));
 
     expect(pages.length).toBeGreaterThan(0);
     expect(pages.every(item => item.rewrite === '/index.csr.html')).toBe(true);
+  });
+
+  it('sends product and category URLs to the function that adds their SEO data and real 404s', () => {
+    expect(rule('/catalogo/*')?.rewrite).toBe('/api/seo-page');
+    // "/catalogo/*" también atrapa "/catalogo": la regla anterior sirve su página prerenderizada.
+    const routes = config.routes.map(item => item.route);
+    expect(rule('/catalogo')?.rewrite).toBe('/catalogo/index.html');
+    expect(routes.indexOf('/catalogo')).toBeLessThan(routes.indexOf('/catalogo/*'));
+    // Las únicas funciones: sitemap y fichas. Nada más se reescribe hacia /api.
+    expect(config.routes.filter(item => item.rewrite?.startsWith('/api/')).map(item => item.route)).toEqual([
+      '/sitemap.xml',
+      '/catalogo/*'
+    ]);
   });
 
   it('never answers robots.txt or a sitemap with the application HTML', () => {
@@ -108,8 +121,10 @@ describe('staticwebapp.config.json', () => {
     expect(config.routes.filter(item => item.headers?.['Cache-Control']).some(item => /html|^\/\*?$/.test(item.route))).toBe(false);
   });
 
-  it('adds no redirect that could loop on the home page', () => {
-    expect(config.routes.some(item => item.redirect)).toBe(false);
+  it('only redirects the old /inicio URL, permanently and never from the home page itself', () => {
+    const redirects = config.routes.filter(item => item.redirect);
+
+    expect(redirects).toEqual([{ route: '/inicio', redirect: '/', statusCode: 301 }]);
   });
 });
 

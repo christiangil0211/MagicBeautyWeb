@@ -11,6 +11,15 @@
     [boxed]="true">
     <a class="mb-btn" routerLink="/catalogo">Ver el catálogo digital</a>
   </app-empty-state>
+} @else if (loadFailed()) {
+  <app-empty-state
+    class="detail-empty"
+    icon="pi-wifi"
+    title="No pudimos cargar este producto"
+    message="Hubo un problema de conexión. Intenta de nuevo en unos segundos."
+    [boxed]="true">
+    <button type="button" class="mb-btn" (click)="retry()">Reintentar</button>
+  </app-empty-state>
 } @else if (product(); as item) {
   <nav class="breadcrumb" aria-label="Ruta de navegación">
     <a routerLink="/">Inicio</a>

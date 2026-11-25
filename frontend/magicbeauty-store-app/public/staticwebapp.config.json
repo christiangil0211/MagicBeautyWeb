@@ -12,6 +12,19 @@
       "rewrite": "/api/sitemap"
     },
     {
+      "route": "/catalogo",
+      "rewrite": "/catalogo/index.html"
+    },
+    {
+      "route": "/catalogo/*",
+      "rewrite": "/api/seo-page"
+    },
+    {
+      "route": "/inicio",
+      "redirect": "/",
+      "statusCode": 301
+    },
+    {
       "route": "/admin",
       "rewrite": "/index.csr.html",
       "headers": { "X-Robots-Tag": "noindex, nofollow" }

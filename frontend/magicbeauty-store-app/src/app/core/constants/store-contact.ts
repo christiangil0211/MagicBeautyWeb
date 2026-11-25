@@ -3,7 +3,7 @@ export const STORE_SITE_URL = 'https://www.magicbeautycosmetics.com';
 
 /**
  * Dirección del local por partes, como la pide Schema.org. Solo datos
- * confirmados: no hay código postal, coordenadas ni horario publicados.
+ * confirmados: no hay código postal publicado.
  */
 export const STORE_ADDRESS = {
   streetAddress: 'Calle 13 # 44A - 26',
@@ -11,6 +11,27 @@ export const STORE_ADDRESS = {
   region: 'Valle del Cauca',
   countryCode: 'CO'
 } as const;
+
+/**
+ * Horario confirmado, en hora de Colombia: lunes a sábado de 10:00 a 20:00.
+ * El domingo no figura porque está cerrado (Schema.org: día ausente = cerrado).
+ */
+export const STORE_OPENING_HOURS = [
+  {
+    days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    opens: '10:00',
+    closes: '20:00'
+  }
+] as const;
+
+/**
+ * Coordenadas del local (Calle 13 # 44A - 26, Cali), tomadas del pin de la ficha
+ * de Google Maps. Con `null` el dato estructurado no publica `geo`.
+ */
+export const STORE_GEO: { latitude: number; longitude: number } | null = {
+  latitude: 3.4137043,
+  longitude: -76.533103
+};
 
 /**
  * Datos de contacto de la tienda. Único lugar donde se define el WhatsApp:

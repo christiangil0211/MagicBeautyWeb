@@ -33,7 +33,12 @@ export interface PortalBanner {
 }
 
 export const PORTAL_BANNERS = {
-  benefits: {},
+  // h1 fijo de la portada: no depende del banner que esté a la vista.
+  benefits: {
+    title: 'Maquillaje y cosméticos en Cali,',
+    highlight: 'al detal y al por mayor',
+    text: 'Las marcas que te encantan con precios especiales para tu negocio. Arma tu pedido y envíalo por WhatsApp.'
+  },
   digitalCatalog: {
     title: 'Catálogo',
     highlight: 'mayorista',

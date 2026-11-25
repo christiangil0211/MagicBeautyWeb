@@ -31,7 +31,7 @@
       </button>
 
       <!-- El logo es el acceso al inicio desde cualquier página pública. -->
-      <a class="brand" [routerLink]="isAuthenticated() ? '/inicio' : '/'" aria-label="Magic Beauty Cosmetics, ir al inicio">
+      <a class="brand" [routerLink]="isAuthenticated() ? '/mi-tienda' : '/'" aria-label="Magic Beauty Cosmetics, ir al inicio">
         <img src="/images/logo-horizontal.png" alt="Magic Beauty Cosmetics" width="610" height="100" />
       </a>
 
@@ -208,6 +208,8 @@
           @for (tab of portalTabs; track tab.path) {
             <a [routerLink]="tab.path">{{ tab.label }}</a>
           }
+          <!-- Enlace fijo: el carrusel rota y Google necesita un enlace estable a la campaña. -->
+          <a routerLink="/calendarios-de-adviento">Calendario de Adviento</a>
         </div>
 
         <!-- Enlaces a la página de cada categoría: así visitantes y buscadores llegan a ellas. -->

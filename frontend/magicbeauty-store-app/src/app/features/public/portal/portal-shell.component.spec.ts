@@ -40,9 +40,11 @@ it('links the complete campaign banner to the calendar landing on the public hom
   const link = root.querySelector('.home-slide__link');
   expect(link?.getAttribute('href')).toBe('/calendarios-de-adviento');
   expect(link?.querySelector('img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendario-magic-beauty-2026.jpg');
-  expect(root.querySelectorAll('h1').length).toBe(1);
-  expect(root.querySelector('.home-slide__title')?.tagName).toBe('H1');
-  expect(root.querySelector('.page-heading')).toBeNull();
+  // h1 fijo de la portada: no cambia con el banner a la vista.
+  expect(Array.from(root.querySelectorAll('h1'), h1 => text(h1 as HTMLElement).trim())).toEqual([
+    'Maquillaje y cosméticos en Cali, al detal y al por mayor'
+  ]);
+  expect(root.querySelector('.home-slide__title')?.tagName).toBe('P');
   expect(root.querySelectorAll('.tabs__link').length).toBe(4);
 });
 
@@ -109,7 +111,7 @@ it('keeps both catalog links on the wholesale banner and adds them as real butto
     ['Ver catálogo tradicional', '/catalogos']
   ]);
   expect(Array.from(root.querySelectorAll('.home-slide__cta')).map(link => link.getAttribute('href'))).toEqual(['/catalogo', '/catalogos']);
-  expect(root.querySelector('h1')?.textContent).toBe('Tu belleza, también en grandes cantidades');
+  expect(root.querySelector('.home-slide__title')?.textContent).toBe('Tu belleza, también en grandes cantidades');
 });
 
 it('links the store banner to the digital catalog and leaves the payments banner informative only', async () => {
@@ -126,7 +128,7 @@ it('links the store banner to the digital catalog and leaves the payments banner
   harness.fixture.detectChanges();
   expect(root.querySelectorAll('.home-slide a').length).toBe(0);
   expect(root.querySelector('.home-slide__media img')?.getAttribute('alt')).toContain('transferencias bancarias');
-  expect(root.querySelector('h1')?.textContent).toBe('Compra fácil y segura');
+  expect(root.querySelector('.home-slide__title')?.textContent).toBe('Compra fácil y segura');
 });
 
 it('changes slide on a touch swipe', async () => {
