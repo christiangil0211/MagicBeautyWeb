@@ -4,18 +4,23 @@
 
 <aside class="account-panel" [class.open]="open()" [attr.aria-hidden]="!open()" aria-label="Cuenta">
   <div class="account-panel__header">
-    <h2>
-      @if (isAuthenticated()) {
-        Mi cuenta
-      } @else if (step() === 'code') {
-        Verifica tu correo
-      } @else if (step() === 'new-password') {
-        Crea tu contraseña
-      } @else {
-        Iniciar sesión
-      }
-    </h2>
-    <button type="button" aria-label="Cerrar" (click)="close()">×</button>
+    <div class="account-panel__brand">
+      <img src="/images/logo-horizontal.png" alt="Magic Beauty Cosmetics" width="610" height="100" />
+      <h2>
+        @if (isAuthenticated()) {
+          Mi cuenta
+        } @else if (step() === 'code') {
+          Verifica tu correo
+        } @else if (step() === 'new-password') {
+          Crea tu contraseña
+        } @else {
+          Iniciar sesión
+        }
+      </h2>
+    </div>
+    <button type="button" class="account-panel__close" aria-label="Cerrar" (click)="close()">
+      <i class="pi pi-times" aria-hidden="true"></i>
+    </button>
   </div>
 
   @if (isAuthenticated()) {
@@ -76,22 +81,32 @@
     </div>
   } @else if (step() === 'credentials') {
     <div class="account-panel__body">
-      <p class="account-panel__hint">Ingresa con tu correo y contraseña.</p>
+      <div class="account-panel__welcome">
+        <span class="account-panel__icon" aria-hidden="true"><i class="pi pi-user"></i></span>
+        <div>
+          <strong>¡Hola de nuevo!</strong>
+          <p class="account-panel__hint">Ingresa con tu correo y contraseña.</p>
+        </div>
+      </div>
 
       <form class="account-panel__form" novalidate (ngSubmit)="submitCredentials()">
         <label for="account-email">Correo electrónico</label>
-        <input
-          id="account-email"
-          name="email"
-          type="email"
-          autocomplete="username"
-          inputmode="email"
-          placeholder="tucorreo@ejemplo.com"
-          [ngModel]="email()"
-          (ngModelChange)="email.set($event)" />
+        <div class="account-panel__field">
+          <i class="pi pi-envelope" aria-hidden="true"></i>
+          <input
+            id="account-email"
+            name="email"
+            type="email"
+            autocomplete="username"
+            inputmode="email"
+            placeholder="tucorreo@ejemplo.com"
+            [ngModel]="email()"
+            (ngModelChange)="email.set($event)" />
+        </div>
 
         <label for="account-password">Contraseña</label>
-        <div class="account-panel__password">
+        <div class="account-panel__field account-panel__password">
+          <i class="pi pi-lock" aria-hidden="true"></i>
           <input
             id="account-password"
             name="password"
@@ -116,6 +131,7 @@
           type="submit"
           class="account-panel__button"
           [disabled]="submitting() || !email().trim() || !password()">
+          <i class="pi pi-sign-in" aria-hidden="true"></i>
           {{ submitting() ? 'Ingresando…' : 'Ingresar' }}
         </button>
       </form>
@@ -225,6 +241,20 @@
           Usar otra cuenta
         </button>
       </div>
+    </div>
+  }
+
+  @if (!isAuthenticated()) {
+    <div class="account-panel__help">
+      <p>¿Necesitas ayuda para ingresar?</p>
+      <a [href]="whatsappHref" target="_blank" rel="noopener noreferrer">
+        <i class="pi pi-whatsapp" aria-hidden="true"></i>
+        WhatsApp {{ whatsappPhone }}
+      </a>
+      <a [href]="'mailto:' + contact.email">
+        <i class="pi pi-envelope" aria-hidden="true"></i>
+        {{ contact.email }}
+      </a>
     </div>
   }
 </aside>

@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Observable, finalize } from 'rxjs';
 
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
+import { STORE_CONTACT, whatsappDisplayPhone, whatsappUrl } from '../../../core/constants/store-contact';
 import { AuthService, SessionCheck } from '../../../core/services/auth.service';
 import { EMAIL_PATTERN, PASSWORD_RULES } from '../../../shared/utils/account-rules';
 import { authErrorMessage } from '../../../shared/utils/auth-errors';
@@ -49,6 +50,11 @@ export class AccountPanelComponent {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private waitTimers: ReturnType<typeof setTimeout>[] = [];
+
+  /** Contacto de la tienda para la tarjeta de ayuda, igual que en el menú móvil. */
+  readonly contact = STORE_CONTACT;
+  readonly whatsappHref = whatsappUrl();
+  readonly whatsappPhone = whatsappDisplayPhone();
 
   readonly open = input(false);
   readonly adminLinks = input<AccountAdminLink[]>([]);

@@ -1,4 +1,5 @@
-/* Mismo lenguaje visual que los paneles móviles del layout (cabecera, overlay, sombras). */
+/* Mismo lenguaje visual que el menú móvil del layout: degradado rosado, cabecera
+   con la marca, botón de cierre redondo, íconos en mosaico y tarjeta de ayuda. */
 
 .overlay {
   position: fixed;
@@ -13,11 +14,19 @@
   top: 0;
   right: 0;
   z-index: 71;
+  display: flex;
+  flex-direction: column;
   width: min(90vw, 380px);
   height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
-  background: var(--mb-surface);
+  overscroll-behavior-y: contain;
+  padding-bottom: env(safe-area-inset-bottom);
+  border-left: 1px solid var(--mb-pink-200);
+  border-radius: 24px 0 0 24px;
+  background: linear-gradient(180deg, var(--mb-pink-100), var(--mb-white) 260px);
   color: var(--mb-text);
+  font-family: var(--mb-font-body);
   box-shadow: var(--mb-shadow-lg);
   transform: translateX(100%);
   transition: transform 0.25s ease;
@@ -29,43 +38,108 @@
   }
 }
 
-.account-panel__header {
-  height: 72px;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--mb-border-soft);
+/* ---------- Cabecera con la marca ---------- */
 
-  h2 {
-    margin: 0;
-    color: var(--mb-heading);
-    font-size: 18px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+.account-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 112px;
+  padding: 24px 18px 20px;
+  border-bottom: 1px solid var(--mb-pink-200);
+}
+
+.account-panel__brand {
+  flex: 1;
+  min-width: 0;
+
+  img {
+    display: block;
+    width: min(100%, 238px);
+    height: auto;
   }
 
-  button {
-    border: 0;
-    background: transparent;
-    font-size: 34px;
-    font-weight: 300;
-    color: var(--mb-text);
-    cursor: pointer;
+  h2 {
+    margin: 12px 0 0;
+    color: var(--mb-wine);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
 }
 
-.account-panel__body {
-  padding: 22px 20px;
+.account-panel__close {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
   display: grid;
-  gap: 14px;
+  place-items: center;
+  border: 1px solid var(--mb-pink-200);
+  border-radius: 50%;
+  background: var(--mb-white);
+  color: var(--mb-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--mb-pink-100);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* ---------- Cuerpo ---------- */
+
+.account-panel__body {
+  padding: 22px 18px;
+  display: grid;
+  gap: 16px;
+}
+
+/* Bienvenida del formulario: ícono en mosaico como los enlaces del menú. */
+.account-panel__welcome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  strong {
+    display: block;
+    color: var(--mb-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .account-panel__hint {
+    margin-top: 2px;
+  }
+}
+
+.account-panel__icon {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--mb-pink-200);
+  color: var(--mb-primary);
+  font-size: 1.1rem;
 }
 
 .account-panel__greeting {
   display: flex;
   align-items: center;
   gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--mb-pink-200);
+  border-radius: 16px;
+  background: var(--mb-white);
 
   strong {
     color: var(--mb-heading);
@@ -80,8 +154,8 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--mb-primary-soft);
-  color: var(--mb-heading);
+  background: var(--mb-pink-200);
+  color: var(--mb-primary);
 
   svg {
     width: 24px;
@@ -100,79 +174,127 @@
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--mb-text-muted);
+  color: var(--mb-wine);
 }
 
 .account-panel__heading {
   display: block;
-  padding: 14px 20px 8px;
-  border-top: 1px solid var(--mb-border-soft);
+  margin: 4px 26px 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--mb-pink-200);
   font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--mb-primary);
+  color: var(--mb-wine);
 }
 
+/* Accesos de administración con la misma forma que los enlaces del menú móvil. */
 .account-panel__links {
   display: grid;
+  gap: 6px;
+  padding: 8px 12px;
 
   a {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--mb-border-soft);
+    gap: 12px;
+    min-height: 50px;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 12px;
     color: var(--mb-text);
     text-decoration: none;
-    font-size: 15px;
-    transition: color 0.2s ease, background 0.2s ease;
+    font-size: 0.92rem;
+    font-weight: 500;
+    transition: background 0.15s ease, color 0.15s ease;
 
     i {
+      flex: 0 0 34px;
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: var(--mb-pink-200);
       color: var(--mb-primary);
       font-size: 0.95rem;
     }
 
     &:hover {
+      background: var(--mb-pink-100);
+      border-color: var(--mb-pink-200);
       color: var(--mb-primary);
-      background: var(--mb-pink-softer);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mb-primary);
+      outline-offset: 2px;
     }
   }
 }
 
 .account-panel__hint {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 0.86rem;
+  line-height: 1.5;
   color: var(--mb-text-secondary);
 }
 
+/* ---------- Formularios ---------- */
+
 .account-panel__form {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 
   label {
-    font-size: 0.75rem;
+    margin-top: 6px;
+    font-size: 0.74rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--mb-text-secondary);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mb-wine);
   }
 
   input {
-    height: 48px;
+    width: 100%;
+    height: 50px;
     padding: 0 14px;
-    border: 1px solid var(--mb-border);
-    border-radius: var(--mb-radius-sm);
-    background: var(--mb-surface);
+    border: 1px solid var(--mb-pink-200);
+    border-radius: 12px;
+    background: var(--mb-white);
     color: var(--mb-text);
     font: inherit;
     outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
+    &::placeholder {
+      color: var(--mb-text-muted);
+    }
+
     &:focus {
       border-color: var(--mb-primary);
       box-shadow: var(--mb-focus-ring);
     }
+  }
+}
+
+/* Campo con ícono a la izquierda. */
+.account-panel__field {
+  position: relative;
+
+  > i {
+    position: absolute;
+    top: 50%;
+    left: 15px;
+    transform: translateY(-50%);
+    color: var(--mb-primary);
+    font-size: 0.95rem;
+    pointer-events: none;
+  }
+
+  input {
+    padding-left: 42px;
   }
 }
 
@@ -191,16 +313,15 @@
   position: relative;
 
   input {
-    width: 100%;
-    padding-right: 48px;
+    padding-right: 50px;
   }
 
   button {
     position: absolute;
     top: 0;
     right: 0;
-    width: 48px;
-    height: 48px;
+    width: 50px;
+    height: 50px;
     border: 0;
     background: transparent;
     color: var(--mb-text-secondary);
@@ -208,6 +329,12 @@
 
     &:hover {
       color: var(--mb-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mb-primary);
+      outline-offset: -4px;
+      border-radius: 12px;
     }
   }
 }
@@ -247,6 +374,10 @@
 
 .account-panel__error {
   margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mb-danger-border);
+  border-radius: 12px;
+  background: var(--mb-danger-soft);
   font-size: 0.8rem;
   color: var(--mb-danger);
 }
@@ -256,50 +387,59 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 48px;
-  margin-top: 4px;
+  min-height: 50px;
+  margin-top: 10px;
   padding: 0 1.4rem;
   border: none;
-  border-radius: var(--mb-radius-sm);
+  border-radius: 12px;
   background: var(--mb-primary);
   color: var(--mb-primary-contrast);
   font-family: var(--mb-font-body);
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: background 0.2s ease;
+  box-shadow: 0 8px 20px rgba(236, 28, 121, 0.22);
+  transition: background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 
   &:hover:not(:disabled) {
     background: var(--mb-primary-hover);
   }
 
+  &:focus-visible {
+    outline: 2px solid var(--mb-primary);
+    outline-offset: 2px;
+  }
+
+  /* Deshabilitado sigue siendo la acción principal: rosado atenuado, no gris. */
   &:disabled {
-    background: var(--mb-surface-2);
-    border: 1px solid var(--mb-border-soft);
-    color: var(--mb-text-muted);
+    opacity: 0.45;
+    box-shadow: none;
     cursor: not-allowed;
   }
 }
 
 .account-panel__button--ghost {
-  border: 1px solid var(--mb-border);
-  background: transparent;
+  border: 1px solid var(--mb-pink-200);
+  background: var(--mb-white);
   color: var(--mb-text);
+  box-shadow: none;
 
   &:hover:not(:disabled) {
-    background: var(--mb-pink-softer);
+    background: var(--mb-pink-100);
     color: var(--mb-primary);
   }
 }
 
 .account-panel__note {
   display: flex;
-  gap: 0.45rem;
-  margin: 6px 0 0;
-  padding: 10px 12px;
-  border-radius: var(--mb-radius-sm);
-  background: var(--mb-pink-softer);
-  font-size: 0.74rem;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mb-pink-200);
+  border-radius: 12px;
+  background: var(--mb-pink-50);
+  font-size: 0.78rem;
   line-height: 1.45;
   color: var(--mb-text-secondary);
 
@@ -331,6 +471,43 @@
 
     &.met {
       color: var(--mb-success);
+    }
+  }
+}
+
+/* ---------- Tarjeta de ayuda (igual a la del menú móvil), al pie del panel ---------- */
+
+.account-panel__help {
+  display: grid;
+  gap: 10px;
+  margin: auto 16px 20px;
+  padding: 18px 14px;
+  border: 1px solid var(--mb-pink-200);
+  border-radius: 16px;
+  background: var(--mb-pink-50);
+  font-size: 0.82rem;
+  color: var(--mb-text-secondary);
+
+  p {
+    margin: 0 0 2px;
+    color: var(--mb-wine);
+    font-weight: 600;
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--mb-text-secondary);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+
+    i {
+      color: var(--mb-primary);
+    }
+
+    &:hover {
+      color: var(--mb-primary);
     }
   }
 }
