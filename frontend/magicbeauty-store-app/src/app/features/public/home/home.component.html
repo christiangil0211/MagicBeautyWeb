@@ -1,38 +1,8 @@
 <p-toast position="top-right" />
 
-<section class="hero">
-  <div class="hero__layout">
-  <div class="hero__content">
-    <p class="hero__eyebrow">Resalta tu</p>
-    <h1 class="hero__title">ESENCIA</h1>
-    <p class="hero__text">
-      Maquillaje, skincare y accesorios que realzan tu belleza todos los días.
-    </p>
+<!-- Mismo carrusel de campañas que el inicio público (data.portalBanner de la ruta). -->
+<app-portal-banner [banner]="banner()" />
 
-    <div class="hero__actions">
-      <a class="btn btn--solid" routerLink="/productos">Comprar ahora</a>
-      <a class="btn btn--ghost" routerLink="/productos">Explorar productos</a>
-    </div>
-
-    <ul class="hero__badges">
-      <li><i class="pi pi-verified"></i> Productos originales</li>
-      <li><i class="pi pi-sparkles"></i> Belleza en tendencia</li>
-      <li><i class="pi pi-heart"></i> Amor en cada detalle</li>
-    </ul>
-  </div>
-  @if (heroProducts().length > 0) {
-    <div class="hero__visual" aria-label="Productos de Magic Beauty Cosmetics">
-      @for (product of heroProducts(); track product.id) {
-        <a class="hero__product" [routerLink]="detailLink(product.reference)" [attr.aria-label]="product.name">
-          <img [src]="product.mainImageUrl" [alt]="product.name" decoding="async" />
-        </a>
-      }
-    </div>
-  }
-  </div>
-</section>
-
-@if (!bannerOnly()) {
 <!-- Estas tarjetas son exactamente las categorías marcadas como destacadas en el administrador. -->
 <section class="shop-by-category">
   <h2 class="section-title">Compra por categoría</h2>
@@ -115,12 +85,6 @@
     <p>Combos exclusivos para ti.</p>
     <a class="btn btn--outline btn--sm" routerLink="/productos">Ver combos</a>
   </article>
-
-  <article class="promo promo--soft">
-    <h3>Envío gratis</h3>
-    <p>En compras desde $120.000</p>
-    <span class="promo__note">Rápido, seguro y con amor.</span>
-  </article>
 </section>
 
 <section class="benefits">
@@ -149,4 +113,3 @@
   </div>
 </section>
 
-}

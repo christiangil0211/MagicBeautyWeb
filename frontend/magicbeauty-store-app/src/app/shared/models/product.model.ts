@@ -11,6 +11,8 @@ export interface ProductListItem {
   defaultPrice?: number | null;
   mainImageUrl?: string | null;
   categories: string[];
+  /** Categorías con su id: un producto puede tener N y los nombres pueden repetirse. */
+  categoryLinks: ProductCategoryLink[];
 }
 
 export interface ProductCategoryLink {

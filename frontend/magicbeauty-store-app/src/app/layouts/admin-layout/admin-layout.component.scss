@@ -23,10 +23,41 @@
 
 .admin-sidebar__brand {
   display: block;
-  padding: 0 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--mb-radius-sm);
+  transition: background 0.15s ease;
 
+  picture {
+    display: block;
+  }
+
+  /* Se adapta al ancho de la barra sin pasar del tamaño de diseño. */
   img {
-    width: 140px;
+    display: block;
+    width: 100%;
+    max-width: 140px;
+    height: auto;
+  }
+
+  &:hover {
+    background: var(--mb-pink-50);
+  }
+
+  /* Sin el marco negro del navegador al hacer clic; con teclado, anillo de la marca. */
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Logo horizontal (pantallas angostas o bajas): más ancho y mucho más bajo. */
+@media (max-width: 900px), (max-height: 720px) {
+  .admin-sidebar__brand img {
+    max-width: 190px;
   }
 }
 

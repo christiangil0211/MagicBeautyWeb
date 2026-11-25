@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import { AdminCategoriesComponent } from './admin-categories.component';
 import { CategoryService } from '../../../core/services/category.service';
 import { ProductService } from '../../../core/services/product.service';
-import { UncategorizedProductsComponent } from './uncategorized-products/uncategorized-products.component';
+import { CategoryProductAssignmentComponent } from './category-product-assignment/category-product-assignment.component';
 import { By } from '@angular/platform-browser';
 import { Category } from '../../../shared/models/category.model';
 
@@ -287,13 +287,13 @@ it('ignores a stale category list that arrives after a newer reload', () => {
   expect(component.categories().map((item) => item.id)).toEqual([20, 21]);
 });
 
-it('passes the category selected in the tree to the uncategorized products table', async () => {
+it('passes the category selected in the tree to the product assignment table', async () => {
   const { fixture, component } = setup();
   component.categories.set(hierarchy);
   fixture.detectChanges();
   await fixture.whenStable();
-  const table = fixture.debugElement.query(By.directive(UncategorizedProductsComponent))
-    .componentInstance as UncategorizedProductsComponent;
+  const table = fixture.debugElement.query(By.directive(CategoryProductAssignmentComponent))
+    .componentInstance as CategoryProductAssignmentComponent;
   expect(table.category()).toBeUndefined();
 
   component.onNodeSelect({ data: hierarchy[2] });

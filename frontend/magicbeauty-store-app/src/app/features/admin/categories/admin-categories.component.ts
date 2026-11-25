@@ -19,7 +19,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { CategoryService } from '../../../core/services/category.service';
 import { Category } from '../../../shared/models/category.model';
-import { UncategorizedProductsComponent } from './uncategorized-products/uncategorized-products.component';
+import { CategoryProductAssignmentComponent } from './category-product-assignment/category-product-assignment.component';
 
 interface ParentOption {
   label: string;
@@ -43,7 +43,7 @@ interface ParentOption {
     ConfirmDialogModule,
     PageHeaderComponent,
     LoaderComponent,
-    UncategorizedProductsComponent,
+    CategoryProductAssignmentComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './admin-categories.component.html',

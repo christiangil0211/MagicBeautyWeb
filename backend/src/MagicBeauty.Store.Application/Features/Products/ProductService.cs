@@ -974,6 +974,16 @@ public sealed partial class ProductService(
                 .Where(link => link.Category is not null)
                 .Select(link => link.Category!.Name)
                 .OrderBy(name => name)
+                .ToList(),
+            CategoryLinks = product.ProductCategories
+                .Where(link => link.Category is not null)
+                .Select(link => new ProductCategoryDto
+                {
+                    CategoryId = link.CategoryId,
+                    Name = link.Category!.Name,
+                    Slug = link.Category.Slug
+                })
+                .OrderBy(category => category.Name)
                 .ToList()
         };
     }

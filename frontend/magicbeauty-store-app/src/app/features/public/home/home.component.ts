@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, computed, inject, input, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
@@ -12,19 +12,20 @@ import { LoaderComponent } from '../../../shared/components/loader/loader.compon
 import { ProductCardComponent } from '../../../shared/components/product-card/product-card.component';
 import { CategoryTile } from '../../../shared/models/category.model';
 import { ProductCardModel, toProductCard } from '../../../shared/models/product.model';
+import { PortalBannerComponent } from '../portal/portal-banner.component';
+import { routeBanner } from '../portal/portal-banner.service';
 
 /** Cuántos productos muestra la sección comercial del inicio. */
 const FAVORITES_LIMIT = 5;
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, ProductCardComponent, LoaderComponent, EmptyStateComponent, ToastModule],
+  imports: [RouterLink, ProductCardComponent, LoaderComponent, EmptyStateComponent, ToastModule, PortalBannerComponent],
   providers: [MessageService],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
 export class HomeComponent {
-  readonly bannerOnly = input(false);
   private readonly categoryService = inject(CategoryService);
   private readonly catalogService = inject(CatalogService);
   private readonly messageService = inject(MessageService);
@@ -32,16 +33,15 @@ export class HomeComponent {
   /** Las pistas de administración solo se muestran a quien puede administrar. */
   readonly canManageStore = inject(AuthService).canManageStore;
 
+  /** Banner de la ruta: el mismo carrusel de campañas del inicio público. */
+  readonly banner = routeBanner();
+
   readonly tiles = signal<CategoryTile[]>([]);
   readonly loaded = signal(false);
 
   readonly favoriteProducts = signal<ProductCardModel[]>([]);
   readonly productsLoading = signal(true);
   readonly favorites = signal<Set<number>>(new Set());
-
-  readonly heroProducts = computed(() =>
-    this.favoriteProducts().filter(product => !!product.mainImageUrl).slice(0, 3)
-  );
 
   readonly favoriteCards = computed(() =>
     this.favoriteProducts().map(product => ({
