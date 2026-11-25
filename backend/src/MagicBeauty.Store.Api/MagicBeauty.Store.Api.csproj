@@ -21,6 +21,8 @@
     <ProjectReference Include="..\MagicBeauty.Store.Application\MagicBeauty.Store.Application.csproj" />
     <ProjectReference Include="..\MagicBeauty.Store.Infrastructure\MagicBeauty.Store.Infrastructure.csproj" />
     <ProjectReference Include="..\MagicBeauty.Store.Contracts\MagicBeauty.Store.Contracts.csproj" />
+    <!-- Integracion desmontable: ver MagicBeauty.Store.Integrations.Alegra.csproj -->
+    <ProjectReference Include="..\MagicBeauty.Store.Integrations.Alegra\MagicBeauty.Store.Integrations.Alegra.csproj" />
   </ItemGroup>
 
 </Project>
