@@ -26,4 +26,11 @@ public sealed class ProductListItemDto
 
     /// <summary>Nombres de las categorias asociadas, para la columna del listado.</summary>
     public List<string> Categories { get; set; } = [];
+
+    /// <summary>
+    /// Categorias asociadas con su id. Sirve para saber si el producto ya pertenece a una
+    /// categoria concreta: un producto puede tener N categorias y los nombres pueden
+    /// repetirse en ramas distintas del arbol.
+    /// </summary>
+    public List<ProductCategoryDto> CategoryLinks { get; set; } = [];
 }

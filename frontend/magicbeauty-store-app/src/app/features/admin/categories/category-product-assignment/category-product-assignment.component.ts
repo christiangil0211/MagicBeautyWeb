@@ -1,37 +1,58 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { EMPTY, Subject, catchError, finalize, of, switchMap, timer } from 'rxjs';
 import { ConfirmationService, MessageService, PrimeTemplate } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { SelectButtonModule } from 'primeng/selectbutton';
 import { TableModule, TablePageEvent } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
 
 import { ProductService } from '../../../../core/services/product.service';
 import { LoaderComponent } from '../../../../shared/components/loader/loader.component';
 import { Category } from '../../../../shared/models/category.model';
-import { ProductListItem } from '../../../../shared/models/product.model';
+import { ProductCategoryLink, ProductListItem } from '../../../../shared/models/product.model';
+
+/** Qué productos lista la tabla: todos o solo los que no tienen ninguna categoría. */
+export type ProductScope = 'all' | 'uncategorized';
+
+/** Chips de categoría visibles por fila; el resto se resume en "+N" con tooltip. */
+const VISIBLE_CATEGORY_CHIPS = 3;
 
 /**
- * Productos que aún no pertenecen a ninguna categoría, con asignación masiva a la
- * categoría seleccionada en el árbol. Usa el toast y el diálogo de confirmación
- * de la pantalla que lo contiene.
+ * Asignación masiva de la categoría seleccionada en el árbol. Un producto puede
+ * tener N categorías, así que se listan todos (con el filtro "Sin categoría" como
+ * atajo) y cada fila muestra las categorías que ya tiene. Los productos que ya
+ * pertenecen a la categoría seleccionada se marcan y no se pueden seleccionar.
+ * Usa el toast y el diálogo de confirmación de la pantalla que lo contiene.
  */
 @Component({
-  selector: 'app-uncategorized-products',
+  selector: 'app-category-product-assignment',
   imports: [
     FormsModule,
     TableModule,
     PrimeTemplate,
     ButtonModule,
     InputTextModule,
+    SelectButtonModule,
+    TooltipModule,
     LoaderComponent,
   ],
-  templateUrl: './uncategorized-products.component.html',
-  styleUrl: './uncategorized-products.component.scss',
+  templateUrl: './category-product-assignment.component.html',
+  styleUrl: './category-product-assignment.component.scss',
 })
-export class UncategorizedProductsComponent {
+export class CategoryProductAssignmentComponent {
   private readonly productService = inject(ProductService);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
@@ -43,11 +64,35 @@ export class UncategorizedProductsComponent {
 
   private readonly loadRequests = new Subject<number>();
 
+  readonly scopeOptions: { label: string; value: ProductScope }[] = [
+    { label: 'Todos', value: 'all' },
+    { label: 'Sin categoría', value: 'uncategorized' },
+  ];
+
   readonly products = signal<ProductListItem[]>([]);
   readonly selected = signal<ProductListItem[]>([]);
   readonly loading = signal(false);
   readonly assigning = signal(false);
   readonly search = signal('');
+  readonly scope = signal<ProductScope>('all');
+
+  /** Ids de los productos listados que ya pertenecen a la categoría seleccionada. */
+  readonly assignedIds = computed(() => {
+    const categoryId = this.category()?.id;
+    if (categoryId == null) return new Set<number>();
+
+    return new Set(
+      this.products()
+        .filter((product) => this.hasCategory(product, categoryId))
+        .map((product) => product.id),
+    );
+  });
+
+  /** Productos que todavía pueden recibir la categoría seleccionada. */
+  readonly assignable = computed(() => {
+    const assigned = this.assignedIds();
+    return this.products().filter((product) => !assigned.has(product.id));
+  });
 
   /** Paginación en cliente: solo cambia lo que se ve, nunca la selección. */
   readonly pageSizes = [10, 25, 50];
@@ -63,11 +108,12 @@ export class UncategorizedProductsComponent {
             switchMap(() =>
               this.productService.getAll({
                 search: this.search().trim() || null,
-                hasCategories: false,
+                // Sin filtro se traen todos: un producto con categorías puede recibir más.
+                hasCategories: this.scope() === 'uncategorized' ? false : null,
               }),
             ),
             catchError((error) => {
-              this.showError('No se pudieron cargar los productos sin categoría', error);
+              this.showError('No se pudieron cargar los productos', error);
               return EMPTY;
             }),
             finalize(() => this.loading.set(false)),
@@ -77,14 +123,19 @@ export class UncategorizedProductsComponent {
       )
       .subscribe((products) => {
         this.products.set(products);
-        // Solo se asigna lo que está a la vista: lo que la búsqueda oculta se desmarca.
-        const selectedIds = new Set(this.selected().map((product) => product.id));
-        this.selected.set(products.filter((product) => selectedIds.has(product.id)));
+        // Solo se asigna lo que está a la vista y aún no tiene la categoría.
+        this.keepAssignableSelection();
         // Si la página actual quedó vacía (p. ej. tras asignar), se retrocede a la última.
         if (this.first() >= products.length) {
           this.first.set(this.lastPageStart(products.length));
         }
       });
+
+    // Al cambiar de categoría en el árbol se desmarcan los productos que ya la tienen.
+    effect(() => {
+      this.assignedIds();
+      untracked(() => this.keepAssignableSelection());
+    });
 
     this.load();
   }
@@ -102,6 +153,14 @@ export class UncategorizedProductsComponent {
     }
   }
 
+  scopeChanged(value: ProductScope | null): void {
+    // El selector no permite quedar vacío, pero se protege igual.
+    if (!value || value === this.scope()) return;
+    this.scope.set(value);
+    this.first.set(0);
+    this.load();
+  }
+
   pageChanged(event: TablePageEvent): void {
     this.first.set(event.first);
     this.pageSize.set(event.rows);
@@ -112,7 +171,30 @@ export class UncategorizedProductsComponent {
   }
 
   selectAll(): void {
-    this.selected.set([...this.products()]);
+    this.selected.set([...this.assignable()]);
+  }
+
+  isAssigned(product: ProductListItem): boolean {
+    return this.assignedIds().has(product.id);
+  }
+
+  /** Chips visibles: primero la categoría seleccionada (si la tiene), luego el resto. */
+  visibleCategories(product: ProductListItem): ProductCategoryLink[] {
+    return this.orderedCategories(product).slice(0, VISIBLE_CATEGORY_CHIPS);
+  }
+
+  hiddenCategories(product: ProductListItem): ProductCategoryLink[] {
+    return this.orderedCategories(product).slice(VISIBLE_CATEGORY_CHIPS);
+  }
+
+  hiddenCategoriesTooltip(product: ProductListItem): string {
+    return this.hiddenCategories(product)
+      .map((link) => link.name)
+      .join(', ');
+  }
+
+  isCurrentCategory(link: ProductCategoryLink): boolean {
+    return link.categoryId === this.category()?.id;
   }
 
   confirmAssign(): void {
@@ -148,7 +230,8 @@ export class UncategorizedProductsComponent {
         this.categoryBranch(category)
           .map((name) => this.escapeHtml(name))
           .join(' › ') +
-        '</span>',
+        '</span>' +
+        '<span class="confirm-category-note">Las categorías que ya tienen se conservan.</span>',
       icon: 'pi pi-tag',
       acceptLabel: 'Confirmar',
       rejectLabel: 'Cancelar',
@@ -182,6 +265,32 @@ export class UncategorizedProductsComponent {
         },
         error: (error) => this.showError('No se pudo agregar la categoría', error),
       });
+  }
+
+  private keepAssignableSelection(): void {
+    const current = this.selected();
+    const selectedIds = new Set(current.map((product) => product.id));
+    // Se toman las filas actuales para que el checkbox de la tabla las reconozca.
+    const kept = this.assignable().filter((product) => selectedIds.has(product.id));
+
+    if (kept.length !== current.length || kept.some((product, index) => product !== current[index])) {
+      this.selected.set(kept);
+    }
+  }
+
+  private hasCategory(product: ProductListItem, categoryId: number): boolean {
+    return (product.categoryLinks ?? []).some((link) => link.categoryId === categoryId);
+  }
+
+  private orderedCategories(product: ProductListItem): ProductCategoryLink[] {
+    const links = product.categoryLinks ?? [];
+    const currentId = this.category()?.id;
+    if (currentId == null) return links;
+
+    return [
+      ...links.filter((link) => link.categoryId === currentId),
+      ...links.filter((link) => link.categoryId !== currentId),
+    ];
   }
 
   private lastPageStart(total: number): number {

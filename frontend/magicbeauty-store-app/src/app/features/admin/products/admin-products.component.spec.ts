@@ -27,8 +27,8 @@ it('searches while typing and ignores an obsolete response', async () => {
   await new Promise(resolve => setTimeout(resolve, 400));
   expect(requests.length).toBe(2);
   expect(requests[1].search).toBe('labial');
-  requests[1].response.next([{ id: 2, name: 'Labial', categories: [], reference: 'REF', brandId: 1, brandName: 'Marca', hasVariants: false, isActive: true, totalQuantity: 0 }]);
-  requests[0].response.next([{ id: 1, name: 'Anterior', categories: [], reference: 'REF', brandId: 1, brandName: 'Marca', hasVariants: false, isActive: true, totalQuantity: 0 }]);
+  requests[1].response.next([{ id: 2, name: 'Labial', categories: [], categoryLinks: [], reference: 'REF', brandId: 1, brandName: 'Marca', hasVariants: false, isActive: true, totalQuantity: 0 }]);
+  requests[0].response.next([{ id: 1, name: 'Anterior', categories: [], categoryLinks: [], reference: 'REF', brandId: 1, brandName: 'Marca', hasVariants: false, isActive: true, totalQuantity: 0 }]);
   expect(fixture.componentInstance.products().map(product => product.id)).toEqual([2]);
   input.value = '';
   input.dispatchEvent(new Event('input'));
@@ -41,7 +41,7 @@ it('searches while typing and ignores an obsolete response', async () => {
 function setupFilters() {
   const calls: Record<string, unknown>[] = [];
   const item = (id: number, isActive: boolean, categories: string[]): ProductListItem => ({
-    id, name: 'Producto ' + id, categories, reference: 'REF' + id, brandId: 1, brandName: 'Marca', hasVariants: false, isActive, totalQuantity: 2
+    id, name: 'Producto ' + id, categories, categoryLinks: [], reference: 'REF' + id, brandId: 1, brandName: 'Marca', hasVariants: false, isActive, totalQuantity: 2
   });
   const all = [item(1, true, ['Labios']), item(2, true, []), item(3, false, ['Labios']), item(4, false, [])];
   TestBed.configureTestingModule({

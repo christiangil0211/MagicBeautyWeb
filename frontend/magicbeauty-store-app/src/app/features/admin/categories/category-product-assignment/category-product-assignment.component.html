@@ -1,9 +1,14 @@
 <section class="panel">
   <div class="panel__head">
-    <h2>Productos sin categoría</h2>
-    <span class="panel__count"
-      >{{ selected().length }} de {{ products().length }} seleccionados</span
-    >
+    <h2>Asignar productos</h2>
+    <span class="panel__count">
+      {{ selected().length }} de {{ assignable().length }} seleccionados
+      @if (assignedIds().size > 0) {
+        <span class="panel__count-assigned">
+          · {{ assignedIds().size }} ya en esta categoría
+        </span>
+      }
+    </span>
   </div>
 
   @if (category()) {
@@ -25,18 +30,33 @@
   }
 
   <div class="toolbar">
-    <span class="toolbar__search">
-      <i class="pi pi-search"></i>
-      <input
-        pInputText
-        type="text"
-        placeholder="Buscar por nombre o referencia"
-        aria-label="Buscar productos sin categoría"
-        [ngModel]="search()"
-        (ngModelChange)="searchChanged($event)"
-        (keyup.enter)="load()"
+    <div class="toolbar__filters">
+      <span class="toolbar__search">
+        <i class="pi pi-search"></i>
+        <input
+          pInputText
+          type="text"
+          placeholder="Buscar por nombre o referencia"
+          aria-label="Buscar productos"
+          [ngModel]="search()"
+          (ngModelChange)="searchChanged($event)"
+          (keyup.enter)="load()"
+        />
+      </span>
+
+      <p-selectbutton
+        class="toolbar__scope"
+        size="small"
+        ariaLabelledBy="scope-label"
+        [options]="scopeOptions"
+        optionLabel="label"
+        optionValue="value"
+        [allowEmpty]="false"
+        [ngModel]="scope()"
+        (ngModelChange)="scopeChanged($event)"
       />
-    </span>
+      <span id="scope-label" class="sr-only">Mostrar productos</span>
+    </div>
 
     <div class="toolbar__actions">
       <p-button
@@ -54,7 +74,7 @@
         size="small"
         severity="secondary"
         [outlined]="true"
-        [disabled]="assigning() || products().length === 0"
+        [disabled]="assigning() || assignable().length === 0"
         (onClick)="selectAll()"
       />
       <p-button
@@ -99,13 +119,18 @@
           </th>
           <th style="width: 9rem">Referencia</th>
           <th>Producto</th>
+          <th style="width: 40%">Categorías</th>
         </tr>
       </ng-template>
 
       <ng-template pTemplate="body" let-product>
-        <tr>
+        <tr [class.row--assigned]="isAssigned(product)">
           <td class="center">
-            <p-tableCheckbox [value]="product" [disabled]="assigning()" />
+            <p-tableCheckbox
+              [value]="product"
+              [disabled]="assigning() || isAssigned(product)"
+              [attr.title]="isAssigned(product) ? 'Ya pertenece a esta categoría' : null"
+            />
           </td>
           <td>
             <span class="reference">{{ product.reference }}</span>
@@ -113,22 +138,59 @@
           <td>
             <span class="product-name">{{ product.name }}</span>
           </td>
+          <td>
+            @if (product.categoryLinks?.length) {
+              <div class="chips">
+                @for (link of visibleCategories(product); track link.categoryId) {
+                  @if (isCurrentCategory(link)) {
+                    <span class="chip chip--current" title="Ya pertenece a la categoría seleccionada">
+                      <i class="pi pi-check" aria-hidden="true"></i>{{ link.name }}
+                    </span>
+                  } @else {
+                    <span class="chip">{{ link.name }}</span>
+                  }
+                }
+                @if (hiddenCategories(product).length > 0) {
+                  <span
+                    class="chip chip--more"
+                    tabindex="0"
+                    [pTooltip]="hiddenCategoriesTooltip(product)"
+                    tooltipPosition="top"
+                    [attr.aria-label]="'Otras categorías: ' + hiddenCategoriesTooltip(product)"
+                    >+{{ hiddenCategories(product).length }}</span
+                  >
+                }
+              </div>
+            } @else {
+              <span class="chip chip--none">Sin categoría</span>
+            }
+          </td>
         </tr>
       </ng-template>
 
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="3">
+          <td colspan="4">
             @if (!loading()) {
               <div class="panel__empty">
                 @if (search().trim()) {
                   <i class="pi pi-search"></i>
                   <strong>Sin resultados</strong>
-                  <span>Ningún producto sin categoría coincide con la búsqueda.</span>
-                } @else {
+                  <span>
+                    {{
+                      scope() === 'uncategorized'
+                        ? 'Ningún producto sin categoría coincide con la búsqueda.'
+                        : 'Ningún producto coincide con la búsqueda.'
+                    }}
+                  </span>
+                } @else if (scope() === 'uncategorized') {
                   <i class="pi pi-check-circle"></i>
                   <strong>Todo está organizado</strong>
                   <span>Todos los productos tienen al menos una categoría.</span>
+                } @else {
+                  <i class="pi pi-box"></i>
+                  <strong>Aún no hay productos</strong>
+                  <span>Cuando registres productos aparecerán aquí.</span>
                 }
               </div>
             }

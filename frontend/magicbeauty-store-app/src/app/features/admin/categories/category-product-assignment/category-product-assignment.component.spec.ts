@@ -4,8 +4,8 @@ import { Observable, of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ProductFilters, ProductService } from '../../../../core/services/product.service';
 import { Category } from '../../../../shared/models/category.model';
-import { ProductListItem } from '../../../../shared/models/product.model';
-import { UncategorizedProductsComponent } from './uncategorized-products.component';
+import { ProductCategoryLink, ProductListItem } from '../../../../shared/models/product.model';
+import { CategoryProductAssignmentComponent } from './category-product-assignment.component';
 
 const shampooCategory: Category = {
   id: 21,
@@ -20,7 +20,15 @@ const shampooCategory: Category = {
   createdAt: '',
   updatedAt: '',
 };
-function product(id: number, name: string, isActive = true): ProductListItem {
+function link(categoryId: number, name: string): ProductCategoryLink {
+  return { categoryId, name, slug: name.toLowerCase() };
+}
+function product(
+  id: number,
+  name: string,
+  isActive = true,
+  categoryLinks: ProductCategoryLink[] = [],
+): ProductListItem {
   return {
     id,
     name,
@@ -30,7 +38,8 @@ function product(id: number, name: string, isActive = true): ProductListItem {
     hasVariants: false,
     isActive,
     totalQuantity: 0,
-    categories: [],
+    categories: categoryLinks.map((item) => item.name),
+    categoryLinks,
   };
 }
 const defaultProducts = [
@@ -45,7 +54,8 @@ function manyProducts(count: number): ProductListItem[] {
   );
 }
 function setup(category: Category | null = shampooCategory, initial = defaultProducts) {
-  // Imita al API: lista los productos sin categoría y los retira al asignarles una.
+  // Imita al API: filtra por búsqueda y por "sin categoría", y al asignar agrega el
+  // vínculo conservando las categorías que el producto ya tenía.
   let stored = [...initial];
   const api = {
     getAll: vi.fn((filters: ProductFilters): Observable<ProductListItem[]> => {
@@ -53,13 +63,22 @@ function setup(category: Category | null = shampooCategory, initial = defaultPro
       return of(
         stored.filter(
           (item) =>
-            item.name.toLowerCase().includes(term) || item.reference.toLowerCase().includes(term),
+            (item.name.toLowerCase().includes(term) ||
+              item.reference.toLowerCase().includes(term)) &&
+            (filters.hasCategories !== false || item.categoryLinks.length === 0),
         ),
       );
     }),
     assignCategory: vi.fn(
-      (_categoryId: number, productIds: number[]): Observable<{ updatedCount: number }> => {
-        stored = stored.filter((item) => !productIds.includes(item.id));
+      (categoryId: number, productIds: number[]): Observable<{ updatedCount: number }> => {
+        stored = stored.map((item) =>
+          productIds.includes(item.id)
+            ? product(item.id, item.name, item.isActive, [
+                ...item.categoryLinks,
+                link(categoryId, 'Shampoo'),
+              ])
+            : item,
+        );
         return of({ updatedCount: productIds.length });
       },
     ),
@@ -67,7 +86,7 @@ function setup(category: Category | null = shampooCategory, initial = defaultPro
   const messages = { add: vi.fn() };
   const confirmations: Confirmation[] = [];
   TestBed.configureTestingModule({
-    imports: [UncategorizedProductsComponent],
+    imports: [CategoryProductAssignmentComponent],
     providers: [
       { provide: ProductService, useValue: api },
       { provide: MessageService, useValue: messages },
@@ -77,7 +96,7 @@ function setup(category: Category | null = shampooCategory, initial = defaultPro
       },
     ],
   });
-  const fixture = TestBed.createComponent(UncategorizedProductsComponent);
+  const fixture = TestBed.createComponent(CategoryProductAssignmentComponent);
   fixture.componentRef.setInput('category', category ?? undefined);
   fixture.detectChanges();
   return { api, messages, confirmations, fixture, component: fixture.componentInstance };
@@ -85,13 +104,13 @@ function setup(category: Category | null = shampooCategory, initial = defaultPro
 function ids(items: ProductListItem[]): number[] {
   return items.map((item) => item.id);
 }
-function rows(fixture: ComponentFixture<UncategorizedProductsComponent>): string[][] {
+function rows(fixture: ComponentFixture<CategoryProductAssignmentComponent>): string[][] {
   return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr'), (row) =>
     Array.from(row.querySelectorAll('td'), (cell) => cell.textContent?.trim() ?? ''),
   );
 }
 function button(
-  fixture: ComponentFixture<UncategorizedProductsComponent>,
+  fixture: ComponentFixture<CategoryProductAssignmentComponent>,
   label: string,
 ): HTMLButtonElement {
   return Array.from(
@@ -100,21 +119,94 @@ function button(
 }
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-it('lists only products without category, active and inactive, with checkbox, reference and name', async () => {
+it('lists every product by default, active and inactive, with reference, name and categories', async () => {
   const { api, fixture, component } = setup();
   await fixture.whenStable();
   fixture.detectChanges();
 
-  expect(api.getAll).toHaveBeenCalledWith({ search: null, hasCategories: false });
+  expect(api.getAll).toHaveBeenCalledWith({ search: null, hasCategories: null });
   expect(api.getAll.mock.calls[0][0]).not.toHaveProperty('isActive');
+  expect(component.scope()).toBe('all');
   expect(ids(component.products())).toEqual([301, 302, 303, 304]);
   expect(
     Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('thead th'), (cell) =>
       cell.textContent?.trim(),
     ),
-  ).toEqual(['Seleccionar', 'Referencia', 'Producto']);
-  expect(rows(fixture)[2]).toEqual(['', 'CAP303', 'Shampoo descontinuado']);
+  ).toEqual(['Seleccionar', 'Referencia', 'Producto', 'Categorías']);
+  expect(rows(fixture)[2]).toEqual(['', 'CAP303', 'Shampoo descontinuado', 'Sin categoría']);
   expect((fixture.nativeElement as HTMLElement).querySelectorAll('p-tablecheckbox').length).toBe(4);
+});
+it('filters by "Sin categoría" and goes back to every product', () => {
+  const { api, fixture, component } = setup(shampooCategory, [
+    product(301, 'Shampoo sin sal'),
+    product(302, 'Shampoo clásico', true, [link(30, 'Ofertas')]),
+  ]);
+  const filter = (fixture.nativeElement as HTMLElement).querySelector('p-selectbutton')?.textContent;
+  expect(filter).toContain('Todos');
+  expect(filter).toContain('Sin categoría');
+
+  component.scopeChanged('uncategorized');
+  expect(api.getAll).toHaveBeenLastCalledWith({ search: null, hasCategories: false });
+  expect(ids(component.products())).toEqual([301]);
+
+  component.scopeChanged('all');
+  expect(api.getAll).toHaveBeenLastCalledWith({ search: null, hasCategories: null });
+  expect(ids(component.products())).toEqual([301, 302]);
+});
+it('shows the categories a product already has and marks the one selected in the tree', () => {
+  const { fixture, component } = setup(shampooCategory, [
+    product(301, 'Shampoo sin sal'),
+    product(302, 'Shampoo clásico', true, [link(30, 'Ofertas'), link(21, 'Shampoo')]),
+    product(303, 'Kit capilar', true, [
+      link(30, 'Ofertas'),
+      link(31, 'Kits'),
+      link(32, 'Regalos'),
+      link(33, 'Novedades'),
+      link(34, 'Temporada'),
+    ]),
+  ]);
+  fixture.detectChanges();
+  const row = (index: number) =>
+    (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr')[index] as HTMLElement;
+  const chips = (index: number) =>
+    Array.from(row(index).querySelectorAll('.chip'), (item) => item.textContent?.trim());
+
+  expect(chips(0)).toEqual(['Sin categoría']);
+  // La categoría seleccionada va primero y resaltada; el resto se conserva.
+  expect(chips(1)).toEqual(['Shampoo', 'Ofertas']);
+  expect(row(1).querySelector('.chip--current')?.textContent?.trim()).toBe('Shampoo');
+  expect(row(1).classList).toContain('row--assigned');
+  // Solo tres chips visibles; las demás quedan en "+N" con su nombre en el tooltip.
+  expect(chips(2)).toEqual(['Ofertas', 'Kits', 'Regalos', '+2']);
+  expect(component.hiddenCategoriesTooltip(component.products()[2])).toBe('Novedades, Temporada');
+  expect(
+    (fixture.nativeElement as HTMLElement).querySelector('.panel__count')?.textContent,
+  ).toMatch(/0 de 2 seleccionados\s*· 1 ya en esta categoría/);
+});
+it('does not let you select products that already have the selected category', () => {
+  const { fixture, component } = setup(shampooCategory, [
+    product(301, 'Shampoo sin sal'),
+    product(302, 'Shampoo clásico', true, [link(21, 'Shampoo')]),
+    product(303, 'Mascarilla', true, [link(30, 'Ofertas')]),
+  ]);
+
+  button(fixture, 'Seleccionar todo').click();
+  expect(ids(component.selected())).toEqual([301, 303]);
+  expect(component.isAssigned(component.products()[1])).toBe(true);
+  expect(component.isAssigned(component.products()[2])).toBe(false);
+});
+it('drops from the selection the products that already have the newly chosen category', () => {
+  const { fixture, component } = setup(shampooCategory, [
+    product(301, 'Shampoo sin sal'),
+    product(302, 'Acondicionador', true, [link(22, 'Acondicionador')]),
+  ]);
+  component.selectAll();
+  expect(ids(component.selected())).toEqual([301, 302]);
+
+  fixture.componentRef.setInput('category', { ...shampooCategory, id: 22, name: 'Acondicionador' });
+  fixture.detectChanges();
+
+  expect(ids(component.selected())).toEqual([301]);
 });
 it('shows the three actions in order: clear selection, select all, add category', () => {
   const { fixture } = setup();
@@ -144,7 +236,7 @@ it('searches while typing without Enter and ignores an obsolete response', async
   await wait(400);
 
   expect(responses.map((item) => item.search)).toEqual(['masc', 'mascarilla']);
-  expect(api.getAll).toHaveBeenLastCalledWith({ search: 'mascarilla', hasCategories: false });
+  expect(api.getAll).toHaveBeenLastCalledWith({ search: 'mascarilla', hasCategories: null });
   responses[1].response.next([product(304, 'Mascarilla nutritiva')]);
   responses[0].response.next([product(999, 'Respuesta vieja')]);
   expect(ids(component.products())).toEqual([304]);
@@ -241,9 +333,21 @@ it('assigns the selected category to active and inactive products, reports the c
       detail: 'Se actualizaron 3 productos con la categoría "Shampoo".',
     }),
   );
-  expect(ids(component.products())).toEqual([302]);
+  // Siguen en la tabla (pueden recibir otras categorías), pero ya no son seleccionables.
+  expect(ids(component.products())).toEqual([301, 302, 303, 304]);
+  expect(ids(component.assignable())).toEqual([302]);
   expect(component.selected()).toEqual([]);
   expect(component.assigning()).toBe(false);
+});
+it('removes the assigned products from the table when filtering by "Sin categoría"', () => {
+  const { confirmations, component } = setup();
+  component.scopeChanged('uncategorized');
+  component.selected.set([component.products()[0], component.products()[3]]);
+
+  component.confirmAssign();
+  confirmations[0].accept?.();
+
+  expect(ids(component.products())).toEqual([302, 303]);
 });
 it('shows the loader while assigning and keeps the selection when the API fails', () => {
   const { api, messages, confirmations, fixture, component } = setup();
@@ -282,7 +386,7 @@ it('uses the singular message for one product', () => {
     expect.objectContaining({ detail: 'Se actualizó 1 producto con la categoría "Shampoo".' }),
   );
 });
-it('shows a different empty state for no pending products and for a search without results', async () => {
+it('shows a different empty state for each filter and for a search without results', async () => {
   const { api, fixture, component } = setup();
   const empty = () =>
     (fixture.nativeElement as HTMLElement).querySelector('.panel__empty strong')?.textContent;
@@ -295,6 +399,10 @@ it('shows a different empty state for no pending products and for a search witho
   api.getAll.mockReturnValue(of([]));
   component.searchChanged('');
   await wait(400);
+  fixture.detectChanges();
+  expect(empty()).toBe('Aún no hay productos');
+
+  component.scopeChanged('uncategorized');
   fixture.detectChanges();
   expect(empty()).toBe('Todo está organizado');
 });
@@ -342,7 +450,8 @@ it('shows the full branch of the category in the confirmation dialog', () => {
 
   expect(confirmations[0].message).toBe(
     'Los productos seleccionados se actualizarán con la siguiente categoría:' +
-      '<span class="confirm-category-path">Cuidado Capilar › Shampoo</span>',
+      '<span class="confirm-category-path">Cuidado Capilar › Shampoo</span>' +
+      '<span class="confirm-category-note">Las categorías que ya tienen se conservan.</span>',
   );
 });
 it('uses the search loader message while searching', async () => {
@@ -359,7 +468,7 @@ it('uses the search loader message while searching', async () => {
   fixture.detectChanges();
   expect(loader()).toContain('Buscando productos…');
 });
-function goToPage(fixture: ComponentFixture<UncategorizedProductsComponent>, page: number): void {
+function goToPage(fixture: ComponentFixture<CategoryProductAssignmentComponent>, page: number): void {
   Array.from(
     (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.p-paginator-page'),
   )
@@ -415,6 +524,9 @@ it('goes back to the first page when the search changes', async () => {
 });
 it('steps back to the last page with products after assigning the whole current page', () => {
   const { confirmations, fixture, component } = setup(shampooCategory, manyProducts(23));
+  // Solo con el filtro "Sin categoría" los productos asignados salen de la tabla.
+  component.scopeChanged('uncategorized');
+  fixture.detectChanges();
   goToPage(fixture, 3);
   component.selected.set(component.products().slice(20));
 
