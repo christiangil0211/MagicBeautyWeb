@@ -39,39 +39,28 @@ it('links the complete campaign banner to the calendar landing on the public hom
   const root = harness.fixture.nativeElement as HTMLElement;
   const link = root.querySelector('.home-slide__link');
   expect(link?.getAttribute('href')).toBe('/calendarios-de-adviento');
-  expect(link?.querySelector('img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendarios-2026.webp');
+  expect(link?.querySelector('img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendario-magic-beauty-2026.jpg');
   expect(root.querySelectorAll('h1').length).toBe(1);
-  expect(text(root)).toContain('Trendy: agotado');
-  expect(root.querySelector('.banner__image')).toBeNull();
+  expect(root.querySelector('.home-slide__title')?.tagName).toBe('H1');
+  expect(root.querySelector('.page-heading')).toBeNull();
   expect(root.querySelectorAll('.tabs__link').length).toBe(4);
 });
 
 it.each([
-  ['/catalogo', 'Catálogo mayorista', 'Explorar catálogo digital', 'banner-catalogo-digital.jpg'],
-  ['/catalogos', 'Nuestros catálogos', 'Ver catálogos', 'banner-catalogos.jpg'],
-  ['/pedido', 'Mi pedido siempre contigo', 'Revisar mi pedido', 'banner-pedido.jpg']
-])('shows the approved banner on %s', async (url, title, action, image) => {
+  ['/catalogo', 'Catálogo mayorista', 'Encuentra fácilmente'],
+  ['/catalogos', 'Nuestros catálogos', 'formato tradicional'],
+  ['/pedido', 'Mi pedido siempre contigo', 'envía tu pedido por WhatsApp']
+])('keeps the campaign banners on %s with the page title below them', async (url, title, description) => {
   const harness = await setup();
   await harness.navigateByUrl(url);
   const element = harness.fixture.nativeElement as HTMLElement;
 
-  expect(text(element.querySelector('.banner__title')!).trim()).toBe(title);
-  expect(element.querySelector('button.banner__button')?.textContent?.trim()).toBe(action);
-  expect(element.querySelector('.banner__image')?.getAttribute('src')).toBe('/images/portal/' + image);
-});
-
-it('scrolls to the tab content from the banner button without leaving the tab', async () => {
-  const harness = await setup();
-  await harness.navigateByUrl('/pedido');
-  const element = harness.fixture.nativeElement as HTMLElement;
-  const content = element.querySelector('.portal-content') as HTMLElement;
-  let scrolled = false;
-  content.scrollIntoView = () => (scrolled = true);
-
-  (element.querySelector('button.banner__button') as HTMLButtonElement).click();
-
-  expect(scrolled).toBe(true);
-  expect(TestBed.inject(Router).url).toBe('/pedido');
+  expect(element.querySelector('.home-carousel .home-slide')).not.toBeNull();
+  expect(element.querySelectorAll('.home-dots__dot').length).toBe(4);
+  // Un solo h1 por página: el de la página; el título del banner activo no compite.
+  expect(Array.from(element.querySelectorAll('h1'), h1 => text(h1 as HTMLElement).trim())).toEqual([title]);
+  expect(element.querySelector('.home-slide__title')?.tagName).toBe('P');
+  expect(element.querySelector('.page-heading__text')?.textContent).toContain(description);
 });
 
 it('keeps the tabs without a banner on the product detail', async () => {
@@ -79,7 +68,8 @@ it('keeps the tabs without a banner on the product detail', async () => {
   await harness.navigateByUrl('/catalogo/ACO011');
   const element = harness.fixture.nativeElement as HTMLElement;
 
-  expect(element.querySelector('.banner')).toBeNull();
+  expect(element.querySelector('.home-carousel')).toBeNull();
+  expect(element.querySelector('h1')).toBeNull();
   expect(element.querySelector('.tabs__link.active .tabs__label')?.textContent?.trim()).toBe('Catálogo digital');
 });
 
@@ -92,12 +82,11 @@ it('shows four image banners chosen with dots only, without arrows or pause butt
   const root = harness.fixture.nativeElement as HTMLElement;
   expect(root.querySelectorAll('.home-dots__dot').length).toBe(4);
   expect(root.querySelectorAll('.home-carousel button').length).toBe(4);
-  expect(root.querySelector('.banner__image')).toBeNull();
   for (const [name, id, src] of [
     ['catálogos', 'catalogs', 'banner-catalogo-mayorista.webp'],
     ['la tienda', 'store', 'banner-tienda-magic-beauty.webp'],
     ['medios de pago', 'payments', 'banner-medios-de-pago.webp'],
-    ['calendarios', 'calendars', 'banner-calendarios-2026.webp']
+    ['calendarios', 'calendars', 'banner-calendario-magic-beauty-2026.jpg']
   ]) {
     dot(root, name).click();
     harness.fixture.detectChanges();
@@ -182,9 +171,19 @@ it('rotates by itself and keeps rotating after a dot is clicked', async () => {
   }
 });
 
-it('does not add the carousel to the catalog banner', async () => {
-  const harness = await setup();
-  await harness.navigateByUrl('/catalogo');
-  expect(harness.fixture.nativeElement.querySelector('.home-carousel')).toBeNull();
-  expect(harness.fixture.nativeElement.querySelector('.home-dots')).toBeNull();
+it('keeps rotating the campaign banners on the catalog tab', async () => {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+  try {
+    const harness = await setup();
+    await harness.navigateByUrl('/catalogo');
+    harness.fixture.detectChanges();
+    await harness.fixture.whenStable();
+    const root = harness.fixture.nativeElement as HTMLElement;
+    expect(slideId(root)).toBe('calendars');
+    vi.advanceTimersByTime(7000);
+    harness.fixture.detectChanges();
+    expect(slideId(root)).toBe('catalogs');
+  } finally {
+    vi.useRealTimers();
+  }
 });

@@ -92,14 +92,14 @@ it.each([
   expect(TestBed.inject(Router).url).toBe(url);
   const element = harness.fixture.nativeElement as HTMLElement;
   expect(element.querySelector('.hero__title')).toBeNull();
-  expect(element.querySelector('app-store-layout .banner__title')?.textContent).toEqual(
+  expect(element.querySelector('app-store-layout .page-heading__title')?.textContent).toEqual(
     bannerTitle ? expect.stringContaining(bannerTitle) : undefined
   );
   expect(element.querySelector('app-portal-shell')).toBeNull();
   expect(element.querySelector('.store-menu__link--portal.active')).toBeNull();
   await navigateAs(harness, '/catalogo', true);
   expect(element.querySelector('app-portal-shell')).not.toBeNull();
-  expect(element.querySelector('.banner__title')?.textContent).toContain('mayorista');
+  expect(element.querySelector('.page-heading__title')?.textContent).toContain('mayorista');
 });
 
 
@@ -128,7 +128,7 @@ it('returns to wholesale benefits after login and category navigation', async ()
   expect(TestBed.inject(Router).url).toBe('/');
   expect(element.querySelector('app-store-layout')).toBeNull();
   expect(element.querySelector('app-portal-shell')).not.toBeNull();
-  expect(element.querySelector('.home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendarios-2026.webp');
+  expect(element.querySelector('.home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendario-magic-beauty-2026.jpg');
   expect(element.querySelector('.store-menu__link--portal.active')).not.toBeNull();
 });
 
@@ -140,7 +140,7 @@ it('shows the full store home and header search for an authenticated visitor', a
   const element = harness.fixture.nativeElement as HTMLElement;
   expect(TestBed.inject(Router).url).toBe('/inicio');
   // Con sesión el inicio conserva el carrusel de campañas del inicio público.
-  expect(element.querySelector('app-home .home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendarios-2026.webp');
+  expect(element.querySelector('app-home .home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendario-magic-beauty-2026.jpg');
   expect(element.querySelector('.hero__title')).toBeNull();
   expect(element.querySelector('.shop-by-category')).not.toBeNull();
   expect(element.querySelector('.desktop-search')).not.toBeNull();

@@ -1,12 +1,12 @@
-import { Component, DestroyRef, afterNextRender, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, afterNextRender, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { HOME_SLIDES, HOME_SLIDE_INTERVAL_MS } from './home-slides';
 import { PortalBanner } from './portal-navigation';
 
 /**
- * Banner a todo el ancho bajo la cabecera. Si el banner trae `campaignImage` es el
- * carrusel de campañas del inicio; si no, el banner de texto e imagen de la pestaña.
+ * Carrusel de campañas a todo el ancho bajo la cabecera, en todas las páginas con
+ * banner. Si la página trae su propio título, va como h1 bajo el carrusel.
  * Lo usan el portal público y la tienda con sesión, así ambos se ven igual.
  */
 @Component({
@@ -17,8 +17,6 @@ import { PortalBanner } from './portal-navigation';
 })
 export class PortalBannerComponent {
   readonly banner = input<PortalBanner | null>(null);
-  /** Un botón sin enlace pide ir al contenido de la página, bajo el banner. */
-  readonly contentRequested = output<void>();
 
   readonly slides = HOME_SLIDES;
   readonly activeSlide = signal(0);
@@ -37,7 +35,7 @@ export class PortalBannerComponent {
       this.slides.slice(1).forEach(slide => (new Image().src = slide.image));
       const timer = window.setInterval(() => {
         const paused = reducedMotion || this.bannerHovered() || this.bannerKeyboardFocus() || document.hidden;
-        if (!this.banner()?.campaignImage || paused) {
+        if (!this.banner() || paused) {
           this.lastChange = Date.now();
           return;
         }

@@ -21,7 +21,7 @@ it('shows the campaign carousel of its route instead of a hero of its own, follo
   await harness.navigateByUrl('/inicio');
   const root = harness.fixture.nativeElement as HTMLElement;
 
-  expect(root.querySelector('.home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendarios-2026.webp');
+  expect(root.querySelector('.home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendario-magic-beauty-2026.jpg');
   expect(root.querySelector('.hero')).toBeNull();
   expect(root.querySelector('.shop-by-category')).not.toBeNull();
   expect(root.querySelectorAll('.favorites app-product-card').length).toBe(5);

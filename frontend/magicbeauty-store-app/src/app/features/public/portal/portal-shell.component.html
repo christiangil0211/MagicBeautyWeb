@@ -1,4 +1,4 @@
-<app-portal-banner [banner]="banner()" (contentRequested)="scrollToContent()" />
+<app-portal-banner [banner]="banner()" />
 
 <div class="portal-body" [class.portal-body--no-banner]="!banner()">
   <nav class="tabs" aria-label="Secciones del portal">
@@ -27,7 +27,7 @@
     }
   </nav>
 
-  <div class="portal-content" #content>
+  <div class="portal-content">
     <router-outlet />
   </div>
 </div>
