@@ -208,7 +208,7 @@
 /* ===== Promos ===== */
 .promos {
   display: grid;
-  grid-template-columns: 1.6fr minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 1.6fr minmax(0, 1fr);
   gap: 1.25rem;
   max-width: var(--mb-container);
   margin: 3.5rem auto 0;
@@ -252,15 +252,6 @@
     font-size: 2rem;
     max-width: 240px;
   }
-}
-
-.promo--soft {
-  background: var(--mb-surface-2);
-}
-
-.promo__note {
-  font-size: 0.75rem;
-  color: var(--mb-text-muted);
 }
 
 /* ===== Beneficios ===== */
