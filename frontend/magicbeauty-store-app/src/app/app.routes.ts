@@ -118,23 +118,27 @@ export const routes: Routes = [
       {
         path: 'inicio',
         canMatch: [authenticatedStore],
-        data: NO_INDEX,
+        // Mismo carrusel de campañas que el inicio público.
+        data: { ...NO_INDEX, portalBanner: PORTAL_BANNERS.benefits },
         loadComponent: () => import('./features/public/home/home.component').then(m => m.HomeComponent)
       },
       {
         path: '',
         canMatch: [authenticatedStore],
-        // Tienda con sesión: sus páginas públicas equivalentes viven en el portal.
+        // Tienda con sesión: sus páginas públicas equivalentes viven en el portal y
+        // muestran los mismos banners (data.portalBanner de cada hija).
         data: NO_INDEX,
         loadComponent: () => import('./layouts/store-layout/store-layout.component').then(m => m.StoreLayoutComponent),
         children: [
           {
             path: 'categoria/:slug',
             resolve: { categoria: (route: ActivatedRouteSnapshot) => route.paramMap.get('slug') },
+            data: { portalBanner: PORTAL_BANNERS.digitalCatalog },
             loadComponent: () => import('./features/public/digital-catalog/digital-catalog.component').then(m => m.DigitalCatalogComponent)
           },
           {
             path: 'productos',
+            data: { portalBanner: PORTAL_BANNERS.digitalCatalog },
             loadComponent: () => import('./features/public/digital-catalog/digital-catalog.component').then(m => m.DigitalCatalogComponent)
           },
           {
