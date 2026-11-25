@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Integracion con Alegra, aislada del resto del backend: solo usa los servicios
+    de Application (sin tocar la base de datos ni las entidades). Para retirarla:
+    quitar este proyecto de la solucion, su referencia en el API y las dos lineas
+    de Program.cs (AddAlegraIntegration / MapAlegraIntegration).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <InternalsVisibleTo Include="MagicBeauty.Store.Tests" />
+  </ItemGroup>
+
+  <!-- Persistencia propia: esquema "alegra" con su propio historial de migraciones. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MagicBeauty.Store.Application\MagicBeauty.Store.Application.csproj" />
+    <ProjectReference Include="..\MagicBeauty.Store.Contracts\MagicBeauty.Store.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -14,6 +14,7 @@ import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 
 import { BrandService } from '../../../core/services/brand.service';
+import { AlegraSyncButtonComponent } from '../../../integrations/alegra/alegra-sync-button/alegra-sync-button.component';
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ProductService } from '../../../core/services/product.service';
@@ -40,7 +41,7 @@ interface StatusOption {
     ConfirmDialogModule,
     PageHeaderComponent,
     LoaderComponent,
-
+    AlegraSyncButtonComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './admin-products.component.html',

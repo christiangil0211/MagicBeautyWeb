@@ -7,6 +7,7 @@ using MagicBeauty.Store.Api.Services;
 using MagicBeauty.Store.Application;
 using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Infrastructure;
+using MagicBeauty.Store.Integrations.Alegra;
 using MagicBeauty.Store.Infrastructure.Storage;
 using Microsoft.Extensions.FileProviders;
 
@@ -25,6 +26,9 @@ builder.Services.AddResponseCompression(options =>
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.IsDevelopment());
+
+// Integracion Alegra (desmontable): ver MagicBeauty.Store.Integrations.Alegra.
+builder.Services.AddAlegraIntegration(builder.Configuration);
 
 builder.Services.AddStoreAuthentication(builder.Environment);
 
@@ -123,6 +127,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Integracion Alegra (desmontable): sus rutas solo para administradores.
+app.MapAlegraIntegration().RequireAuthorization(AuthorizationPolicies.StoreAdmin);
 
 // Primer ADMIN de una base nueva: solo Development y solo con BootstrapAdmin configurado.
 await app.BootstrapAdminAsync();
