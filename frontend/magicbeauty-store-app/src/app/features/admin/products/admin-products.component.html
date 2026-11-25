@@ -19,6 +19,9 @@
       <span>unidades</span>
     </div>
 
+    <!-- Integración Alegra (desmontable): solo aparece si el API la tiene activa. -->
+    <app-alegra-sync-button (synced)="load()" />
+
     <p-button
       label="Crear producto"
       icon="pi pi-plus"
