@@ -20,64 +20,34 @@ export const PORTAL_TABS: PortalTab[] = [
 export const PORTAL_MENU_LABEL = 'Hazte mayorista';
 
 /**
- * Botón del banner: navega a otra pestaña (`link`) o baja al contenido de la
- * pestaña actual (sin `link`).
- */
-export interface PortalBannerAction {
-  label: string;
-  icon: string;
-  link?: string;
-}
-
-/**
- * Encabezado de cada pestaña, según los banners aprobados (1920 × 700). Viaja como
- * `data` de la ruta para que la página contenedora pinte el banner que toca.
+ * Banner de cada página. Todas muestran el carrusel de campañas (home-slides.ts);
+ * viaja como `data` de la ruta para que la página contenedora lo pinte. Con
+ * `title`, la página lleva su propio h1 bajo el carrusel; sin él (el inicio), el
+ * título del banner activo hace de h1.
  */
 export interface PortalBanner {
-  campaignImage?: string;
-  eyebrow?: string;
-  title: string;
-  /** Final del título, en fucsia y en su propia línea. */
+  title?: string;
+  /** Final del título, en fucsia. */
   highlight?: string;
-  text: string;
-  /** Lado derecho del banner aprobado (sin textos), servido desde /public. */
-  image: string;
-  actions: PortalBannerAction[];
+  text?: string;
 }
 
 export const PORTAL_BANNERS = {
-  benefits: {
-    campaignImage: '/images/campaigns/banner-calendarios-2026.webp',
-    eyebrow: 'Hazte mayorista',
-    title: 'Tu belleza, también en',
-    highlight: 'grandes cantidades',
-    text: 'Accede a precios especiales, productos exclusivos y un acompañamiento personalizado para hacer crecer tu negocio.',
-    image: '/images/portal/banner-beneficios.jpg',
-    actions: [
-      { label: 'Ver catálogo digital', icon: 'pi pi-search', link: '/catalogo' },
-      { label: 'Ver catálogo tradicional', icon: 'pi pi-book', link: '/catalogos' }
-    ]
-  },
+  benefits: {},
   digitalCatalog: {
     title: 'Catálogo',
     highlight: 'mayorista',
-    text: 'Encuentra fácilmente los productos que necesitas. Filtra, busca y consulta precios especiales para tu negocio.',
-    image: '/images/portal/banner-catalogo-digital.jpg',
-    actions: [{ label: 'Explorar catálogo digital', icon: 'pi pi-search' }]
+    text: 'Encuentra fácilmente los productos que necesitas. Filtra, busca y consulta precios especiales para tu negocio.'
   },
   traditionalCatalogs: {
     title: 'Nuestros',
     highlight: 'catálogos',
-    text: 'Explora nuestras líneas de productos en formato tradicional. Puedes verlos aquí mismo o descargarlos en PDF.',
-    image: '/images/portal/banner-catalogos.jpg',
-    actions: [{ label: 'Ver catálogos', icon: 'pi pi-book' }]
+    text: 'Explora nuestras líneas de productos en formato tradicional. Puedes verlos aquí mismo o descargarlos en PDF.'
   },
   order: {
     title: 'Mi pedido',
     highlight: 'siempre contigo',
-    text: 'Revisa los productos que has agregado, ajusta cantidades y envía tu pedido por WhatsApp.',
-    image: '/images/portal/banner-pedido.jpg',
-    actions: [{ label: 'Revisar mi pedido', icon: 'pi pi-shopping-bag' }]
+    text: 'Revisa los productos que has agregado, ajusta cantidades y envía tu pedido por WhatsApp.'
   }
 } satisfies Record<string, PortalBanner>;
 

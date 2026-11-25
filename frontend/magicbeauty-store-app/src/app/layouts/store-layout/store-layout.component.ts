@@ -1,4 +1,4 @@
-import { Component, ElementRef, viewChild } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { PortalBannerComponent } from '../../features/public/portal/portal-banner.component';
@@ -12,8 +12,8 @@ import { routeBanner } from '../../features/public/portal/portal-banner.service'
   selector: 'app-store-layout',
   imports: [PortalBannerComponent, RouterOutlet],
   template:
-    '<app-portal-banner [banner]="banner()" (contentRequested)="scrollToContent()" />' +
-    '<div class="store-pages" #content><router-outlet /></div>',
+    '<app-portal-banner [banner]="banner()" />' +
+    '<div class="store-pages"><router-outlet /></div>',
   styles: [
     ':host { display: block; }',
     '.store-pages { max-width: calc(var(--mb-container) + var(--mb-gutter) * 2); margin: 0 auto; padding: 24px var(--mb-gutter) 56px; scroll-margin-top: 1rem; }',
@@ -21,11 +21,5 @@ import { routeBanner } from '../../features/public/portal/portal-banner.service'
   ]
 })
 export class StoreLayoutComponent {
-  private readonly content = viewChild<ElementRef<HTMLElement>>('content');
-
   readonly banner = routeBanner();
-
-  scrollToContent(): void {
-    this.content()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
 }
