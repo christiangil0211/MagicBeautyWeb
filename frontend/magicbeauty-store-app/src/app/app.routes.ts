@@ -10,7 +10,7 @@ import { buildBreadcrumbJsonLd, buildStoreJsonLd, buildWebSiteJsonLd } from './c
 import { PORTAL_BANNERS } from './features/public/portal/portal-navigation';
 
 const authenticatedStore: CanMatchFn = (_route, segments) => {
-  if (!['inicio', 'categoria', 'productos'].includes(segments[0]?.path)) return false;
+  if (!['mi-tienda', 'categoria', 'productos'].includes(segments[0]?.path)) return false;
   return inject(AuthService).ensureSession().pipe(map(session => session.isAuthenticated));
 };
 
@@ -116,7 +116,10 @@ export const routes: Routes = [
         }
       },
       {
-        path: 'inicio',
+        // Inicio de la tienda con sesión. No es /inicio: esa URL la redirige el
+        // hosting con 301 a la portada (staticwebapp.config.json), y el hosting no
+        // sabe si hay sesión.
+        path: 'mi-tienda',
         canMatch: [authenticatedStore],
         // Mismo carrusel de campañas que el inicio público.
         data: { ...NO_INDEX, portalBanner: PORTAL_BANNERS.benefits },
@@ -240,6 +243,12 @@ export const routes: Routes = [
       },
       {
         // Sin sesión, el inicio de la tienda es el portal.
+        path: 'mi-tienda',
+        redirectTo: ''
+      },
+      {
+        // URL antigua del inicio: el hosting ya responde 301 a /; esto cubre la
+        // navegación dentro de la app.
         path: 'inicio',
         redirectTo: ''
       },

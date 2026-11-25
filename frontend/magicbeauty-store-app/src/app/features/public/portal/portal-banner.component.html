@@ -53,7 +53,7 @@
 
   @if (current.title) {
     <header class="page-heading">
-      <h1 class="page-heading__title">{{ current.title }}@if (current.highlight) { {{ ' ' }}<span>{{ current.highlight }}</span>}</h1>
+      <h1 class="page-heading__title">{{ current.title }}@if (current.highlight) {<span> {{ current.highlight }}</span>}</h1>
       @if (current.text) {
         <p class="page-heading__text">{{ current.text }}</p>
       }

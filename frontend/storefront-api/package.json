@@ -2,7 +2,7 @@
   "name": "magicbeauty-storefront-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Funciones administradas de Azure Static Web Apps para la tienda: sirven /sitemap.xml bajo el dominio del sitio.",
+  "description": "Funciones administradas de Azure Static Web Apps para la tienda: /sitemap.xml y el HTML para buscadores de fichas y categorías (/catalogo/*).",
   "main": "src/functions/*.js",
   "scripts": {
     "test": "node --test"

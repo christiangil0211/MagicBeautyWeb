@@ -13,6 +13,9 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
     /// <summary>Evita consultas desmedidas si alguien pega un texto largo.</summary>
     private const int MaxSearchTerms = 6;
 
+    /// <summary>Tipo de precio publico (Detal), sembrado en PriceTypeConfiguration.</summary>
+    private const string RetailPriceTypeCode = "RETAIL";
+
     private static IEnumerable<string> SplitSearchTerms(string? search)
     {
         return string.IsNullOrWhiteSpace(search)
@@ -103,9 +106,15 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
     public async Task<IReadOnlyList<ProductSitemapEntry>> GetActiveSitemapEntriesAsync(
         CancellationToken cancellationToken)
     {
+        // Solo fichas completas: activas, con al menos una foto activa y precio al
+        // detal. Las demas llevan noindex en el sitio hasta que se completen (mismo
+        // criterio que isCompleteProduct en el frontend).
         return await dbContext.Products
             .AsNoTracking()
             .Where(product => product.IsActive)
+            .Where(product => product.Images.Any(image => image.IsActive))
+            .Where(product => product.Prices.Any(price =>
+                price.IsActive && price.Amount > 0 && price.PriceType != null && price.PriceType.Code == RetailPriceTypeCode))
             .OrderBy(product => product.Reference)
             .Select(product => new ProductSitemapEntry(product.Reference, product.UpdatedAt))
             .ToListAsync(cancellationToken);
