@@ -1,4 +1,4 @@
-import { STORE_ADDRESS, STORE_CONTACT, STORE_SOCIAL_LINKS } from '../constants/store-contact';
+import { STORE_ADDRESS, STORE_CONTACT, STORE_GEO, STORE_SOCIAL_LINKS } from '../constants/store-contact';
 import { ProductDetail } from '../../shared/models/product.model';
 import {
   STORE_ID,
@@ -62,8 +62,28 @@ describe('Store', () => {
     expect(STORE_CONTACT.address).toBe(`${STORE_ADDRESS.streetAddress}, ${STORE_ADDRESS.locality}`);
   });
 
-  it('does not invent hours, coordinates, postal code or ratings', () => {
-    for (const field of ['openingHours', 'openingHoursSpecification', 'geo', 'priceRange', 'aggregateRating', 'review']) {
+  it('publishes the confirmed hours: Monday to Saturday 10:00-20:00, closed on Sunday', () => {
+    expect(store['openingHoursSpecification']).toEqual([
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => 'https://schema.org/' + day),
+        opens: '10:00',
+        closes: '20:00'
+      }
+    ]);
+    expect(JSON.stringify(store['openingHoursSpecification'])).not.toContain('Sunday');
+  });
+
+  it('publishes coordinates only once they are confirmed', () => {
+    if (STORE_GEO) {
+      expect(store['geo']).toEqual({ '@type': 'GeoCoordinates', latitude: STORE_GEO.latitude, longitude: STORE_GEO.longitude });
+    } else {
+      expect(store).not.toHaveProperty('geo');
+    }
+  });
+
+  it('does not invent a postal code, ratings or a price range', () => {
+    for (const field of ['priceRange', 'aggregateRating', 'review']) {
       expect(store).not.toHaveProperty(field);
     }
 

@@ -1,6 +1,8 @@
 import {
   STORE_ADDRESS,
   STORE_CONTACT,
+  STORE_GEO,
+  STORE_OPENING_HOURS,
   STORE_SITE_URL,
   STORE_SOCIAL_LINKS
 } from '../constants/store-contact';
@@ -20,8 +22,9 @@ export interface Breadcrumb {
 }
 
 /**
- * Negocio local (Schema.org `Store`). Solo publica datos confirmados que ya
- * viven en las constantes del negocio: sin horario, coordenadas ni código postal.
+ * Negocio local (Schema.org `Store`). Solo publica datos confirmados que viven en
+ * las constantes del negocio: horario siempre; coordenadas solo cuando estén
+ * cargadas (STORE_GEO); nunca código postal, calificaciones ni rango de precios.
  */
 export function buildStoreJsonLd(): object {
   return {
@@ -42,6 +45,15 @@ export function buildStoreJsonLd(): object {
       addressRegion: STORE_ADDRESS.region,
       addressCountry: STORE_ADDRESS.countryCode
     },
+    ...(STORE_GEO
+      ? { geo: { '@type': 'GeoCoordinates', latitude: STORE_GEO.latitude, longitude: STORE_GEO.longitude } }
+      : {}),
+    openingHoursSpecification: STORE_OPENING_HOURS.map(hours => ({
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: hours.days.map(day => SCHEMA + '/' + day),
+      opens: hours.opens,
+      closes: hours.closes
+    })),
     hasMap: STORE_CONTACT.mapsUrl,
     sameAs: STORE_SOCIAL_LINKS.map(link => link.url)
   };
