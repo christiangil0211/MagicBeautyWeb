@@ -31,7 +31,7 @@
       </button>
 
       <!-- El logo es el acceso al inicio desde cualquier página pública. -->
-      <a class="brand" [routerLink]="isAuthenticated() ? '/mi-tienda' : '/'" aria-label="Magic Beauty Cosmetics, ir al inicio">
+      <a class="brand" routerLink="/" aria-label="Magic Beauty Cosmetics, ir al inicio">
         <img src="/images/logo-horizontal.png" alt="Magic Beauty Cosmetics" width="610" height="100" />
       </a>
 
@@ -132,7 +132,7 @@
         }
 
       <div class="store-menu__item">
-        <a class="store-menu__link store-menu__link--portal" routerLink="/" [class.active]="onPortal()">
+        <a class="store-menu__link store-menu__link--portal" [routerLink]="wholesalePath" routerLinkActive="active">
           {{ portalMenuLabel }}
         </a>
       </div>
@@ -331,10 +331,10 @@
         }
       }
 
-      <a class="mobile-menu-account" href="javascript:void(0)" (click)="closeMobileMenu(); openAccount()">
+      <button type="button" class="mobile-menu-account" (click)="closeMobileMenu(); openAccount()">
         <i class="pi pi-user mobile-menu-icon" aria-hidden="true"></i>
         {{ isAuthenticated() ? 'Mi cuenta' : 'Iniciar sesión' }}
-      </a>
+      </button>
     </nav>
 
     <div class="mobile-help">

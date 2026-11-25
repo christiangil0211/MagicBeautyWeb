@@ -25,6 +25,11 @@
       "statusCode": 301
     },
     {
+      "route": "/mi-tienda",
+      "redirect": "/",
+      "statusCode": 301
+    },
+    {
       "route": "/admin",
       "rewrite": "/index.csr.html",
       "headers": { "X-Robots-Tag": "noindex, nofollow" }

@@ -12,7 +12,7 @@ solo y qué pasos manuales quedan fuera del repositorio.
 | Metadatos de cada ruta | `app.routes.ts` (`title` y `data.seo`) + `core/seo/seo-title.strategy.ts` | Se aplican en cada navegación. Un `noindex` en una ruta padre cubre a sus hijas. |
 | Datos estructurados | `core/seo/structured-data.ts` | `Store` y `WebSite` en el inicio; `Product` y `BreadcrumbList` en la ficha; `BreadcrumbList` en la categoría. |
 | Metadatos de marca sin JavaScript | `src/index.html` | Los recibe quien no ejecuta JavaScript (WhatsApp, Facebook) en cualquier URL. |
-| Prerenderizado | `app.routes.server.ts` | `/`, `/catalogo` y `/catalogos` se generan como HTML en el build. |
+| Prerenderizado | `app.routes.server.ts` | `/`, `/mayoristas`, `/catalogo`, `/catalogos` y `/calendarios-de-adviento` se generan como HTML en el build. |
 | Rastreo | `public/robots.txt` | Permite todo salvo `/admin` y declara el sitemap. |
 | Sitemap | API: `GET /sitemap.xml` (`SitemapController`, `SitemapService`) | Páginas del portal, categorías con productos y productos activos, generado en cada consulta. |
 | Sitemap en el dominio del sitio | `frontend/storefront-api` + regla `/sitemap.xml` en `staticwebapp.config.json` | Función administrada que entrega el XML del API en `https://www.magicbeautycosmetics.com/sitemap.xml`. |
@@ -20,10 +20,12 @@ solo y qué pasos manuales quedan fuera del repositorio.
 
 ### Qué se indexa y qué no
 
-- **Se indexan:** `/`, `/catalogo`, `/catalogos`, `/catalogo/categoria/:slug` y `/catalogo/:reference`.
-- **No se indexan (`noindex`):** `/pedido`, el administrador, la tienda con sesión (`/inicio`,
-  `/productos`, `/categoria/...`), las búsquedas internas (`?q=`), las direcciones que no existen
+- **Se indexan:** `/` (inicio de la tienda, con h1 fijo "Tienda de maquillaje y cosméticos en Cali"),
+  `/mayoristas`, `/catalogo`, `/catalogos`, `/catalogo/categoria/:slug` y `/catalogo/:reference`.
+- **No se indexan (`noindex`):** `/pedido`, el administrador, la tienda con sesión (`/productos`,
+  `/categoria/...`), las búsquedas internas (`?q=`), las direcciones que no existen
   y los productos o categorías que no existen.
+- `/inicio` y `/mi-tienda` (inicios anteriores) responden **301 → /** desde el hosting.
 - El canonical siempre apunta a `https://www.magicbeautycosmetics.com` y nunca lleva parámetros.
   Las páginas `noindex` no llevan canonical.
 
@@ -69,7 +71,7 @@ no coinciden.
 
 El sitio se publica como archivos estáticos en Azure Static Web Apps, sin servidor Node.
 
-- Las tres páginas cuyo contenido no depende de la API se **prerenderizan** en el build. Su HTML
+- Las páginas cuyo contenido no depende de la API se **prerenderizan** en el build. Su HTML
   ya trae encabezado, textos, metadatos y JSON-LD.
 - Todo lo que sale de la API (listado de productos, menú, catálogos, sesión) se pide **solo en el
   navegador**. El build no llama a la API y no congela precios ni existencias.

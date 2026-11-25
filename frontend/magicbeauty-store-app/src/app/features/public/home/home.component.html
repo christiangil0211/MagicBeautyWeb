@@ -1,115 +1,129 @@
 <p-toast position="top-right" />
 
-<!-- Mismo carrusel de campañas que el inicio público (data.portalBanner de la ruta). -->
-<app-portal-banner [banner]="banner()" />
+<!-- El carrusel de campañas y el h1 los pinta el portal (data.portalBanner de la ruta). -->
 
-<!-- Estas tarjetas son exactamente las categorías marcadas como destacadas en el administrador. -->
-<section class="shop-by-category">
-  <h2 class="section-title">Compra por categoría</h2>
+<!-- Categorías marcadas como «Destacar en el inicio» en el administrador, en una sola fila. -->
+@if (showCategories()) {
+  <section class="home-section shop-by-category" aria-labelledby="home-categories-title">
+    <h2 id="home-categories-title" class="section-title">Compra por categoría</h2>
 
-  @if (tiles().length > 0) {
-    <div class="tiles">
-      @for (tile of tiles(); track tile.id) {
-        <a class="tile" [routerLink]="categoryPath(tile.slug)">
-          <div class="tile__image">
-            @if (tile.imageUrl) {
-              <img [src]="tile.imageUrl" [alt]="tile.name" loading="lazy" />
-            } @else {
-              <div class="tile__placeholder"><i class="pi pi-image"></i></div>
-            }
-          </div>
+    @if (!tilesLoaded()) {
+      <div class="tiles" aria-hidden="true">
+        @for (skeleton of categorySkeletons; track skeleton) {
+          <div class="tile tile--skeleton"><div class="tile__image"></div><span class="tile__name">&nbsp;</span></div>
+        }
+      </div>
+    } @else if (visibleTiles().length > 0) {
+      <div class="tiles">
+        @for (tile of visibleTiles(); track tile.id) {
+          <a class="tile" [routerLink]="categoryPath(tile.slug)">
+            <div class="tile__image">
+              @if (tile.imageUrl) {
+                <img [src]="tile.imageUrl" [alt]="tile.name" width="300" height="300" loading="lazy" decoding="async" />
+              } @else {
+                <div class="tile__placeholder"><i class="pi pi-image" aria-hidden="true"></i></div>
+              }
+            </div>
+            <span class="tile__name">{{ tile.name }} <i class="pi pi-angle-right" aria-hidden="true"></i></span>
+          </a>
+        }
+      </div>
+    } @else {
+      <!-- Solo lo ve un administrador: el visitante no ve la sección vacía. -->
+      <p class="admin-hint">
+        Todavía no hay categorías destacadas. Marca una como «Destacar en el inicio» y aparecerá aquí.
+        <a routerLink="/admin/categories">Ir a categorías</a>
+      </p>
+    }
+  </section>
+}
 
-          <span class="tile__name">{{ tile.name }} <i class="pi pi-angle-right"></i></span>
-        </a>
-      }
+<!-- Se carga al acercarse a la pantalla: el listado no compite con la imagen principal. -->
+@defer (on viewport) {
+  <app-home-favorites class="home-section favorites" />
+} @placeholder {
+  <section class="home-section favorites favorites--placeholder" aria-hidden="true"></section>
+}
+
+<section class="home-section visit" aria-labelledby="visit-title">
+  <div class="visit__info">
+    <p class="section-eyebrow">Nuestra tienda física</p>
+    <h2 id="visit-title" class="section-title">Visítanos en Cali</h2>
+
+    <dl class="visit__facts">
+      <div class="visit__fact">
+        <dt><i class="pi pi-map-marker" aria-hidden="true"></i> Dirección</dt>
+        <dd><a [href]="mapsUrl" target="_blank" rel="noopener noreferrer">{{ address }}</a></dd>
+      </div>
+      <div class="visit__fact">
+        <dt><i class="pi pi-clock" aria-hidden="true"></i> Horario</dt>
+        <dd>
+          @for (slot of hours; track slot) {
+            <span>Lunes a sábado: {{ slot }}</span>
+          }
+          <span>Domingo: cerrado</span>
+        </dd>
+      </div>
+      <div class="visit__fact">
+        <dt><i class="pi pi-whatsapp" aria-hidden="true"></i> WhatsApp</dt>
+        <dd><a [href]="whatsappHref" target="_blank" rel="noopener noreferrer">{{ whatsappPhone }}</a></dd>
+      </div>
+    </dl>
+
+    <div class="visit__actions">
+      <a class="home-btn" [href]="directionsUrl" target="_blank" rel="noopener noreferrer">
+        <i class="pi pi-directions" aria-hidden="true"></i> Cómo llegar
+      </a>
+      <a class="home-btn home-btn--outline" [href]="whatsappHref" target="_blank" rel="noopener noreferrer">
+        <i class="pi pi-whatsapp" aria-hidden="true"></i> Escríbenos
+      </a>
     </div>
-  } @else if (loaded()) {
-    <app-empty-state
-      class="tiles-empty"
-      icon="pi-th-large"
-      title="Todavía no hay categorías destacadas"
-      [boxed]="true"
-      [message]="canManageStore()
-        ? 'Marca una categoría como «Destacar en el inicio» y aparecerá aquí.'
-        : 'Muy pronto encontrarás aquí nuestras categorías.'">
-      @if (canManageStore()) {
-        <a class="mb-btn mb-btn--outline mb-btn--sm" routerLink="/admin/categories">Ir a categorías</a>
-      }
-    </app-empty-state>
-  }
+  </div>
+
+  <div class="visit__map">
+    <iframe
+      [src]="mapEmbedUrl"
+      title="Mapa de Magic Beauty Cosmetics en Calle 13 # 44A - 26, Cali"
+      width="640"
+      height="420"
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
 </section>
 
-<!--
-  Sección comercial del inicio. No usa un campo "destacado" del backend: toma los
-  primeros productos activos del catálogo y los pinta con la ProductCard pública.
--->
-<section class="favorites">
-  <header class="favorites__head">
-    <div>
-      <p class="favorites__eyebrow">Lo más amado <i class="pi pi-heart-fill"></i></p>
-      <h2 class="section-title">Productos Favoritos</h2>
-    </div>
-
-    <a class="favorites__all" routerLink="/productos">
-      Ver todos <i class="pi pi-angle-right"></i>
-    </a>
-  </header>
-
-  @if (productsLoading()) {
-    <app-loader message="Cargando productos…" [compact]="true" />
-  } @else if (favoriteCards().length > 0) {
-    <div class="favorites__grid">
-      @for (product of favoriteCards(); track product.id) {
-        <app-product-card
-          [product]="product"
-          [detailLink]="detailLink(product.reference)"
-          (addToCart)="onAddToCart($event)"
-          (chooseVariant)="onChooseVariant($event)"
-          (toggleFavorite)="onToggleFavorite($event)" />
-      }
-    </div>
-  } @else {
-    <app-empty-state icon="pi-shopping-bag" title="Todavía no hay productos publicados en la tienda" />
-  }
+<section class="home-section wholesale-strip" aria-labelledby="wholesale-title">
+  <span class="wholesale-strip__icon" aria-hidden="true"><i class="pi pi-briefcase"></i></span>
+  <div class="wholesale-strip__text">
+    <h2 id="wholesale-title">¿Tienes un negocio?</h2>
+    <p>Compra al por mayor desde $100.000 y accede a precios especiales para tu negocio.</p>
+  </div>
+  <a class="home-btn" [routerLink]="wholesalePath">
+    Compra al por mayor <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </a>
 </section>
 
-<section class="promos">
-  <article class="promo promo--wide">
-    <h3>Brilla con Confianza</h3>
-    <p>Luce tu mejor versión todos los días.</p>
-    <a class="btn btn--solid btn--sm" routerLink="/productos">Descubrir colección</a>
-  </article>
-
-  <article class="promo">
-    <h3>Ahorra más, vive tu magia</h3>
-    <p>Combos exclusivos para ti.</p>
-    <a class="btn btn--outline btn--sm" routerLink="/productos">Ver combos</a>
-  </article>
-</section>
-
-<section class="benefits">
+<section class="home-section benefits" aria-label="Por qué comprar en Magic Beauty">
   <div class="benefit">
-    <i class="pi pi-truck"></i>
+    <i class="pi pi-truck" aria-hidden="true"></i>
     <strong>Envíos rápidos</strong>
     <span>A todo el país, de 2 a 5 días hábiles.</span>
   </div>
 
   <div class="benefit">
-    <i class="pi pi-shield"></i>
+    <i class="pi pi-shield" aria-hidden="true"></i>
     <strong>Pagos seguros</strong>
     <span>Tus compras protegidas con métodos confiables.</span>
   </div>
 
   <div class="benefit">
-    <i class="pi pi-verified"></i>
+    <i class="pi pi-verified" aria-hidden="true"></i>
     <strong>Productos originales</strong>
     <span>100% auténticos y de las mejores marcas.</span>
   </div>
 
   <div class="benefit">
-    <i class="pi pi-headphones"></i>
+    <i class="pi pi-headphones" aria-hidden="true"></i>
     <strong>Atención personalizada</strong>
     <span>Estamos aquí para ayudarte con mucho amor.</span>
   </div>
 </section>
-

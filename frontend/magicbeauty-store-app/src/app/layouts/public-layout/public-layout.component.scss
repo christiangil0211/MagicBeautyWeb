@@ -27,7 +27,8 @@
   overflow: hidden;
   display: flex;
   align-items: center;
-  background: var(--mb-primary);
+  /* Letra de 12 px en blanco: el fucsia oscuro cumple el contraste AA. */
+  background: var(--mb-primary-hover);
   color: var(--mb-primary-contrast);
   font-size: 12px;
   font-weight: 600;
@@ -339,13 +340,25 @@
   display: grid;
 }
 
-.mobile-menu-links a {
+/* "Iniciar sesión" es un botón (abre un panel, no navega) con el mismo aspecto que los enlaces. */
+.mobile-menu-links a,
+.mobile-menu-links .mobile-menu-account {
   padding: 16px 20px;
   border-bottom: 1px solid var(--mb-border-soft);
   color: var(--mb-text);
   text-decoration: none;
   font-size: 16px;
   font-weight: 400;
+}
+
+.mobile-menu-links .mobile-menu-account {
+  width: 100%;
+  border-width: 0 0 1px;
+  border-style: solid;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .mobile-help {
@@ -908,7 +921,8 @@
     padding: 16px 12px;
     gap: 6px;
 
-    a {
+    a,
+    .mobile-menu-account {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -958,6 +972,7 @@
 
     .mobile-menu-account {
       margin-top: 12px;
+      border-width: 1px;
       border-color: var(--mb-pink-200);
     }
   }

@@ -27,7 +27,7 @@ export interface SeoRouteData {
 }
 
 export const SEO_DEFAULTS = {
-  title: 'Magic Beauty Cosmetics | Maquillaje y cosméticos en Cali, al detal y al por mayor',
+  title: 'Tienda de maquillaje y cosméticos en Cali | Magic Beauty Cosmetics',
   description:
     'Magic Beauty Cosmetics: tienda de maquillaje, cosméticos y productos capilares, faciales y corporales en Cali, Colombia. Venta al detal y al por mayor.',
   image: '/images/og-magic-beauty.jpg',

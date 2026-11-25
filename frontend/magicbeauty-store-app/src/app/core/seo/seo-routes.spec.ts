@@ -113,7 +113,29 @@ describe('public pages', () => {
     expect(page.robots).toBe('index, follow');
     expect(page.canonical).toBe(SITE + '/');
     expect(page.jsonLd.map(block => block['@type'])).toEqual(['Store', 'WebSite']);
-    expect(page.element.querySelectorAll('h1').length).toBe(1);
+    // Un solo h1, fijo: no depende del banner del carrusel que esté a la vista.
+    expect(Array.from(page.element.querySelectorAll('h1'), h1 => h1.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'Tienda de maquillaje y cosméticos en Cali'
+    ]);
+    expect(page.element.querySelector('app-home')).not.toBeNull();
+  });
+
+  it('gives the wholesale page its own title, description, canonical, h1 and breadcrumbs', async () => {
+    const page = await open('/mayoristas');
+
+    expect(page.title).toBe('Maquillaje y cosméticos al por mayor en Cali · Magic Beauty Cosmetics');
+    expect(page.description).toContain('al por mayor en Cali');
+    expect(page.description!.length).toBeLessThanOrEqual(170);
+    expect(page.robots).toBe('index, follow');
+    expect(page.canonical).toBe(SITE + '/mayoristas');
+    expect(Array.from(page.element.querySelectorAll('h1'), h1 => h1.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'Maquillaje y cosméticos al por mayor en Cali'
+    ]);
+    expect(page.element.querySelector('app-benefits')).not.toBeNull();
+    expect(page.jsonLd[0]['itemListElement'].map((item: Record<string, string>) => item['item'])).toEqual([
+      SITE + '/',
+      SITE + '/mayoristas'
+    ]);
   });
 
   it.each([
