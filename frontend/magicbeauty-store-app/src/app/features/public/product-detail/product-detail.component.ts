@@ -1,4 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, PLATFORM_ID, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
@@ -6,7 +7,7 @@ import { ToastModule } from 'primeng/toast';
 
 import { publicBrandName, toMetaDescription } from '../../../core/seo/seo.model';
 import { SeoService } from '../../../core/seo/seo.service';
-import { buildBreadcrumbJsonLd, buildProductJsonLd } from '../../../core/seo/structured-data';
+import { buildBreadcrumbJsonLd, buildProductJsonLd, isCompleteProduct } from '../../../core/seo/structured-data';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { OrderDraftService } from '../../../core/services/order-draft.service';
 import { MAX_LINE_QUANTITY } from '../../../shared/models/order-draft.model';
@@ -58,7 +59,13 @@ export class ProductDetailComponent {
 
   readonly product = signal<ProductDetail | null>(null);
   readonly loading = signal(true);
+  /** El API respondió 404: el producto no existe o está inactivo. */
   readonly notFound = signal(false);
+  /**
+   * El API falló o no respondió (caído, lento, sin red). No se sabe si el producto
+   * existe, así que la página no se marca `noindex`: se ofrece reintentar.
+   */
+  readonly loadFailed = signal(false);
 
   readonly selectedVariantId = signal<number | null>(null);
   readonly selectedImageId = signal<number | null>(null);
@@ -159,8 +166,9 @@ export class ProductDetailComponent {
     effect(() => {
       this.seo.navigation();
 
+      // Solo un 404 del API confirma que no existe. Un error o una demora no
+      // cambian los metadatos: quedan los de la ruta (index, follow).
       if (this.notFound()) {
-        // El hosting responde 200 a cualquier URL: es la página la que avisa que no existe.
         this.seo.apply({ title: 'Producto no encontrado · Magic Beauty Cosmetics', noindex: true });
         return;
       }
@@ -263,14 +271,16 @@ export class ProductDetailComponent {
     const brand = publicBrandName(product.brandName);
 
     this.seo.apply({
-      title: [product.name, brand, 'Magic Beauty Cosmetics'].filter(part => part).join(' · '),
+      title: [product.name, brand].filter(part => part).join(' · ') + ' en Cali · Magic Beauty Cosmetics',
       description: toMetaDescription(
         product.description?.trim() ||
           `${product.name}${brand ? ' de ' + brand : ''} (ref. ${product.reference}) en Magic Beauty Cosmetics, Cali. Consulta precios al detal y al por mayor y pide por WhatsApp.`
       ),
       path,
       // La ficha pública es la del portal; la de la tienda con sesión no se indexa.
-      noindex: !this.router.url.startsWith('/catalogo/'),
+      // Una ficha incompleta (sin foto o sin precio al detal) tampoco, hasta completarla:
+      // es el mismo criterio del sitemap.
+      noindex: !this.router.url.startsWith('/catalogo/') || !isCompleteProduct(product),
       type: 'product',
       image: image?.url,
       imageAlt: image?.altText || product.name,
@@ -289,6 +299,7 @@ export class ProductDetailComponent {
   private load(reference: string): void {
     this.loading.set(true);
     this.notFound.set(false);
+    this.loadFailed.set(false);
     this.selectedVariantId.set(null);
     this.selectedImageId.set(null);
     this.quantity.set(1);
@@ -299,12 +310,22 @@ export class ProductDetailComponent {
         this.loading.set(false);
         this.loadRelated(product);
       },
-      error: () => {
+      error: (error: unknown) => {
         this.product.set(null);
         this.loading.set(false);
-        this.notFound.set(true);
+
+        if (error instanceof HttpErrorResponse && error.status === 404) {
+          this.notFound.set(true);
+        } else {
+          this.loadFailed.set(true);
+        }
       }
     });
+  }
+
+  /** Vuelve a pedir el producto después de un error del API. */
+  retry(): void {
+    this.load(this.reference());
   }
 
   /** Unos pocos productos de la misma categoría: la ficha no descarga el catálogo entero. */

@@ -136,9 +136,9 @@ it('returns to wholesale benefits after login and category navigation', async ()
 it('shows the full store home and header search for an authenticated visitor', async () => {
   setup();
   const harness = await RouterTestingHarness.create();
-  await navigateAs(harness, '/inicio', true);
+  await navigateAs(harness, '/mi-tienda', true);
   const element = harness.fixture.nativeElement as HTMLElement;
-  expect(TestBed.inject(Router).url).toBe('/inicio');
+  expect(TestBed.inject(Router).url).toBe('/mi-tienda');
   // Con sesión el inicio conserva el carrusel de campañas del inicio público.
   expect(element.querySelector('app-home .home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendario-magic-beauty-2026.jpg');
   expect(element.querySelector('.hero__title')).toBeNull();
@@ -150,10 +150,17 @@ it('shows the full store home and header search for an authenticated visitor', a
 it('keeps anonymous visitors in the wholesale portal when opening the store home', async () => {
   setup();
   const harness = await RouterTestingHarness.create();
-  await navigateAs(harness, '/inicio');
+  await navigateAs(harness, '/mi-tienda');
   expect(TestBed.inject(Router).url).toBe('/');
   expect(harness.fixture.nativeElement.querySelector('app-portal-shell')).not.toBeNull();
   expect(harness.fixture.nativeElement.querySelector('.desktop-search')).toBeNull();
+});
+
+it.each([false, true])('sends the old /inicio URL to the home page (authenticated: %s)', async authenticated => {
+  setup();
+  const harness = await RouterTestingHarness.create();
+  await navigateAs(harness, '/inicio', authenticated);
+  expect(TestBed.inject(Router).url).toBe('/');
 });
 
 it.each([false, true])('keeps the campaign public regardless of session (%s)', async authenticated => {

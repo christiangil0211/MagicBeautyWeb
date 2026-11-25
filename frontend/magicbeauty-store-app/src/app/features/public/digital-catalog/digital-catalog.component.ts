@@ -118,6 +118,7 @@ export class DigitalCatalogComponent {
 
   readonly items = computed<CatalogProductListItem[]>(() => this.products()?.items() ?? []);
   readonly loading = computed(() => this.products()?.loading() ?? true);
+  private readonly loadFailed = computed(() => this.products()?.loadFailed() ?? false);
 
   /** Categorías marcadas. Un ?categoria= de la URL la deja marcada al llegar. */
   readonly selectedCategories = linkedSignal<Set<number>>(() => {
@@ -267,10 +268,12 @@ export class DigitalCatalogComponent {
       const path = '/catalogo/categoria/' + category.slug;
       const subtree = this.subtrees().get(category.id) ?? new Set([category.id]);
       // Sin productos (ni en sus subcategorías) la página está vacía: no se indexa hasta tenerlos.
-      const isEmpty = !this.loading() && !this.items().some(item => matchesCategories(item, subtree));
+      // Mientras carga o si el API falló no se sabe: nunca se marca noindex por eso.
+      const isEmpty =
+        !this.loading() && !this.loadFailed() && !this.items().some(item => matchesCategories(item, subtree));
 
       seo.apply({
-        title: `${category.name} al detal y al por mayor · Magic Beauty Cosmetics`,
+        title: `${category.name} en Cali al detal y por mayor · Magic Beauty Cosmetics`,
         description: toMetaDescription(
           `${category.name} en Magic Beauty Cosmetics, Cali: consulta precios al detal y al por mayor, arma tu pedido y envíalo por WhatsApp. Envíos a toda Colombia.`
         ),

@@ -50,6 +50,22 @@ public sealed class SitemapTests
     }
 
     [Fact]
+    public async Task ListsOnlyCompleteProductsWithAPhotoAndARetailPrice()
+    {
+        using var db = await CreateDatabaseAsync(withIncompleteProducts: true);
+
+        var products = Locations(await Sitemap(db).BuildXmlAsync(Site, default))
+            .Where(location => location.StartsWith(Site + "/catalogo/") && !location.Contains("/categoria/"))
+            .ToArray();
+
+        // 206 sin foto · 207 solo con foto inactiva · 208 solo precio mayorista ·
+        // 209 detal en 0 · 210 detal inactivo: llevan noindex en el sitio y no se listan.
+        Assert.Equal(
+            [Site + "/catalogo/LAB201", Site + "/catalogo/LAB202", Site + "/catalogo/SOM205", Site + "/catalogo/TON211"],
+            products);
+    }
+
+    [Fact]
     public async Task NeverListsInactiveProducts()
     {
         using var db = await CreateDatabaseAsync();
@@ -196,18 +212,52 @@ public sealed class SitemapTests
         return new CatalogService(new ProductRepository(db), policy.Object, audience.Object);
     }
 
-    // 201 activo en Labios · 202 activo sin categoria · 203 inactivo en Labios · 205 activo en Labios
-    private static async Task<MagicBeautyDbContext> CreateDatabaseAsync()
+    // 201 activo en Labios · 202 activo sin categoria · 203 inactivo en Labios · 205 activo en Labios.
+    // Todos con foto y precio al detal. Con withIncompleteProducts se suman fichas activas
+    // incompletas (206-210) y una con foto solo de tono (211).
+    private static async Task<MagicBeautyDbContext> CreateDatabaseAsync(bool withIncompleteProducts = false)
     {
         var options = new DbContextOptionsBuilder<MagicBeautyDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
         var db = new MagicBeautyDbContext(options);
         db.Brands.Add(new Brand { Id = 1, Name = "Milagros" });
         db.Categories.Add(new Category { Id = 1, Name = "Labios", Slug = "labios" });
+        db.PriceTypes.AddRange(
+            new PriceType { Id = 1, Code = "RETAIL", Name = "Detal", IsDefault = true, IsPublic = true, IsActive = true },
+            new PriceType { Id = 2, Code = "WHOLESALE", Name = "Por mayor", IsActive = true });
         db.Products.AddRange(
-            new Product { Id = 201, Reference = "LAB201", Name = "Labial rojo", BrandId = 1, IsActive = true },
-            new Product { Id = 202, Reference = "LAB202", Name = "Labial nude", BrandId = 1, IsActive = true },
-            new Product { Id = 203, Reference = "LAB203", Name = "Labial retirado", BrandId = 1, IsActive = false },
-            new Product { Id = 205, Reference = "SOM205", Name = "Sombra doble", BrandId = 1, IsActive = true });
+            Complete(new Product { Id = 201, Reference = "LAB201", Name = "Labial rojo", BrandId = 1, IsActive = true }),
+            Complete(new Product { Id = 202, Reference = "LAB202", Name = "Labial nude", BrandId = 1, IsActive = true }),
+            Complete(new Product { Id = 203, Reference = "LAB203", Name = "Labial retirado", BrandId = 1, IsActive = false }),
+            Complete(new Product { Id = 205, Reference = "SOM205", Name = "Sombra doble", BrandId = 1, IsActive = true }));
+
+        if (withIncompleteProducts)
+        {
+            var noPhoto = new Product { Id = 206, Reference = "SIN206", Name = "Sin foto", BrandId = 1, IsActive = true };
+            noPhoto.Prices.Add(Retail(10000));
+
+            var inactivePhoto = new Product { Id = 207, Reference = "FOT207", Name = "Foto inactiva", BrandId = 1, IsActive = true };
+            inactivePhoto.Images.Add(new ProductImage { Url = "https://cdn/207.jpg", IsActive = false });
+            inactivePhoto.Prices.Add(Retail(10000));
+
+            var wholesaleOnly = new Product { Id = 208, Reference = "MAY208", Name = "Solo mayorista", BrandId = 1, IsActive = true };
+            wholesaleOnly.Images.Add(new ProductImage { Url = "https://cdn/208.jpg", IsActive = true });
+            wholesaleOnly.Prices.Add(new ProductPrice { PriceTypeId = 2, Amount = 8000, IsActive = true });
+
+            var zeroRetail = Complete(new Product { Id = 209, Reference = "CER209", Name = "Detal en cero", BrandId = 1, IsActive = true }, retail: 0);
+
+            var inactiveRetail = new Product { Id = 210, Reference = "INA210", Name = "Detal inactivo", BrandId = 1, IsActive = true };
+            inactiveRetail.Images.Add(new ProductImage { Url = "https://cdn/210.jpg", IsActive = true });
+            inactiveRetail.Prices.Add(new ProductPrice { PriceTypeId = 1, Amount = 9000, IsActive = false });
+
+            // Solo tiene fotos de tonos: igual cuenta como ficha con foto.
+            var variantPhoto = new Product { Id = 211, Reference = "TON211", Name = "Base con tonos", BrandId = 1, IsActive = true, HasVariants = true };
+            variantPhoto.Variants.Add(new ProductVariant { Id = 2111, Name = "Claro", IsActive = true });
+            variantPhoto.Images.Add(new ProductImage { Url = "https://cdn/211.jpg", ProductVariantId = 2111, IsActive = true });
+            variantPhoto.Prices.Add(Retail(30000));
+
+            db.Products.AddRange(noPhoto, inactivePhoto, wholesaleOnly, zeroRetail, inactiveRetail, variantPhoto);
+        }
+
         db.ProductCategories.AddRange(
             new ProductCategory { ProductId = 201, CategoryId = 1 },
             new ProductCategory { ProductId = 203, CategoryId = 1 },
@@ -216,4 +266,13 @@ public sealed class SitemapTests
         db.ChangeTracker.Clear();
         return db;
     }
+
+    private static Product Complete(Product product, decimal retail = 15000)
+    {
+        product.Images.Add(new ProductImage { Url = $"https://cdn/{product.Id}.jpg", IsMain = true, IsActive = true });
+        product.Prices.Add(Retail(retail));
+        return product;
+    }
+
+    private static ProductPrice Retail(decimal amount) => new() { PriceTypeId = 1, Amount = amount, IsActive = true };
 }

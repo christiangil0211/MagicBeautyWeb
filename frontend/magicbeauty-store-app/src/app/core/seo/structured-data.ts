@@ -73,6 +73,25 @@ export function buildBreadcrumbJsonLd(items: readonly Breadcrumb[]): object {
   };
 }
 
+/** Fotos generales del producto; si solo tiene fotos de tonos, esas. */
+function productImageUrls(product: ProductDetail): string[] {
+  const general = product.images.filter(image => image.productVariantId == null);
+
+  return (general.length > 0 ? general : product.images).map(image => image.url);
+}
+
+function retailPrice(product: ProductDetail) {
+  return product.prices.find(price => price.priceTypeCode === PRICE_TYPE_CODES.retail && price.amount > 0);
+}
+
+/**
+ * Ficha completa: tiene foto y precio al detal. Solo esas se indexan y van al
+ * sitemap (mismo criterio que `ProductRepository.GetActiveSitemapEntriesAsync`).
+ */
+export function isCompleteProduct(product: ProductDetail): boolean {
+  return productImageUrls(product).length > 0 && retailPrice(product) !== undefined;
+}
+
 /**
  * Producto con los datos que entrega la API. La oferta solo se publica si la
  * respuesta trae precio detal: es el precio público, nunca uno mayorista de una
@@ -80,8 +99,8 @@ export function buildBreadcrumbJsonLd(items: readonly Breadcrumb[]): object {
  */
 export function buildProductJsonLd(product: ProductDetail, path: string): object {
   const url = absoluteUrl(path);
-  const images = product.images.filter(image => image.productVariantId == null).map(image => image.url);
-  const retail = product.prices.find(price => price.priceTypeCode === PRICE_TYPE_CODES.retail);
+  const images = productImageUrls(product);
+  const retail = retailPrice(product);
   const category = product.categories[0]?.name;
   const brand = publicBrandName(product.brandName);
 

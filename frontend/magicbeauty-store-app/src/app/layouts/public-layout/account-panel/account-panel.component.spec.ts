@@ -34,7 +34,7 @@ it.each([null, '//external.example', '/admin/products'])('opens the home after l
   fixture.componentRef.setInput('returnUrl', returnUrl);
   const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
   panel.submitCredentials();
-  expect(navigate).toHaveBeenCalledWith(returnUrl === '/admin/products' ? returnUrl : '/inicio');
+  expect(navigate).toHaveBeenCalledWith(returnUrl === '/admin/products' ? returnUrl : '/mi-tienda');
 });
 
 describe('while the API takes long to answer', () => {
@@ -157,7 +157,7 @@ describe('after the API accepts the credentials', () => {
     http.expectOne(r => isLogin(r.url)).flush({ status: 'AUTHENTICATED' });
     http.expectOne(r => isSession(r.url)).flush(ADMIN);
 
-    expect(navigate).toHaveBeenCalledWith('/inicio');
+    expect(navigate).toHaveBeenCalledWith('/mi-tienda');
     expect(panel.submitting()).toBe(false);
     http.verify();
   });
@@ -182,7 +182,7 @@ describe('after the API accepts the credentials', () => {
     // La respuesta tardía no se pierde: completa el login sin otro POST.
     session.flush(ADMIN);
     fixture.detectChanges();
-    expect(navigate).toHaveBeenCalledWith('/inicio');
+    expect(navigate).toHaveBeenCalledWith('/mi-tienda');
     http.expectNone(r => isLogin(r.url));
     http.verify();
   });
@@ -201,7 +201,7 @@ describe('after the API accepts the credentials', () => {
     retry.click(); // Doble clic: una sola consulta.
     http.expectOne(r => isSession(r.url)).flush(ADMIN);
 
-    expect(navigate).toHaveBeenCalledWith('/inicio');
+    expect(navigate).toHaveBeenCalledWith('/mi-tienda');
     http.expectNone(r => isLogin(r.url));
     http.verify();
   });

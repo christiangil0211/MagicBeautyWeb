@@ -12,6 +12,11 @@
       "rewrite": "/api/sitemap"
     },
     {
+      "route": "/inicio",
+      "redirect": "/",
+      "statusCode": 301
+    },
+    {
       "route": "/admin",
       "rewrite": "/index.csr.html",
       "headers": { "X-Robots-Tag": "noindex, nofollow" }

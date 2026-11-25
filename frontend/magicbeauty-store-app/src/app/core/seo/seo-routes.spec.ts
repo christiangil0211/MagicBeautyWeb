@@ -190,7 +190,7 @@ describe('product page', () => {
   it('uses the product data for title, description, canonical and preview image', async () => {
     const page = await open('/catalogo/ACE009', api);
 
-    expect(page.title).toBe('Aceite capilar · Milagros · Magic Beauty Cosmetics');
+    expect(page.title).toBe('Aceite capilar · Milagros en Cali · Magic Beauty Cosmetics');
     expect(page.description).toBe('Aceite reparador para puntas.');
     expect(page.robots).toBe('index, follow');
     expect(page.canonical).toBe(SITE + '/catalogo/ACE009');
@@ -215,6 +215,33 @@ describe('product page', () => {
       SITE + '/catalogo/categoria/cuidado-capilar',
       SITE + '/catalogo/ACE009'
     ]);
+  });
+
+  // Causa de los 44 "Excluida por noindex": cualquier error del API (caído, lento,
+  // 5xx) se trataba como producto inexistente.
+  it.each([500, 502, 503, 504])('never marks the product noindex when the API fails with %s', async status => {
+    const page = await open('/catalogo/ACE009', {
+      '/catalog/products/ACE009': { body: { error: 'Falla temporal' }, status }
+    });
+
+    expect(page.robots).toBe('index, follow');
+    expect(page.canonical).toBe(SITE + '/catalogo/ACE009');
+    expect(page.title).not.toContain('no encontrado');
+    expect(page.element.textContent).toContain('No pudimos cargar este producto');
+    expect(page.element.querySelector('button.mb-btn')?.textContent).toContain('Reintentar');
+  });
+
+  it.each([
+    ['without a photo', { ...PRODUCT, images: [] }],
+    ['without a retail price', { ...PRODUCT, prices: [{ priceTypeCode: 'WHOLESALE', priceTypeName: 'Por mayor', amount: 20000 }] }],
+    ['with a zero retail price', { ...PRODUCT, prices: [{ priceTypeCode: 'RETAIL', priceTypeName: 'Detal', amount: 0 }] }]
+  ])('marks an incomplete product (%s) noindex until it is completed', async (_case, product) => {
+    const page = await open('/catalogo/ACE009', { ...api, '/catalog/products/ACE009': { body: product } });
+
+    expect(page.robots).toBe('noindex, follow');
+    expect(page.canonical).toBeNull();
+    // La ficha se sigue mostrando a quien llega a ella.
+    expect(page.element.querySelector('h1')?.textContent).toContain('Aceite capilar');
   });
 
   it('asks only for related products, never for the whole catalog', async () => {
@@ -258,9 +285,19 @@ describe('category pages', () => {
   it('keeps a category without products out of search engines until it has some', async () => {
     const page = await open('/catalogo/categoria/labiales', { '/categories/catalog-tree': { body: TREE } });
 
-    expect(page.title).toBe('Labiales al detal y al por mayor · Magic Beauty Cosmetics');
+    expect(page.title).toBe('Labiales en Cali al detal y por mayor · Magic Beauty Cosmetics');
     expect(page.robots).toBe('noindex, follow');
     expect(page.canonical).toBeNull();
+  });
+
+  it('never marks a category noindex because the product list failed to load', async () => {
+    const page = await open('/catalogo/categoria/labiales', {
+      '/categories/catalog-tree': { body: TREE },
+      '/catalog/products': { body: { error: 'Falla temporal' }, status: 503 }
+    });
+
+    expect(page.robots).toBe('index, follow');
+    expect(page.canonical).toBe(SITE + '/catalogo/categoria/labiales');
   });
 
   it('indexes a parent category whose products live in a subcategory', async () => {
@@ -273,7 +310,7 @@ describe('category pages', () => {
   it('gives each category its own heading, title, canonical and breadcrumbs', async () => {
     const page = await open('/catalogo/categoria/labiales', api);
 
-    expect(page.title).toBe('Labiales al detal y al por mayor · Magic Beauty Cosmetics');
+    expect(page.title).toBe('Labiales en Cali al detal y por mayor · Magic Beauty Cosmetics');
     expect(page.description).toContain('Labiales en Magic Beauty Cosmetics, Cali');
     expect(page.robots).toBe('index, follow');
     expect(page.canonical).toBe(SITE + '/catalogo/categoria/labiales');

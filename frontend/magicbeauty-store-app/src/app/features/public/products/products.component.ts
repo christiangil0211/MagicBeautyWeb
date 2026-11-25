@@ -53,6 +53,11 @@ export class ProductsComponent {
   /** Listado tal como lo entregó el API (búsqueda y categoría del servidor aplicadas). */
   readonly items = signal<CatalogProductListItem[]>([]);
   readonly loading = signal(true);
+  /**
+   * El API falló o no respondió. No es lo mismo que un listado vacío: una
+   * categoría no debe marcarse `noindex` por "vacía" si solo falló la consulta.
+   */
+  readonly loadFailed = signal(false);
   readonly favorites = signal<Set<number>>(new Set());
 
   /** Texto buscado desde la cabecera (?q=). Vacío muestra todo el catálogo. */
@@ -122,10 +127,14 @@ export class ProductsComponent {
         tap(([term]) => {
           this.searchTerm.set(term);
           this.loading.set(true);
+          this.loadFailed.set(false);
         }),
         switchMap(([term, categoryId]) =>
           this.catalogService.getProducts({ search: term || null, categoryId }).pipe(
-            catchError(() => of([]))
+            catchError(() => {
+              this.loadFailed.set(true);
+              return of([]);
+            })
           )
         ),
         takeUntilDestroyed(inject(DestroyRef))
