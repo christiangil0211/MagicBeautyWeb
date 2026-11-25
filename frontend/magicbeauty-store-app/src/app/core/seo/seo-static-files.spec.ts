@@ -91,6 +91,10 @@ describe('staticwebapp.config.json', () => {
 
   it('sends product and category URLs to the function that adds their SEO data and real 404s', () => {
     expect(rule('/catalogo/*')?.rewrite).toBe('/api/seo-page');
+    // "/catalogo/*" también atrapa "/catalogo": la regla anterior sirve su página prerenderizada.
+    const routes = config.routes.map(item => item.route);
+    expect(rule('/catalogo')?.rewrite).toBe('/catalogo/index.html');
+    expect(routes.indexOf('/catalogo')).toBeLessThan(routes.indexOf('/catalogo/*'));
     // Las únicas funciones: sitemap y fichas. Nada más se reescribe hacia /api.
     expect(config.routes.filter(item => item.rewrite?.startsWith('/api/')).map(item => item.route)).toEqual([
       '/sitemap.xml',

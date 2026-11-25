@@ -69,6 +69,12 @@ function parsePath(pathname) {
     return { kind: 'unknown' };
   }
 
+  // El catálogo en sí (/catalogo) es una página prerenderizada que el hosting
+  // sirve antes de llegar aquí; si aun así llega, nunca debe ser un 404.
+  if (segments.length === 1) {
+    return { kind: 'catalog' };
+  }
+
   if (segments.length === 3 && segments[1] === 'categoria') {
     return { kind: 'category', slug: segments[2] };
   }
@@ -500,6 +506,10 @@ async function getSeoPageResponse({ originalUrl, fetchImpl = fetch, now = Date.n
   }
 
   const route = parsePath(pathname);
+
+  if (route.kind === 'catalog') {
+    return htmlResponse(200, shell, NO_CACHE);
+  }
 
   try {
     if (route.kind === 'product') {

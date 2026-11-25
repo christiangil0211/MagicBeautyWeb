@@ -296,6 +296,15 @@ test('reuses the last good category tree when the API fails afterwards', async (
   assert.equal(response.status, 200);
 });
 
+test('never answers 404 for the catalog page itself, even if it reaches the function', async () => {
+  for (const path of ['/catalogo', '/catalogo/']) {
+    const response = await open(path);
+
+    assert.equal(response.status, 200, path);
+    assert.equal(response.body, SHELL);
+  }
+});
+
 test('a path the app does not have under /catalogo is a 404', async () => {
   const response = await open('/catalogo/ACE004/extra');
 
