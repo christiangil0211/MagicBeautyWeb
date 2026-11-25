@@ -99,6 +99,23 @@ public sealed class ProductCategoryAssignmentTests
     }
 
     [Fact]
+    public async Task WithoutTheFilterListsEveryProductWithTheIdsOfItsCategories()
+    {
+        using var db = await CreateDatabaseAsync();
+        await Service(db).AssignCategoryAsync(Request(Conditioner, 304), default);
+        db.ChangeTracker.Clear();
+
+        var products = await Service(db).GetAllAsync(null, null, null, null, null, default);
+
+        // Un producto con categoria sigue apareciendo: puede recibir mas categorias.
+        Assert.Equal(new[] { 301, 302, 303, 304, 305 }, products.Select(product => product.Id).Order().ToArray());
+        var multi = products.Single(product => product.Id == 304);
+        Assert.Equal(new[] { Conditioner, Shampoo }, multi.CategoryLinks.Select(link => link.CategoryId).ToArray());
+        Assert.Equal(new[] { "Acondicionador", "Shampoo" }, multi.CategoryLinks.Select(link => link.Name).ToArray());
+        Assert.Empty(products.Single(product => product.Id == 301).CategoryLinks);
+    }
+
+    [Fact]
     public async Task IsAllOrNothingWhenAProductDoesNotExist()
     {
         using var db = await CreateDatabaseAsync();

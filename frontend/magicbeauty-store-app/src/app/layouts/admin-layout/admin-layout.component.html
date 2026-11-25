@@ -1,7 +1,17 @@
 <div class="admin-shell">
   <aside class="admin-sidebar" [class.open]="isSidebarOpen()">
-    <a class="admin-sidebar__brand" routerLink="/admin/categories" (click)="closeSidebar()">
-      <img src="/images/logo-header.png" alt="Magic Beauty Cosmetics" />
+    <!-- El administrador siempre tiene sesión: su inicio es el de la tienda con sesión. -->
+    <a
+      class="admin-sidebar__brand"
+      routerLink="/inicio"
+      title="Ir al inicio de la tienda"
+      aria-label="Magic Beauty Cosmetics, ir al inicio de la tienda"
+      (click)="closeSidebar()">
+      <!-- Pantallas angostas o bajas: logo horizontal para no ocupar media barra. -->
+      <picture>
+        <source media="(max-width: 900px), (max-height: 720px)" srcset="/images/logo-horizontal.png" width="610" height="100" />
+        <img src="/images/logo-header.png" alt="" width="720" height="600" />
+      </picture>
     </a>
 
     <nav class="admin-sidebar__nav">

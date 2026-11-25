@@ -28,6 +28,10 @@
   color: var(--mb-text-secondary);
 }
 
+.panel__count-assigned {
+  color: var(--mb-success);
+}
+
 .panel__hint {
   margin: 0.5rem 0 1rem;
   font-size: 0.92rem;
@@ -60,10 +64,22 @@
   margin-bottom: 1.1rem;
 }
 
+.toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 420px;
+}
+
+.toolbar__scope {
+  flex: none;
+}
+
 .toolbar__search {
   position: relative;
-  flex: 1 1 260px;
-  max-width: 420px;
+  flex: 1 1 240px;
+  max-width: 360px;
 
   i {
     position: absolute;
@@ -104,6 +120,13 @@ app-loader.loader--overlay {
   font-weight: 700;
 }
 
+::ng-deep .confirm-category-note {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--mb-text-secondary);
+}
+
 /* El paginador queda dentro del marco de la tabla, separado por la misma línea. */
 :host ::ng-deep .p-datatable.mb-table .p-paginator {
   flex-wrap: wrap;
@@ -130,6 +153,64 @@ app-loader.loader--overlay {
 
 .product-name {
   font-weight: 500;
+}
+
+/* Categorías que ya tiene el producto: un producto puede pertenecer a varias. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius-pill);
+  background: var(--mb-surface);
+  font-size: 0.7rem;
+  color: var(--mb-text-secondary);
+  white-space: nowrap;
+
+  i {
+    font-size: 0.6rem;
+  }
+}
+
+/* La categoría seleccionada en el árbol: el producto ya la tiene. */
+.chip--current {
+  border-color: var(--mb-success-border);
+  background: var(--mb-success-soft);
+  color: var(--mb-success);
+  font-weight: 600;
+}
+
+.chip--more {
+  cursor: default;
+  border-style: dashed;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--mb-focus-ring);
+  }
+}
+
+.chip--none {
+  border-style: dashed;
+  background: transparent;
+  color: var(--mb-text-muted);
+}
+
+/* Fila que ya pertenece a la categoría: se ve, pero no se puede seleccionar. */
+.row--assigned td {
+  background: color-mix(in srgb, var(--mb-success-soft) 70%, transparent);
+}
+
+.row--assigned .product-name,
+.row--assigned .reference {
+  opacity: 0.7;
 }
 
 .center {
@@ -170,6 +251,10 @@ app-loader.loader--overlay {
 }
 
 @media (max-width: 640px) {
+  .toolbar__filters {
+    flex-basis: 100%;
+  }
+
   .toolbar__search {
     max-width: none;
   }

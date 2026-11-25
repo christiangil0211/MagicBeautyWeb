@@ -80,13 +80,21 @@ it.each(['/admin/products', '/admin/catalogs'])('keeps %s behind the guard for a
 });
 
 
-it.each(['/categoria/maquillaje', '/productos', '/productos/ACO011'])('keeps authenticated store navigation outside the wholesale portal at %s', async url => {
+it.each([
+  ['/categoria/maquillaje', 'mayorista'],
+  ['/productos', 'mayorista'],
+  // Igual que el detalle del portal: sin banner.
+  ['/productos/ACO011', undefined]
+])('keeps authenticated store navigation outside the wholesale portal with the portal banner at %s', async (url, bannerTitle) => {
   setup();
   const harness = await RouterTestingHarness.create();
   await navigateAs(harness, url, true);
   expect(TestBed.inject(Router).url).toBe(url);
   const element = harness.fixture.nativeElement as HTMLElement;
-  expect(element.querySelector('.hero__title')?.textContent).toContain('ESENCIA');
+  expect(element.querySelector('.hero__title')).toBeNull();
+  expect(element.querySelector('app-store-layout .banner__title')?.textContent).toEqual(
+    bannerTitle ? expect.stringContaining(bannerTitle) : undefined
+  );
   expect(element.querySelector('app-portal-shell')).toBeNull();
   expect(element.querySelector('.store-menu__link--portal.active')).toBeNull();
   await navigateAs(harness, '/catalogo', true);
@@ -131,6 +139,9 @@ it('shows the full store home and header search for an authenticated visitor', a
   await navigateAs(harness, '/inicio', true);
   const element = harness.fixture.nativeElement as HTMLElement;
   expect(TestBed.inject(Router).url).toBe('/inicio');
+  // Con sesión el inicio conserva el carrusel de campañas del inicio público.
+  expect(element.querySelector('app-home .home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendarios-2026.webp');
+  expect(element.querySelector('.hero__title')).toBeNull();
   expect(element.querySelector('.shop-by-category')).not.toBeNull();
   expect(element.querySelector('.desktop-search')).not.toBeNull();
   expect(element.querySelector('app-portal-shell')).toBeNull();
