@@ -74,12 +74,9 @@ describe('Store', () => {
     expect(JSON.stringify(store['openingHoursSpecification'])).not.toContain('Sunday');
   });
 
-  it('publishes coordinates only once they are confirmed', () => {
-    if (STORE_GEO) {
-      expect(store['geo']).toEqual({ '@type': 'GeoCoordinates', latitude: STORE_GEO.latitude, longitude: STORE_GEO.longitude });
-    } else {
-      expect(store).not.toHaveProperty('geo');
-    }
+  it('publishes the store coordinates from the Google Maps pin', () => {
+    expect(store['geo']).toEqual({ '@type': 'GeoCoordinates', latitude: 3.4137043, longitude: -76.533103 });
+    expect(STORE_GEO).toEqual({ latitude: 3.4137043, longitude: -76.533103 });
   });
 
   it('does not invent a postal code, ratings or a price range', () => {

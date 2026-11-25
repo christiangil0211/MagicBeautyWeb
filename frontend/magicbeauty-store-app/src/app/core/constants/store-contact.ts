@@ -25,12 +25,13 @@ export const STORE_OPENING_HOURS = [
 ] as const;
 
 /**
- * PENDIENTE: coordenadas exactas del local (Calle 13 # 44A - 26, Cali), en grados
- * decimales, p. ej. `{ latitude: 3.4xxxxx, longitude: -76.5xxxxx }`. Mientras sea
- * `null`, el dato estructurado no publica `geo`: unas coordenadas aproximadas
- * podrían ubicar mal la tienda en Google.
+ * Coordenadas del local (Calle 13 # 44A - 26, Cali), tomadas del pin de la ficha
+ * de Google Maps. Con `null` el dato estructurado no publica `geo`.
  */
-export const STORE_GEO: { latitude: number; longitude: number } | null = null;
+export const STORE_GEO: { latitude: number; longitude: number } | null = {
+  latitude: 3.4137043,
+  longitude: -76.533103
+};
 
 /**
  * Datos de contacto de la tienda. Único lugar donde se define el WhatsApp:
