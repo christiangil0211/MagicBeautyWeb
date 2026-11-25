@@ -107,11 +107,11 @@ export const routes: Routes = [
       {
         path: 'calendarios-de-adviento',
         loadComponent: () => import('./features/public/advent-calendar/advent-calendar.component').then(m => m.AdventCalendarComponent),
-        title: 'Calendarios de Adviento 2026 · Magic Beauty Cosmetics',
+        title: 'Calendario de Adviento Magic Beauty 2026 · Magic Beauty Cosmetics',
         data: {
           seo: {
-            description: 'Descubre los calendarios de Adviento 2026 de Trendy, Purpure, Bloomshell y Magic Beauty Cosmetics. Consulta precios, condiciones y separación por WhatsApp.',
-            jsonLd: { breadcrumb: buildBreadcrumbJsonLd([{ name: 'Inicio', path: '/' }, { name: 'Calendarios de Adviento 2026', path: '/calendarios-de-adviento' }]) }
+            description: 'Arma tu Calendario de Adviento Magic Beauty 2026 con 12 sorpresas de nuestro catálogo: maquillaje, cuidado facial y accesorios. Se adapta a tu presupuesto; cotízalo por WhatsApp.',
+            jsonLd: { breadcrumb: buildBreadcrumbJsonLd([{ name: 'Inicio', path: '/' }, { name: 'Calendario de Adviento Magic Beauty 2026', path: '/calendarios-de-adviento' }]) }
           } satisfies SeoRouteData
         }
       },

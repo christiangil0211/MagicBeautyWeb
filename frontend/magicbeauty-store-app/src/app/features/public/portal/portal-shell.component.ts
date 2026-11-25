@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, viewChild } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { OrderDraftService } from '../../../core/services/order-draft.service';
@@ -18,16 +18,9 @@ import { PORTAL_TABS } from './portal-navigation';
   styleUrl: './portal-shell.component.scss'
 })
 export class PortalShellComponent {
-  private readonly content = viewChild<ElementRef<HTMLElement>>('content');
-
   readonly tabs = PORTAL_TABS;
   readonly orderCount = inject(OrderDraftService).itemCount;
 
   /** Banner declarado en la ruta hija activa (con el título propio de la página si lo hay). */
   readonly banner = routeBanner();
-
-  /** Botones sin enlace: llevan al contenido de la pestaña, bajo el banner. */
-  scrollToContent(): void {
-    this.content()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
 }

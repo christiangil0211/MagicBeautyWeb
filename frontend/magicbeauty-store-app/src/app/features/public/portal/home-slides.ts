@@ -38,14 +38,14 @@ export const HOME_SLIDES: readonly HomeSlide[] = [
   {
     id: 'calendars',
     name: 'calendarios',
-    title: 'Calendarios de Adviento 2026',
-    image: '/images/campaigns/banner-calendarios-2026.webp',
+    title: 'Calendario de Adviento Magic Beauty 2026',
+    image: '/images/campaigns/banner-calendario-magic-beauty-2026.jpg',
     width: 2172,
     height: 724,
-    alt: 'Colección Calendarios de Adviento 2026: Trendy, Purpure, Bloomshell y Magic Beauty Cosmetics',
-    link: { label: 'Explorar Calendarios de Adviento 2026. Trendy agotado; consulta las demás propuestas.', link: '/calendarios-de-adviento' },
-    note: { strong: 'Trendy: agotado.', text: 'Consulta las demás propuestas. El empaque propio de Magic Beauty mostrado es conceptual.' },
-    mobileCtas: [{ label: 'Explorar calendarios', link: '/calendarios-de-adviento' }]
+    alt: 'Edición especial 2026: Calendario de Adviento Magic Beauty. Arma el tuyo con nuestros productos y sorprende en esta Navidad. 100% personalizable, se adapta a tu presupuesto, un regalo único. Cotiza el tuyo.',
+    link: { label: 'Cotiza tu Calendario de Adviento Magic Beauty 2026', link: '/calendarios-de-adviento' },
+    note: { strong: 'Calendario Magic Beauty:', text: 'arma el tuyo a tu medida y según tu presupuesto.' },
+    mobileCtas: [{ label: 'Cotiza el tuyo', link: '/calendarios-de-adviento' }]
   },
   {
     id: 'catalogs',
