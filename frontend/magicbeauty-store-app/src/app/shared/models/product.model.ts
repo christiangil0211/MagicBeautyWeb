@@ -3,7 +3,8 @@ export interface ProductListItem {
   id: number;
   reference: string;
   name: string;
-  brandId: number;
+  /** null = sin marca. */
+  brandId: number | null;
   brandName: string;
   hasVariants: boolean;
   isActive: boolean;
@@ -73,7 +74,8 @@ export interface Product {
   reference: string;
   name: string;
   description?: string | null;
-  brandId: number;
+  /** null = sin marca. */
+  brandId: number | null;
   brandName: string;
   hasVariants: boolean;
   isActive: boolean;
@@ -103,7 +105,8 @@ export interface CreateProductRequest {
   reference: string;
   name: string;
   description?: string | null;
-  brandId: number;
+  /** null = sin marca. */
+  brandId: number | null;
   hasVariants: boolean;
   isActive: boolean;
   /** Solo se usa cuando hasVariants es false: el backend crea la variante interna. */
@@ -117,7 +120,8 @@ export interface CreateProductRequest {
 export interface UpdateProductRequest {
   name: string;
   description?: string | null;
-  brandId: number;
+  /** null = sin marca. */
+  brandId: number | null;
   isActive: boolean;
 }
 
@@ -165,6 +169,8 @@ export interface CatalogProductListItem {
   reference: string;
   name: string;
   brandName: string;
+  /** Slug para enlazar a /marcas/{slug}; null si no tiene marca o está inactiva. */
+  brandSlug?: string | null;
   hasVariants: boolean;
   availableQuantity: number;
   mainImageUrl?: string | null;
@@ -246,6 +252,8 @@ export interface ProductDetail {
   name: string;
   description?: string | null;
   brandName: string;
+  /** Slug para enlazar a /marcas/{slug}; null si no tiene marca o está inactiva. */
+  brandSlug?: string | null;
   prices: CatalogPrice[];
   hasVariants: boolean;
   availableQuantity: number;

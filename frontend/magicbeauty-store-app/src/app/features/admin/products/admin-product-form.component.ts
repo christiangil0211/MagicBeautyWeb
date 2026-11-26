@@ -94,8 +94,11 @@ export class AdminProductFormComponent {
   readonly brandOptions = computed(() =>
     this.brands()
       .filter(brand => brand.isActive || brand.id === this.product()?.brandId)
-      .map(brand => ({ label: brand.name, value: brand.id }))
+      .map(brand => ({ label: brand.name, value: brand.id as number | null }))
   );
+
+  /** Una sola marca por producto; "Sin marca" es válido (accesorios, empaques). */
+  readonly brandSelectOptions = computed(() => [{ label: 'Sin marca', value: null as number | null }, ...this.brandOptions()]);
 
   /** Se muestran con sangría para que se entienda el nivel dentro del árbol. */
   readonly categoryOptions = computed(() => {
@@ -142,7 +145,7 @@ export class AdminProductFormComponent {
     reference: ['', [Validators.required, Validators.pattern(REFERENCE_PATTERN)]],
     name: ['', [Validators.required, Validators.maxLength(200)]],
     description: [''],
-    brandId: [null as number | null, Validators.required],
+    brandId: [null as number | null],
     categoryIds: [[] as number[]],
     isActive: [true],
     hasVariants: [false],
@@ -241,9 +244,9 @@ export class AdminProductFormComponent {
   }
 
   save(): void {
-    if (this.form.controls.name.invalid || this.form.controls.brandId.invalid) {
+    if (this.form.controls.name.invalid) {
       this.form.markAllAsTouched();
-      this.warn('Revisa el formulario', 'Nombre y marca son obligatorios.');
+      this.warn('Revisa el formulario', 'El nombre es obligatorio.');
 
       return;
     }
@@ -602,7 +605,7 @@ export class AdminProductFormComponent {
         reference: value.reference.trim().toUpperCase(),
         name: value.name.trim(),
         description: value.description.trim() || null,
-        brandId: value.brandId as number,
+        brandId: value.brandId ?? null,
         hasVariants: value.hasVariants,
         isActive: value.isActive,
         initialQuantity: value.hasVariants ? 0 : value.initialQuantity,
@@ -652,7 +655,7 @@ export class AdminProductFormComponent {
       .update(product.id, {
         name: value.name.trim(),
         description: value.description.trim() || null,
-        brandId: value.brandId as number,
+        brandId: value.brandId ?? null,
         isActive: value.isActive
       })
       .pipe(

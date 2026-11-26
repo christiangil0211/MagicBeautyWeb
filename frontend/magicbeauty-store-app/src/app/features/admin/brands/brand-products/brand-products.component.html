@@ -1,0 +1,109 @@
+<section class="panel brand-products" aria-labelledby="brand-products-title">
+  <div class="panel__head">
+    <div>
+      <h2 id="brand-products-title">Productos de la marca</h2>
+      @if (brand(); as current) {
+        <p class="subtitle">Agrega productos a <strong>{{ current.name }}</strong> o quítalos. Un producto tiene una sola marca.</p>
+      } @else {
+        <p class="subtitle">Selecciona o guarda una marca para gestionar sus productos.</p>
+      }
+    </div>
+  </div>
+
+  @if (brand()) {
+    <div class="toolbar">
+      <p-selectbutton
+        [options]="scopeOptions"
+        [ngModel]="scope()"
+        (ngModelChange)="scopeChanged($event)"
+        optionLabel="label"
+        optionValue="value"
+        [allowEmpty]="false"
+        aria-label="Qué productos ver" />
+
+      <input
+        pInputText
+        type="search"
+        class="toolbar__search"
+        placeholder="Buscar por nombre o referencia"
+        aria-label="Buscar productos por nombre o referencia"
+        [ngModel]="search()"
+        (ngModelChange)="searchChanged($event)" />
+
+      <div class="toolbar__actions">
+        <p-button
+          [label]="'Agregar a ' + brand()!.name + (toAssign().length ? ' (' + toAssign().length + ')' : '')"
+          icon="pi pi-plus"
+          size="small"
+          [disabled]="toAssign().length === 0 || working()"
+          (onClick)="assignSelected()" />
+        <p-button
+          [label]="'Quitar' + (toRemove().length ? ' (' + toRemove().length + ')' : '')"
+          icon="pi pi-minus"
+          size="small"
+          severity="secondary"
+          [outlined]="true"
+          [disabled]="toRemove().length === 0 || working()"
+          (onClick)="removeSelected()" />
+      </div>
+    </div>
+
+    <p-table
+      [value]="products()"
+      dataKey="id"
+      [lazy]="true"
+      [paginator]="true"
+      [first]="first()"
+      [rows]="pageSize()"
+      [rowsPerPageOptions]="pageSizes"
+      [totalRecords]="total()"
+      [loading]="loading()"
+      [selection]="selected()"
+      (selectionChange)="selected.set($event)"
+      (onPage)="pageChanged($event)"
+      styleClass="p-datatable-sm"
+      [tableStyle]="{ 'min-width': '40rem' }">
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="width: 3rem"><p-tableHeaderCheckbox /></th>
+          <th style="width: 4rem">Foto</th>
+          <th style="width: 7rem">Referencia</th>
+          <th>Nombre</th>
+          <th style="width: 12rem">Marca actual</th>
+          <th style="width: 6rem">Estado</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-product>
+        <tr [class.row--in-brand]="isInBrand(product)">
+          <td><p-tableCheckbox [value]="product" /></td>
+          <td>
+            @if (product.mainImageUrl) {
+              <img class="thumb" [src]="product.mainImageUrl" alt="" width="40" height="40" loading="lazy" />
+            } @else {
+              <span class="thumb thumb--empty"><i class="pi pi-image" aria-hidden="true"></i></span>
+            }
+          </td>
+          <td class="reference">{{ product.reference }}</td>
+          <td>{{ product.name }}</td>
+          <td>
+            @if (isInBrand(product)) {
+              <span class="chip chip--current">Esta marca</span>
+            } @else if (product.brandName) {
+              <span class="chip">{{ product.brandName }}</span>
+            } @else {
+              <span class="chip chip--none">Sin marca</span>
+            }
+          </td>
+          <td>{{ product.isActive ? 'Activo' : 'Inactivo' }}</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="empty">
+            {{ scope() === 'without-brand' ? 'No hay productos sin marca con ese filtro.' : 'No hay productos con ese filtro.' }}
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+</section>
