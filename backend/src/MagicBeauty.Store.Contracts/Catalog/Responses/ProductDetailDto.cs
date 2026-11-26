@@ -16,6 +16,9 @@ public sealed class ProductDetailDto
 
     public string BrandName { get; set; } = string.Empty;
 
+    /// <summary>Slug de la marca para enlazar a /marcas/{slug}; NULL si no tiene marca o está inactiva.</summary>
+    public string? BrandSlug { get; set; }
+
     /// <summary>Precios visibles para la audiencia, ya ordenados. Vacia si no hay ninguno.</summary>
     public List<CatalogPriceDto> Prices { get; set; } = [];
 

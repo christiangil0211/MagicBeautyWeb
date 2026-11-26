@@ -8,7 +8,8 @@ namespace MagicBeauty.Store.Application.Features.Sitemap;
 
 public sealed class SitemapService(
     IProductRepository productRepository,
-    ICategoryService categoryService) : ISitemapService
+    ICategoryService categoryService,
+    IBrandRepository brandRepository) : ISitemapService
 {
     private static readonly XNamespace Namespace = "http://www.sitemaps.org/schemas/sitemap/0.9";
 
@@ -33,8 +34,17 @@ public sealed class SitemapService(
         var populated = (await productRepository.GetCategoryIdsWithActiveProductsAsync(cancellationToken))
             .ToHashSet();
 
+        // Marcas activas con al menos una ficha completa: las mismas de /marcas.
+        var brandCounts = await productRepository.GetCompleteProductCountsByBrandAsync(cancellationToken);
+        var brands = (await brandRepository.GetAllAsync(null, cancellationToken))
+            .Where(brand => brand.IsActive && !string.IsNullOrEmpty(brand.Slug) && brandCounts.GetValueOrDefault(brand.Id) > 0)
+            .OrderBy(brand => brand.Slug, StringComparer.Ordinal)
+            .ToList();
+
         var urls = PortalPaths
             .Select(path => Url(baseUrl + path, null))
+            .Concat(brands.Count > 0 ? [Url(baseUrl + "/marcas", null)] : [])
+            .Concat(brands.Select(brand => Url(baseUrl + "/marcas/" + Uri.EscapeDataString(brand.Slug), brand.UpdatedAt)))
             .Concat(Flatten(categories)
                 .Where(category => HasProducts(category, populated))
                 .Select(category => Url(baseUrl + "/catalogo/categoria/" + Uri.EscapeDataString(category.Slug), null)))

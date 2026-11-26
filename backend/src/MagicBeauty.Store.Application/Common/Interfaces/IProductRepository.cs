@@ -16,6 +16,12 @@ public interface IProductRepository
     /// <summary>Referencia y fecha de los productos activos, sin cargar su grafo: para el sitemap.</summary>
     Task<IReadOnlyList<ProductSitemapEntry>> GetActiveSitemapEntriesAsync(CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Fichas completas (activas, con foto y precio al detal) por marca, contadas en la
+    /// base sin cargar los productos: para /marcas, el carrusel de logos y el sitemap.
+    /// </summary>
+    Task<IReadOnlyDictionary<int, int>> GetCompleteProductCountsByBrandAsync(CancellationToken cancellationToken);
+
     /// <summary>Categorias que tienen asignado directamente al menos un producto activo.</summary>
     Task<IReadOnlyList<int>> GetCategoryIdsWithActiveProductsAsync(CancellationToken cancellationToken);
 

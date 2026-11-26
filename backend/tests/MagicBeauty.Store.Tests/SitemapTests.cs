@@ -103,7 +103,15 @@ public sealed class SitemapTests
             .Setup(repository => repository.GetCategoryIdsWithActiveProductsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var xml = await new SitemapService(products.Object, Categories().Object).BuildXmlAsync(Site + "/", default);
+        products
+            .Setup(repository => repository.GetCompleteProductCountsByBrandAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, int>());
+        var brands = new Mock<IBrandRepository>();
+        brands
+            .Setup(repository => repository.GetAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var xml = await new SitemapService(products.Object, Categories().Object, brands.Object).BuildXmlAsync(Site + "/", default);
         var document = XDocument.Parse(xml);
 
         Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", xml);
@@ -179,7 +187,7 @@ public sealed class SitemapTests
     private static string[] Locations(string xml) =>
         XDocument.Parse(xml).Root!.Elements(Ns + "url").Select(url => url.Element(Ns + "loc")!.Value).ToArray();
 
-    private static SitemapService Sitemap(MagicBeautyDbContext db) => new(new ProductRepository(db), Categories().Object);
+    private static SitemapService Sitemap(MagicBeautyDbContext db) => new(new ProductRepository(db), Categories().Object, new BrandRepository(db));
 
     /// <summary>Arbol publico tal como lo entrega CategoryService: solo categorias activas.</summary>
     private static Mock<ICategoryService> Categories()
@@ -212,7 +220,7 @@ public sealed class SitemapTests
         var audience = new Mock<IPriceAudienceProvider>();
         audience.Setup(item => item.GetCurrent()).Returns(PriceAudience.Anonymous);
 
-        return new CatalogService(new ProductRepository(db), policy.Object, audience.Object);
+        return new CatalogService(new ProductRepository(db), new BrandRepository(db), policy.Object, audience.Object);
     }
 
     // 201 activo en Labios · 202 activo sin categoria · 203 inactivo en Labios · 205 activo en Labios.
