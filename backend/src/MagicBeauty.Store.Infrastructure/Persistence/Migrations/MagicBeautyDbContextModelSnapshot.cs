@@ -180,6 +180,65 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.ToTable("EmailVerificationCodes", (string)null);
                 });
 
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.ImportRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool?>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AllPagesRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateOnly>("From")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Invoices")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("LastSaleDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("NextOffset")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Pages")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("Through")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Active")
+                        .IsUnique()
+                        .HasFilter("[Active] = 1");
+
+                    b.HasIndex("Source", "Status", "FinishedAt");
+
+                    b.ToTable("ImportRuns", "sales");
+                });
+
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.InventoryMovement", b =>
                 {
                     b.Property<int>("Id")
@@ -613,6 +672,103 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.Sale", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTimeOffset>("ImportedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateOnly>("SaleDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SaleDate", "Status");
+
+                    b.HasIndex("Source", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("Sales", "sales");
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.SaleLine", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ExternalItemId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int?>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<long>("SaleId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("SaleLines", "sales");
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.SourceItemMapping", b =>
+                {
+                    b.Property<string>("Source")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ExternalItemId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Source", "ExternalItemId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("SourceItemMappings", "sales");
+                });
+
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.TraditionalCatalog", b =>
                 {
                     b.Property<int>("Id")
@@ -862,6 +1018,29 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.SaleLine", b =>
+                {
+                    b.HasOne("MagicBeauty.Store.Domain.Entities.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MagicBeauty.Store.Domain.Entities.Sale", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.SourceItemMapping", b =>
+                {
+                    b.HasOne("MagicBeauty.Store.Domain.Entities.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.UserRole", b =>
                 {
                     b.HasOne("MagicBeauty.Store.Domain.Entities.Role", "Role")
@@ -916,6 +1095,11 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.Navigation("RolePriceTypes");
 
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.Sale", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("MagicBeauty.Store.Domain.Entities.User", b =>

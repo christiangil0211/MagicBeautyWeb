@@ -24,6 +24,8 @@ public static class DependencyInjection
         services.AddDbContext<MagicBeautyDbContext>(options =>
             options.UseResilientSqlServer(connectionString, DatabaseRetryPolicy.Default));
 
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<MagicBeauty.Store.Application.Features.Sales.ISalesBatchWriter, SalesBatchWriter>();
         services.AddScoped<IBrandRepository, BrandRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IPriceTypeRepository, PriceTypeRepository>();
