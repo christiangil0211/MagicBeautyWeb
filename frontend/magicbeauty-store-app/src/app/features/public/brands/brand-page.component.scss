@@ -3,6 +3,8 @@
 }
 
 .brand-page {
+  /* Alto mínimo mientras carga: el pie no aparece arriba y luego salta (CLS). */
+  min-height: 85vh;
   width: calc(100% - var(--mb-gutter) * 2);
   max-width: var(--mb-container);
   margin: 0 auto;
