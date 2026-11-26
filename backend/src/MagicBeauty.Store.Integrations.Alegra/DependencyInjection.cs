@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 
 using MagicBeauty.Store.Integrations.Alegra.Client;
@@ -35,7 +35,7 @@ public static class DependencyInjection
                 sql.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null);
             }));
 
-        services.AddHttpClient<IAlegraClient, AlegraClient>((provider, client) =>
+        services.AddHttpClient<AlegraClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<AlegraOptions>>().Value;
             var baseUrl = options.BaseUrl.EndsWith('/') ? options.BaseUrl : options.BaseUrl + "/";
@@ -51,6 +51,8 @@ public static class DependencyInjection
             }
         });
 
+        services.AddScoped<IAlegraClient>(provider => provider.GetRequiredService<AlegraClient>());
+        services.AddScoped<MagicBeauty.Store.Application.Features.Sales.ISalesSource, AlegraSalesSource>();
         services.AddSingleton<AlegraSyncLock>();
         services.AddScoped<IAlegraProductSyncService, AlegraProductSyncService>();
 
@@ -63,7 +65,7 @@ public static class DependencyInjection
     /// </summary>
     public static RouteGroupBuilder MapAlegraIntegration(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup(RoutePrefix).WithTags("Integración Alegra");
+        var group = endpoints.MapGroup(RoutePrefix).WithTags("IntegraciÃ³n Alegra");
 
         // El frontend muestra el boton solo si la integracion esta lista.
         group.MapGet("/status", (IOptions<AlegraOptions> options) =>
@@ -76,7 +78,7 @@ public static class DependencyInjection
         {
             if (!options.Value.Enabled || !options.Value.IsConfigured)
             {
-                return Error(StatusCodes.Status404NotFound, "La integración con Alegra no está activa.");
+                return Error(StatusCodes.Status404NotFound, "La integraciÃ³n con Alegra no estÃ¡ activa.");
             }
 
             try
