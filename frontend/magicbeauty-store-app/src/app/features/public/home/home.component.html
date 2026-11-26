@@ -2,41 +2,51 @@
 
 <!-- El carrusel de campañas y el h1 los pinta el portal (data.portalBanner de la ruta). -->
 
-<!-- Categorías marcadas como «Destacar en el inicio» en el administrador, en una sola fila. -->
-@if (showCategories()) {
-  <section class="home-section shop-by-category" aria-labelledby="home-categories-title">
-    <h2 id="home-categories-title" class="section-title">Compra por categoría</h2>
+<!--
+  Categorías marcadas como «Destacar en el inicio» en el administrador, en una sola
+  fila. La sección nunca colapsa: mientras carga muestra casillas; si el API falla,
+  tarda o no hay destacadas, las casillas quedan invisibles (conservan el alto) y
+  encima va el respaldo con el catálogo y WhatsApp.
+-->
+<section class="home-section shop-by-category" aria-labelledby="home-categories-title">
+  <h2 id="home-categories-title" class="section-title">Compra por categoría</h2>
 
-    @if (!tilesLoaded()) {
-      <div class="tiles" aria-hidden="true">
+  @if (categoryState() === 'ready') {
+    <div class="tiles">
+      @for (tile of visibleTiles(); track tile.id) {
+        <a class="tile" [routerLink]="categoryPath(tile.slug)">
+          <div class="tile__image">
+            @if (tile.imageUrl) {
+              <img [src]="tile.imageUrl" [alt]="tile.name" width="300" height="300" loading="lazy" decoding="async" />
+            } @else {
+              <div class="tile__placeholder"><i class="pi pi-image" aria-hidden="true"></i></div>
+            }
+          </div>
+          <span class="tile__name">{{ tile.name }} <i class="pi pi-angle-right" aria-hidden="true"></i></span>
+        </a>
+      }
+    </div>
+  } @else {
+    <div class="tiles-area">
+      <div class="tiles" [class.tiles--reserve]="categoryState() === 'fallback'" aria-hidden="true">
         @for (skeleton of categorySkeletons; track skeleton) {
           <div class="tile tile--skeleton"><div class="tile__image"></div><span class="tile__name">&nbsp;</span></div>
         }
       </div>
-    } @else if (visibleTiles().length > 0) {
-      <div class="tiles">
-        @for (tile of visibleTiles(); track tile.id) {
-          <a class="tile" [routerLink]="categoryPath(tile.slug)">
-            <div class="tile__image">
-              @if (tile.imageUrl) {
-                <img [src]="tile.imageUrl" [alt]="tile.name" width="300" height="300" loading="lazy" decoding="async" />
-              } @else {
-                <div class="tile__placeholder"><i class="pi pi-image" aria-hidden="true"></i></div>
-              }
-            </div>
-            <span class="tile__name">{{ tile.name }} <i class="pi pi-angle-right" aria-hidden="true"></i></span>
-          </a>
+
+      @if (categoryState() === 'fallback') {
+        @if (canManageStore()) {
+          <p class="admin-hint tiles-area__overlay">
+            No hay categorías destacadas o el API no respondió. Marca una como «Destacar en el inicio» y aparecerá aquí.
+            <a routerLink="/admin/categories">Ir a categorías</a>
+          </p>
+        } @else {
+          <app-home-fallback class="tiles-area__overlay" text="Mira todos nuestros productos o escríbenos por WhatsApp." />
         }
-      </div>
-    } @else {
-      <!-- Solo lo ve un administrador: el visitante no ve la sección vacía. -->
-      <p class="admin-hint">
-        Todavía no hay categorías destacadas. Marca una como «Destacar en el inicio» y aparecerá aquí.
-        <a routerLink="/admin/categories">Ir a categorías</a>
-      </p>
-    }
-  </section>
-}
+      }
+    </div>
+  }
+</section>
 
 <!-- Se carga al acercarse a la pantalla: el listado no compite con la imagen principal. -->
 @defer (on viewport) {

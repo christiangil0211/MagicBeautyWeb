@@ -1,7 +1,7 @@
 import { DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { CatalogService } from '../../../core/services/catalog.service';
@@ -23,14 +23,22 @@ const product = (id: number, overrides: Partial<CatalogProductListItem> = {}): C
   ...overrides
 });
 
-async function render(options: { tiles?: unknown[]; products?: CatalogProductListItem[]; admin?: boolean } = {}) {
+async function render(
+  options: {
+    tiles?: unknown[];
+    products?: CatalogProductListItem[];
+    admin?: boolean;
+    tiles$?: Observable<unknown[]>;
+    products$?: Observable<CatalogProductListItem[]>;
+  } = {}
+) {
   TestBed.configureTestingModule({
     imports: [HomeComponent],
     providers: [
       provideRouter([]),
       { provide: AuthService, useValue: { canManageStore: signal(options.admin ?? false) } },
-      { provide: CategoryService, useValue: { getHomeTiles: () => of(options.tiles ?? []) } },
-      { provide: CatalogService, useValue: { getProducts: () => of(options.products ?? []) } }
+      { provide: CategoryService, useValue: { getHomeTiles: () => options.tiles$ ?? of(options.tiles ?? []) } },
+      { provide: CatalogService, useValue: { getProducts: () => options.products$ ?? of(options.products ?? []) } }
     ],
     deferBlockBehavior: DeferBlockBehavior.Manual
   });
@@ -58,14 +66,45 @@ it('links the featured categories to their public catalog page, at most eight', 
   expect(links[0].querySelector('img')?.getAttribute('alt')).toBe('Cat 0');
 });
 
-it('hides the category section from visitors when there are no featured categories', async () => {
-  const { root } = await render({ tiles: [] });
-  expect(root.querySelector('.shop-by-category')).toBeNull();
+const fallbackText = (root: HTMLElement, selector: string) => text(root.querySelector(selector + ' app-home-fallback'));
+
+it.each([
+  ['there are no featured categories', { tiles: [] }],
+  ['the API fails', { tiles$: throwError(() => new Error('503')) }]
+])('keeps the category section and its height with a static fallback when %s', async (_case, options) => {
+  const { root } = await render(options);
+  const section = root.querySelector('.shop-by-category')!;
+
+  expect(section).not.toBeNull();
+  // Las casillas siguen en la página (invisibles) para conservar el alto.
+  expect(section.querySelectorAll('.tiles--reserve .tile--skeleton').length).toBe(6);
+  expect(fallbackText(root, '.shop-by-category')).toContain('Explora nuestro catálogo');
+  const links = Array.from(section.querySelectorAll('app-home-fallback a'), link => link.getAttribute('href'));
+  expect(links[0]).toBe('/catalogo');
+  expect(links[1]).toContain('https://wa.me/573127381185');
+});
+
+it('shows the fallback when the API takes longer than ten seconds', async () => {
+  vi.useFakeTimers();
+  try {
+    const { root, fixture } = await render({ tiles$: NEVER, products$: NEVER });
+    expect(root.querySelector('.shop-by-category .tile--skeleton')).not.toBeNull();
+    expect(root.querySelector('app-home-fallback')).toBeNull();
+
+    vi.advanceTimersByTime(10_000);
+    fixture.detectChanges();
+
+    expect(fallbackText(root, '.shop-by-category')).toContain('Explora nuestro catálogo');
+    expect(fallbackText(root, 'app-home-favorites')).toContain('No pudimos mostrar los favoritos');
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it('tells an administrator how to fill an empty category section', async () => {
   const { root } = await render({ tiles: [], admin: true });
   expect(root.querySelector('.admin-hint a')?.getAttribute('href')).toBe('/admin/categories');
+  expect(root.querySelector('.shop-by-category app-home-fallback')).toBeNull();
 });
 
 it('never shows out-of-stock or photo-less products among the favorites, and allows products without a brand', async () => {
@@ -96,9 +135,17 @@ it('adds a favorite to the real order, like the digital catalog', async () => {
   expect(draft.lines().some(line => line.reference === 'ABC001')).toBe(true);
 });
 
-it('hides the favorites section when no product is ready for the home page', async () => {
-  const { root } = await render({ products: [product(1, { availableQuantity: 0 })] });
-  expect(root.querySelector('app-home-favorites')?.classList.contains('favorites--empty')).toBe(true);
+it.each([
+  ['no product is ready for the home page', { products: [product(1, { availableQuantity: 0 })] }],
+  ['the catalog fails', { products$: throwError(() => new Error('503')) }]
+])('keeps the favorites section with a fallback to the catalog and WhatsApp when %s', async (_case, options) => {
+  const { root } = await render(options);
+  const favorites = root.querySelector('app-home-favorites')!;
+
+  expect(favorites.querySelector('h2')?.textContent).toBe('Productos favoritos');
+  expect(favorites.querySelector('app-product-card')).toBeNull();
+  expect(fallbackText(root, 'app-home-favorites')).toContain('No pudimos mostrar los favoritos');
+  expect(favorites.querySelector('app-home-fallback a')?.getAttribute('href')).toBe('/catalogo');
 });
 
 it('shows the physical store with address, hours, WhatsApp, directions and a lazy map', async () => {
