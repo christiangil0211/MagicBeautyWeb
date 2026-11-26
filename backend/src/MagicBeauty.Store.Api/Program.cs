@@ -1,4 +1,4 @@
-using System.Threading.RateLimiting;
+﻿using System.Threading.RateLimiting;
 
 using MagicBeauty.Store.Api.Filters;
 using MagicBeauty.Store.Api.Middleware;
@@ -16,6 +16,9 @@ var builder = WebApplication.CreateBuilder(args);
 const string CorsPolicyName = "MagicBeautyCorsPolicy";
 
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<MagicBeauty.Store.Api.Sales.SalesImportQueue>();
+builder.Services.AddHostedService<MagicBeauty.Store.Api.Sales.SalesImportWorker>();
 
 // El catalogo publico pesa cientos de KB en JSON: comprimido (Brotli o gzip) baja a una fraccion.
 builder.Services.AddResponseCompression(options =>
