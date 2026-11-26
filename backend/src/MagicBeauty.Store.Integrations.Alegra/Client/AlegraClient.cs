@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using MagicBeauty.Store.Application.Features.Sales;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -49,6 +50,57 @@ public sealed class AlegraClient(
         }
 
         throw new AlegraException("Alegra devolvió más páginas de las esperadas. Revisa la configuración de la integración.");
+    }
+
+    internal Task<List<AlegraInvoice>> GetInvoicesAsync(
+        DateOnly from, DateOnly through, int offset, int limit, CancellationToken cancellationToken) =>
+        GetSalesAsync<List<AlegraInvoice>>(
+            FormattableString.Invariant($"invoices?start={offset}&limit={limit}&date_afterOrNow={from:yyyy-MM-dd}&date_beforeOrNow={through:yyyy-MM-dd}&order_field=id&order_direction=ASC"),
+            cancellationToken);
+
+    internal Task<AlegraInvoice> GetInvoiceAsync(string id, CancellationToken cancellationToken) =>
+        GetSalesAsync<AlegraInvoice>($"invoices/{Uri.EscapeDataString(id)}", cancellationToken);
+
+    private async Task<T> GetSalesAsync<T>(string path, CancellationToken cancellationToken) where T : class
+    {
+        const int attempts = 4;
+        for (var attempt = 1; ; attempt++)
+        {
+            var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt - 1));
+            try
+            {
+                using var response = await httpClient.GetAsync(path, cancellationToken);
+                if (response.IsSuccessStatusCode)
+                    return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken)
+                        ?? throw new SalesSourceReadException("La respuesta de ventas está vacía.");
+
+                var transient = response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500;
+                if (!transient || attempt >= attempts)
+                    throw new SalesSourceReadException($"La consulta de ventas falló (HTTP {(int)response.StatusCode}).");
+
+                var requested = response.Headers.RetryAfter?.Delta
+                    ?? (response.Headers.RetryAfter?.Date is { } date ? date - DateTimeOffset.UtcNow : TimeSpan.Zero);
+                if (response.Headers.TryGetValues("X-Rate-Limit-Reset", out var values) &&
+                    int.TryParse(values.FirstOrDefault(), out var seconds) && seconds >= 0)
+                    requested = TimeSpan.FromSeconds(Math.Max(requested.TotalSeconds, seconds));
+
+                if (requested > delay) delay = requested;
+                if (delay > TimeSpan.FromMinutes(5))
+                    throw new SalesSourceReadException("La espera solicitada supera el límite de reintento. Reanuda la importación más tarde.");
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested &&
+                exception is HttpRequestException or TaskCanceledException)
+            {
+                if (attempt >= attempts)
+                    throw new SalesSourceReadException("El origen de ventas no respondió después de varios intentos.", exception);
+            }
+            catch (JsonException exception)
+            {
+                throw new SalesSourceReadException("El origen devolvió una factura con un formato inesperado.", exception);
+            }
+
+            await Task.Delay(delay, cancellationToken);
+        }
     }
 
     private async Task<List<AlegraItem>> GetPageAsync(string path, CancellationToken cancellationToken)

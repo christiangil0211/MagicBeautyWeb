@@ -1,0 +1,80 @@
+:host { display: block; }
+
+.sales { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.panel {
+  background: var(--mb-surface);
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius);
+  padding: 1.25rem;
+  box-shadow: var(--mb-shadow-sm);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: .75rem;
+  margin-bottom: 1.1rem;
+
+  label { display: grid; gap: .35rem; font-size: .82rem; font-weight: 600; color: var(--mb-text-secondary); }
+  .search { flex: 1 1 15rem; }
+}
+
+.reference {
+  padding: .2rem .45rem;
+  border-radius: var(--mb-radius-xs);
+  background: var(--mb-surface-2);
+  color: var(--mb-primary);
+  font-family: ui-monospace, monospace;
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.number { text-align: right; font-variant-numeric: tabular-nums; }
+.empty { text-align: center; color: var(--mb-text-secondary); padding: 1.5rem; }
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+}
+
+.pagination { margin-top: 1rem; color: var(--mb-text-secondary); font-size: .85rem; }
+.pagination span { margin-inline-end: auto; }
+
+.invoice-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: .6rem;
+  margin: 0 0 1.25rem;
+
+  div {
+    padding: .7rem .8rem;
+    border: 1px solid var(--mb-border-soft);
+    border-radius: var(--mb-radius-sm);
+    background: var(--mb-surface-2);
+  }
+
+  dt { color: var(--mb-text-secondary); font-size: .75rem; }
+  dd { margin: .3rem 0 0; color: var(--mb-heading); font-weight: 600; overflow-wrap: anywhere; }
+}
+
+.detail-title { margin: 0 0 .65rem; font-size: 1rem; color: var(--mb-heading); }
+
+.invoice-financial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem 1.25rem;
+  margin-top: 1rem;
+
+  p { margin: .5rem 0 0; color: var(--mb-text-secondary); font-size: .8rem; }
+  dl { width: min(100%, 21rem); margin: 0 0 0 auto; }
+  dl div { display: flex; justify-content: space-between; gap: .75rem; padding: .35rem .55rem; }
+  dt { color: var(--mb-text-secondary); font-size: .85rem; }
+  dd { margin: 0; color: var(--mb-heading); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .invoice-financial__total { background: var(--mb-pink-50); border-radius: var(--mb-radius-xs); }
+}

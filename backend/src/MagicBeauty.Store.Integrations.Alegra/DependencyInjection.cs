@@ -35,7 +35,7 @@ public static class DependencyInjection
                 sql.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null);
             }));
 
-        services.AddHttpClient<IAlegraClient, AlegraClient>((provider, client) =>
+        services.AddHttpClient<AlegraClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<AlegraOptions>>().Value;
             var baseUrl = options.BaseUrl.EndsWith('/') ? options.BaseUrl : options.BaseUrl + "/";
@@ -51,6 +51,8 @@ public static class DependencyInjection
             }
         });
 
+        services.AddScoped<IAlegraClient>(provider => provider.GetRequiredService<AlegraClient>());
+        services.AddScoped<MagicBeauty.Store.Application.Features.Sales.ISalesSource, AlegraSalesSource>();
         services.AddSingleton<AlegraSyncLock>();
         services.AddScoped<IAlegraProductSyncService, AlegraProductSyncService>();
 

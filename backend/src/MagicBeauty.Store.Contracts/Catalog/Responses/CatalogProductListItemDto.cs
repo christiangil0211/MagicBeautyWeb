@@ -8,6 +8,9 @@ public sealed class CatalogProductListItemDto
 {
     public int Id { get; set; }
 
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsBestSeller { get; set; }
+
     public string Reference { get; set; } = string.Empty;
 
     public string Name { get; set; } = string.Empty;

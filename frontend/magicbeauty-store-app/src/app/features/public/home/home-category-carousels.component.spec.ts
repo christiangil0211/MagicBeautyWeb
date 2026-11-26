@@ -60,7 +60,7 @@ it('renders one carousel per category, in order, each with its own products and 
     categoryId => of([product(categoryId * 10, categoryId), product(categoryId * 10 + 1, categoryId)])
   );
 
-  expect(getProducts.mock.calls.map(call => call[0])).toEqual([{ categoryId: 1 }, { categoryId: 15 }]);
+  expect(getProducts.mock.calls.map(call => call[0])).toEqual([{ categoryId: 1, homeRanking: true }, { categoryId: 15, homeRanking: true }]);
   expect(Array.from(root.querySelectorAll('h2'), title => title.textContent?.trim())).toEqual(['Cuidado capilar', 'Shampoo']);
   expect(Array.from(root.querySelectorAll('.carousel__all'), link => link.getAttribute('href'))).toEqual([
     '/catalogo/categoria/cuidado-capilar',
@@ -103,4 +103,12 @@ describe('pickCategoryProducts', () => {
     expect(picked).toHaveLength(16);
     expect(picked.filter(item => item.categoryIds[0] === 15)).toHaveLength(8);
   });
+});
+
+it('keeps ranked products in server order ahead of the existing daily fill', () => {
+  const ranked = [{ ...product(9, 1), isBestSeller: true }, { ...product(2, 1), isBestSeller: true }];
+  const fill = [product(5, 1), product(3, 1), product(7, 1)];
+
+  expect(pickCategoryProducts([...ranked, ...fill], 'x').map(item => item.id))
+    .toEqual([9, 2, ...pickCategoryProducts(fill, 'x').map(item => item.id)]);
 });

@@ -165,6 +165,7 @@ export interface CatalogPrice {
 
 /** Fila del listado público de catálogo. */
 export interface CatalogProductListItem {
+  isBestSeller?: boolean;
   id: number;
   reference: string;
   name: string;

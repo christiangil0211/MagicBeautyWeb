@@ -21,6 +21,7 @@ import { AccountAdminLink, AccountPanelComponent } from './account-panel/account
 const ADMIN_LINKS: AccountAdminLink[] = [
   { label: 'Categorías de productos', icon: 'pi pi-sitemap', path: '/admin/categories' },
   { label: 'Productos', icon: 'pi pi-shopping-bag', path: '/admin/products' },
+  { label: 'Ventas', icon: 'pi pi-chart-bar', path: '/admin/sales' },
   { label: 'Marcas', icon: 'pi pi-tag', path: '/admin/brands' },
   { label: 'Catálogos tradicionales', icon: 'pi pi-book', path: '/admin/catalogs' },
   { label: 'Administradores', icon: 'pi pi-users', path: '/admin/users' }

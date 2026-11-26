@@ -10,6 +10,7 @@ export interface CatalogFilters {
   brandId?: number | null;
   categoryId?: number | null;
   search?: string | null;
+  homeRanking?: boolean;
 }
 
 /**
@@ -47,6 +48,10 @@ export class CatalogService {
       params = params.set('categoryId', filters.categoryId);
     }
 
+    if (filters.homeRanking) {
+      params = params.set('homeRanking', true);
+    }
+
     if (filters.search) {
       params = params.set('search', filters.search);
     }
@@ -62,6 +67,12 @@ export class CatalogService {
       `${this.apiUrl}/products/${encodeURIComponent(reference)}/related`,
       { params: new HttpParams().set('limit', limit), transferCache: false }
     ).pipe(map(items => items.map(withPublicBrand)));
+  }
+
+  getBestSellers(): Observable<CatalogProductListItem[]> {
+    return this.http
+      .get<CatalogProductListItem[]>(`${this.apiUrl}/best-sellers`, { transferCache: false })
+      .pipe(map(items => items.map(withPublicBrand)));
   }
 
   getProductDetail(reference: string): Observable<ProductDetail> {

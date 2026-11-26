@@ -1,0 +1,118 @@
+<section class="sales">
+  <app-page-header eyebrow="Administración" title="Ventas" subtitle="Consulta las facturas importadas y sus productos.">
+    <app-sales-import (settled)="load(1)" />
+  </app-page-header>
+
+  <div class="panel">
+    <form class="filters" (ngSubmit)="apply()">
+      <label>Desde <input pInputText type="date" name="from" [(ngModel)]="from" [max]="through || '9999-12-31'"></label>
+      <label>Hasta <input pInputText type="date" name="through" [(ngModel)]="through" [min]="from"></label>
+      <label>Estado
+        <p-select inputId="sale-status" name="status" [options]="states" optionLabel="label" optionValue="value"
+          [(ngModel)]="status" placeholder="Todos" [showClear]="true" appendTo="body" />
+      </label>
+      <label class="search">Factura o producto
+        <input pInputText type="search" name="search" [(ngModel)]="search" placeholder="ID, referencia o nombre">
+      </label>
+      <p-button type="submit" label="Filtrar" icon="pi pi-filter" size="small" />
+      <p-button type="button" label="Limpiar" icon="pi pi-times" severity="secondary" [text]="true" size="small" (onClick)="clear()" />
+    </form>
+
+    <div class="mb-table-wrap" [class.is-loading]="loading()">
+      @if (loading()) {
+        <app-loader mode="overlay" message="Cargando ventas…" />
+      }
+      <p-table [value]="result()?.items ?? []" styleClass="mb-table" dataKey="id" [rowHover]="true">
+        <ng-template pTemplate="header">
+          <tr><th>Factura</th><th>Fecha</th><th>Estado</th><th class="number">Líneas</th><th class="number">Unidades</th><th>Detalle</th></tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-sale>
+          <tr>
+            <td><span class="reference">{{ sale.externalId }}</span></td>
+            <td>{{ sale.saleDate }}</td>
+            <td><p-tag [value]="statusLabel(sale.status)" [severity]="statusSeverity(sale.status)" /></td>
+            <td class="number">{{ sale.lineCount | number }}</td>
+            <td class="number">{{ sale.units | number }}</td>
+            <td><p-button label="Ver detalle de factura" icon="pi pi-file" size="small" severity="secondary" [text]="true" (onClick)="openDetail(sale)" /></td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr><td colspan="6" class="empty">
+            @if (error()) {
+              <p role="alert">{{ error() }}</p>
+              <p-button label="Volver a consultar" icon="pi pi-refresh" severity="secondary" [text]="true" (onClick)="load(1)" />
+            } @else if (result()) {
+              No hay facturas para los filtros seleccionados.
+            }
+          </td></tr>
+        </ng-template>
+      </p-table>
+    </div>
+
+    @if (result(); as data) {
+      <nav class="pagination" aria-label="Paginación de ventas">
+        <span>{{ data.total | number }} facturas · Página {{ data.page }}</span>
+        <p-button label="Anterior" icon="pi pi-angle-left" size="small" severity="secondary" [outlined]="true"
+          [disabled]="loading() || data.page === 1" (onClick)="load(data.page - 1)" />
+        <p-button label="Siguiente" icon="pi pi-angle-right" iconPos="right" size="small" severity="secondary" [outlined]="true"
+          [disabled]="loading() || data.page * data.pageSize >= data.total" (onClick)="load(data.page + 1)" />
+      </nav>
+    }
+  </div>
+
+  <p-dialog header="Detalles de la factura" [visible]="selected() !== null"
+    (visibleChange)="$event ? null : closeDetail()" [modal]="true" [blockScroll]="true"
+    [draggable]="false" [resizable]="false" appendTo="body"
+    [style]="{ width: 'min(94vw, 64rem)' }">
+    @if (selected(); as sale) {
+      <dl class="invoice-summary">
+        <div><dt>Factura</dt><dd><span class="reference">{{ sale.externalId }}</span></dd></div>
+        <div><dt>Fecha de emisión</dt><dd>{{ detail()?.saleDate || sale.saleDate }}</dd></div>
+        @if (detail(); as invoice) {
+          <div><dt>Vencimiento</dt><dd>{{ invoice.dueDate || 'Sin registrar' }}</dd></div>
+          <div><dt>Tipo de pago</dt><dd>{{ invoice.paymentForm || 'Sin registrar' }}</dd></div>
+          <div><dt>Medio de pago</dt><dd>{{ invoice.paymentMethod || 'Sin registrar' }}</dd></div>
+        }
+        <div><dt>Estado</dt><dd><p-tag [value]="statusLabel(sale.status)" [severity]="statusSeverity(sale.status)" /></dd></div>
+        <div><dt>Unidades</dt><dd>{{ sale.units | number }}</dd></div>
+      </dl>
+      <h3 class="detail-title">Productos de la factura</h3>
+      @if (detailError()) {
+        <p role="alert">{{ detailError() }}</p>
+      } @else if (detail(); as invoice) {
+        <p-table [value]="invoice.lines" styleClass="mb-table" dataKey="id" [scrollable]="true" scrollHeight="min(38vh, 24rem)">
+          <ng-template pTemplate="header">
+            <tr><th>Ítem</th><th>Referencia</th><th>Producto</th><th class="number">Unidades</th><th class="number">Precio unitario</th><th class="number">Importe</th><th>Vínculo</th></tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-line>
+            <tr>
+              <td>{{ line.externalItemId }}</td><td>{{ line.reference || '—' }}</td><td>{{ line.name || '—' }}</td>
+              <td class="number">{{ line.quantity | number }}</td>
+              <td class="number">{{ amount(line.unitPrice) }}</td>
+              <td class="number">{{ amount(line.total) }}</td>
+              <td><p-tag [value]="line.productId === null ? 'Sin vínculo' : 'Vinculado'"
+                [severity]="line.productId === null ? 'warn' : 'success'" /></td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage"><tr><td colspan="7" class="empty">Esta factura no tiene líneas registradas.</td></tr></ng-template>
+        </p-table>
+        <div class="invoice-financial">
+          <p>Costo histórico de los productos: sin registrar en la factura.</p>
+          <dl aria-label="Importes de la factura">
+            <div><dt>Subtotal</dt><dd>{{ amount(invoice.subtotal) }}</dd></div>
+            <div><dt>Descuento</dt><dd>{{ amount(invoice.discount) }}</dd></div>
+            <div><dt>Impuestos</dt><dd>{{ amount(invoice.tax) }}</dd></div>
+            <div class="invoice-financial__total"><dt>Total</dt><dd>{{ amount(invoice.total) }}</dd></div>
+            <div><dt>Pagado</dt><dd>{{ amount(invoice.totalPaid) }}</dd></div>
+            <div><dt>Saldo</dt><dd>{{ amount(invoice.balance) }}</dd></div>
+          </dl>
+        </div>
+      } @else {
+        <app-loader [compact]="true" message="Cargando líneas…" />
+      }
+    }
+    <ng-template #footer>
+      <p-button label="Cerrar" severity="secondary" [text]="true" (onClick)="closeDetail()" />
+    </ng-template>
+  </p-dialog>
+</section>
