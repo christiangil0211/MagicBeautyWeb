@@ -34,7 +34,7 @@
 .number { text-align: right; font-variant-numeric: tabular-nums; }
 .empty { text-align: center; color: var(--mb-text-secondary); padding: 1.5rem; }
 
-.pagination, .detail-header {
+.pagination {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -42,5 +42,23 @@
 }
 
 .pagination { margin-top: 1rem; color: var(--mb-text-secondary); font-size: .85rem; }
-.pagination span, .detail-header h2 { margin-inline-end: auto; }
-.detail-header h2 { font-size: 1rem; color: var(--mb-heading); }
+.pagination span { margin-inline-end: auto; }
+
+.invoice-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: .6rem;
+  margin: 0 0 1.25rem;
+
+  div {
+    padding: .7rem .8rem;
+    border: 1px solid var(--mb-border-soft);
+    border-radius: var(--mb-radius-sm);
+    background: var(--mb-surface-2);
+  }
+
+  dt { color: var(--mb-text-secondary); font-size: .75rem; }
+  dd { margin: .3rem 0 0; color: var(--mb-heading); font-weight: 600; overflow-wrap: anywhere; }
+}
+
+.detail-title { margin: 0 0 .65rem; font-size: 1rem; color: var(--mb-heading); }

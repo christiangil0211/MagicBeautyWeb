@@ -1,9 +1,10 @@
-﻿import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
@@ -42,7 +43,7 @@ interface SaleLine {
 
 @Component({
   selector: 'app-admin-sales',
-  imports: [ButtonModule, DecimalPipe, FormsModule, InputTextModule, SelectModule, TableModule, TagModule, LoaderComponent, PageHeaderComponent, SalesImportComponent],
+  imports: [ButtonModule, DialogModule, DecimalPipe, FormsModule, InputTextModule, SelectModule, TableModule, TagModule, LoaderComponent, PageHeaderComponent, SalesImportComponent],
   templateUrl: './admin-sales.component.html',
   styleUrl: './admin-sales.component.scss'
 })

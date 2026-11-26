@@ -1,4 +1,4 @@
-﻿<section class="sales">
+<section class="sales">
   <app-page-header eyebrow="Administración" title="Ventas" subtitle="Consulta las facturas importadas y sus productos.">
     <app-sales-import (settled)="load(1)" />
   </app-page-header>
@@ -33,7 +33,7 @@
             <td><p-tag [value]="statusLabel(sale.status)" [severity]="statusSeverity(sale.status)" /></td>
             <td class="number">{{ sale.lineCount | number }}</td>
             <td class="number">{{ sale.units | number }}</td>
-            <td><p-button label="Ver líneas" icon="pi pi-list" size="small" severity="secondary" [text]="true" (onClick)="openDetail(sale)" /></td>
+            <td><p-button label="Detalles de la factura" icon="pi pi-file" size="small" severity="secondary" [text]="true" (onClick)="openDetail(sale)" /></td>
           </tr>
         </ng-template>
         <ng-template pTemplate="emptymessage">
@@ -60,16 +60,22 @@
     }
   </div>
 
-  @if (selected(); as sale) {
-    <section class="panel" aria-labelledby="sale-detail">
-      <div class="detail-header">
-        <h2 id="sale-detail">Factura {{ sale.externalId }}</h2>
-        <p-button label="Cerrar detalle" icon="pi pi-times" severity="secondary" [text]="true" (onClick)="closeDetail()" />
-      </div>
+  <p-dialog header="Detalles de la factura" [visible]="selected() !== null"
+    (visibleChange)="$event ? null : closeDetail()" [modal]="true" [blockScroll]="true"
+    [draggable]="false" [resizable]="false" appendTo="body"
+    [style]="{ width: 'min(94vw, 52rem)' }">
+    @if (selected(); as sale) {
+      <dl class="invoice-summary">
+        <div><dt>Factura</dt><dd><span class="reference">{{ sale.externalId }}</span></dd></div>
+        <div><dt>Fecha</dt><dd>{{ sale.saleDate }}</dd></div>
+        <div><dt>Estado</dt><dd><p-tag [value]="statusLabel(sale.status)" [severity]="statusSeverity(sale.status)" /></dd></div>
+        <div><dt>Unidades</dt><dd>{{ sale.units | number }}</dd></div>
+      </dl>
+      <h3 class="detail-title">Productos de la factura</h3>
       @if (detailError()) {
         <p role="alert">{{ detailError() }}</p>
       } @else if (lines(); as detail) {
-        <p-table [value]="detail" styleClass="mb-table" dataKey="id">
+        <p-table [value]="detail" styleClass="mb-table" dataKey="id" [scrollable]="true" scrollHeight="min(38vh, 24rem)">
           <ng-template pTemplate="header">
             <tr><th>Ítem</th><th>Referencia</th><th>Producto</th><th class="number">Unidades</th><th>Vínculo</th></tr>
           </ng-template>
@@ -86,6 +92,9 @@
       } @else {
         <app-loader [compact]="true" message="Cargando líneas…" />
       }
-    </section>
-  }
+    }
+    <ng-template #footer>
+      <p-button label="Cerrar" severity="secondary" [text]="true" (onClick)="closeDetail()" />
+    </ng-template>
+  </p-dialog>
 </section>
