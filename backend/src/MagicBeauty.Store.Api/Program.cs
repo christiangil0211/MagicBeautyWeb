@@ -53,16 +53,16 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-var allowedOrigins = builder.Configuration
-    .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>() ?? [];
+// Produccion (lista exacta) y, opcionalmente, las vistas previas del Static Web App
+// (Cors:PreviewOriginPattern). Las vistas previas solo leen: ver CorsOrigins.
+var corsOrigins = CorsOrigins.FromConfiguration(builder.Configuration);
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(CorsPolicyName, policy =>
     {
         policy
-            .WithOrigins(allowedOrigins)
+            .SetIsOriginAllowed(corsOrigins.IsAllowed)
             .AllowAnyHeader()
             .AllowAnyMethod()
             // La sesion viaja en cookie: solo los origenes listados pueden enviarla.
@@ -114,11 +114,11 @@ if (app.Services.GetService<LocalFileStorageOptions>() is { } localStorage)
 
 app.UseCors(CorsPolicyName);
 
-// Fuera de Development la cookie es SameSite=None: se exige un origen permitido al modificar datos.
+// Fuera de Development la cookie es SameSite=None: se exige un origen de produccion al
+// modificar datos. Las vistas previas no estan en esa lista: pueden leer, no cambiar.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseMiddleware<CrossSiteRequestGuardMiddleware>(
-        new HashSet<string>(allowedOrigins, StringComparer.OrdinalIgnoreCase));
+    app.UseMiddleware<CrossSiteRequestGuardMiddleware>(corsOrigins.Exact);
 }
 
 app.UseRateLimiter();
