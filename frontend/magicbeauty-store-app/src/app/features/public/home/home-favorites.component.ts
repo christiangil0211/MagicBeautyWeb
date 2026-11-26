@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
+import { timeout } from 'rxjs';
 
 import { CatalogService } from '../../../core/services/catalog.service';
 import { OrderDraftService } from '../../../core/services/order-draft.service';
@@ -9,6 +10,8 @@ import { ProductCardComponent } from '../../../shared/components/product-card/pr
 import { ProductCardModel, toProductCard } from '../../../shared/models/product.model';
 import { colombiaDate } from '../portal/home-slides';
 import { pickHomeFavorites } from './home-favorites';
+import { HomeFallbackComponent } from './home-fallback.component';
+import { HOME_API_TIMEOUT_MS, HomeSectionState } from './home-sections';
 
 /**
  * "Productos favoritos" del inicio. El inicio lo carga diferido (al acercarse a
@@ -17,7 +20,7 @@ import { pickHomeFavorites } from './home-favorites';
  */
 @Component({
   selector: 'app-home-favorites',
-  imports: [RouterLink, ProductCardComponent, LoaderComponent],
+  imports: [RouterLink, ProductCardComponent, LoaderComponent, HomeFallbackComponent],
   styleUrl: './home-favorites.component.scss',
   template: `
     <header class="favorites__head">
@@ -28,45 +31,56 @@ import { pickHomeFavorites } from './home-favorites';
       <a class="favorites__all" routerLink="/catalogo">Ver todos <i class="pi pi-angle-right" aria-hidden="true"></i></a>
     </header>
 
-    @if (loading()) {
-      <app-loader message="Cargando productos…" [compact]="true" />
-    } @else {
-      <div class="favorites__grid">
-        @for (product of cards(); track product.id) {
-          <app-product-card
-            [product]="product"
-            [detailLink]="['/catalogo', product.reference]"
-            addLabel="Agregar a cotización"
-            [ignoreStock]="true"
-            [showFavorite]="false"
-            [showReference]="true"
-            priceLayout="columns"
-            (addToCart)="onAddToCart($event)"
-            (chooseVariant)="onChooseVariant($event)" />
-        }
-      </div>
+    @switch (state()) {
+      @case ('loading') {
+        <app-loader message="Cargando productos…" [compact]="true" />
+      }
+      @case ('fallback') {
+        <app-home-fallback
+          class="favorites__fallback"
+          text="No pudimos mostrar los favoritos en este momento. Mira el catálogo completo o escríbenos." />
+      }
+      @default {
+        <div class="favorites__grid">
+          @for (product of cards(); track product.id) {
+            <app-product-card
+              [product]="product"
+              [detailLink]="['/catalogo', product.reference]"
+              addLabel="Agregar a cotización"
+              [ignoreStock]="true"
+              [showFavorite]="false"
+              [showReference]="true"
+              priceLayout="columns"
+              (addToCart)="onAddToCart($event)"
+              (chooseVariant)="onChooseVariant($event)" />
+          }
+        </div>
+      }
     }
-  `,
-  host: { '[class.favorites--empty]': '!loading() && cards().length === 0' }
+  `
 })
 export class HomeFavoritesComponent {
   private readonly orderDraft = inject(OrderDraftService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
 
-  readonly loading = signal(true);
+  /**
+   * Nunca colapsa: si el API falla, tarda o no hay productos listos para el
+   * inicio, muestra el respaldo en el mismo alto reservado (sin salto).
+   */
+  readonly state = signal<HomeSectionState>('loading');
   readonly cards = signal<ProductCardModel[]>([]);
 
   constructor() {
     inject(CatalogService)
       .getProducts()
+      .pipe(timeout({ first: HOME_API_TIMEOUT_MS }))
       .subscribe({
         next: products => {
           this.cards.set(pickHomeFavorites(products, colombiaDate(new Date())).map(toProductCard));
-          this.loading.set(false);
+          this.state.set(this.cards().length > 0 ? 'ready' : 'fallback');
         },
-        // Si el catálogo falla, la sección se oculta y el resto del inicio sigue en pie.
-        error: () => this.loading.set(false)
+        error: () => this.state.set('fallback')
       });
   }
 
