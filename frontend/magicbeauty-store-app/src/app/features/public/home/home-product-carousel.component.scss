@@ -1,0 +1,182 @@
+/* Mismo alto que el marcador del inicio mientras carga (ver home.component.scss). */
+:host {
+  display: block;
+  min-height: 520px;
+}
+
+@media (max-width: 640px) {
+  :host {
+    min-height: 470px;
+  }
+}
+
+/* El respaldo ocupa el lugar de las tarjetas: la sección conserva su alto. */
+.carousel__fallback {
+  min-height: 340px;
+}
+
+.carousel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.carousel__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.4rem;
+  font-family: var(--mb-font-display);
+  font-size: 1.05rem;
+  font-style: italic;
+  color: var(--mb-primary-hover);
+
+  i {
+    font-size: 0.8rem;
+  }
+}
+
+.section-title {
+  margin: 0;
+  font-family: var(--mb-font-display);
+  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--mb-heading);
+}
+
+.carousel__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Pausar / reanudar el avance automático. */
+.carousel__toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--mb-border);
+  border-radius: 999px;
+  background: var(--mb-surface);
+  color: var(--mb-heading);
+  font-size: 0.75rem;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--mb-primary-hover);
+    color: var(--mb-primary-hover);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mb-primary-hover);
+    outline-offset: 2px;
+  }
+}
+
+.carousel__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0 0.2rem;
+  border-bottom: 1px solid var(--mb-border);
+  color: var(--mb-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    color: var(--mb-primary-hover);
+    border-color: var(--mb-primary-hover);
+  }
+}
+
+/* Carrusel: el carril solo posiciona; la tarjeta es la misma del catálogo digital. */
+.carousel__viewport {
+  --carousel-gap: 1.25rem;
+  --carousel-visible: 4;
+
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.carousel__track {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - (var(--carousel-visible) - 1) * var(--carousel-gap)) / var(--carousel-visible));
+  gap: var(--carousel-gap);
+  margin: 0;
+  padding: 0.25rem 0.25rem 0.75rem;
+  overflow-x: auto;
+  list-style: none;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Todas las tarjetas de la fila con el mismo alto. */
+  li {
+    display: flex;
+    scroll-snap-align: start;
+
+    > * {
+      flex: 1;
+    }
+  }
+}
+
+.carousel__arrow {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--mb-border);
+  border-radius: 999px;
+  background: var(--mb-surface);
+  color: var(--mb-heading);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--mb-primary-hover);
+    color: var(--mb-primary-hover);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mb-primary-hover);
+    outline-offset: 2px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .carousel__viewport {
+    --carousel-visible: 3;
+  }
+}
+
+/* Celular: tarjeta y media, para que se note que la fila se desliza con el dedo. */
+@media (max-width: 640px) {
+  .carousel__viewport {
+    --carousel-gap: 0.75rem;
+  }
+
+  .carousel__track {
+    grid-auto-columns: 64%;
+  }
+
+  .carousel__arrow {
+    display: none;
+  }
+}

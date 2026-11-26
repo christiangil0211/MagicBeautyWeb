@@ -63,20 +63,55 @@
     display: none;
   }
 
+  /* Margen arriba para que la tarjeta elevada al pasar el mouse no se recorte. */
+  padding-top: 0.5rem;
+
   li {
     scroll-snap-align: start;
   }
 }
 
-/* Escala de grises; a color al pasar el mouse o con el foco del teclado. */
+/*
+ * Logo con sus colores reales y el nombre debajo. Al pasar el mouse (o con el
+ * foco del teclado) la tarjeta se tiñe de rosa, el borde y el nombre pasan al
+ * fucsia de la marca y la tarjeta se eleva un poco.
+ */
 .brand-logo {
-  display: grid;
-  place-items: center;
-  height: 104px;
-  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 0.75rem 0.75rem 0.85rem;
   border: 1px solid var(--mb-border-soft);
   border-radius: var(--mb-radius);
   background: var(--mb-surface);
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--mb-primary-hover);
+    background: var(--mb-primary-soft);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+
+    .brand-logo__name {
+      color: var(--mb-primary-hover);
+    }
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mb-primary-hover);
+    outline-offset: 2px;
+  }
+}
+
+.brand-logo__image {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 80px;
 
   img {
     max-width: 100%;
@@ -84,15 +119,40 @@
     width: auto;
     height: auto;
     object-fit: contain;
-    filter: grayscale(1);
-    opacity: 0.75;
-    transition: filter 0.2s ease, opacity 0.2s ease;
   }
+}
 
-  &:hover img,
-  &:focus-visible img {
-    filter: none;
-    opacity: 1;
+.brand-logo__name {
+  color: var(--mb-heading);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.brand-logos__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Pausar / reanudar el avance automático. */
+.brand-logos__toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--mb-border);
+  border-radius: 999px;
+  background: var(--mb-surface);
+  color: var(--mb-heading);
+  font-size: 0.75rem;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--mb-primary-hover);
+    color: var(--mb-primary-hover);
   }
 
   &:focus-visible {
@@ -136,7 +196,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .brand-logo img {
+  .brand-logo,
+  .brand-logo__name {
     transition: none;
+  }
+
+  .brand-logo:hover,
+  .brand-logo:focus-visible {
+    transform: none;
   }
 }

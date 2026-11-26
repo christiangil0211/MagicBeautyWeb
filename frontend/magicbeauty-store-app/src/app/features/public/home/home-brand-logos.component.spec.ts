@@ -66,3 +66,9 @@ it.each([
 
   expect(root.querySelector('.brand-logos')).toBeNull();
 });
+
+it('shows each logo in its own colors with the brand name under it', () => {
+  const root = render([brand('purpure', { name: 'Purpure' }), brand('milagros', { name: 'Milagros' })]);
+
+  expect(Array.from(root.querySelectorAll('.brand-logo__name'), name => name.textContent?.trim())).toEqual(['Purpure', 'Milagros']);
+});
