@@ -14,7 +14,8 @@ public sealed class ProductDto
 
     public string? Description { get; set; }
 
-    public int BrandId { get; set; }
+    /// <summary>NULL = sin marca.</summary>
+    public int? BrandId { get; set; }
 
     public string BrandName { get; set; } = string.Empty;
 

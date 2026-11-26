@@ -1,3 +1,4 @@
+using MagicBeauty.Store.Contracts.Brands.Responses;
 using MagicBeauty.Store.Contracts.Catalog.Responses;
 
 namespace MagicBeauty.Store.Application.Features.Catalog;
@@ -24,4 +25,13 @@ public interface ICatalogService
         string reference,
         int limit,
         CancellationToken cancellationToken);
+
+    /// <summary>Marcas activas con al menos un producto completo, ordenadas.</summary>
+    Task<IReadOnlyList<PublicBrandDto>> GetBrandsAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Marca activa por slug con sus productos completos, paginados. KeyNotFoundException
+    /// (404) si no existe o está inactiva.
+    /// </summary>
+    Task<PublicBrandPageDto> GetBrandPageAsync(string slug, int page, int pageSize, CancellationToken cancellationToken);
 }

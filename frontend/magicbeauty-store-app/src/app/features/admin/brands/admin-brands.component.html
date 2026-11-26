@@ -1,0 +1,207 @@
+<p-toast position="top-right" />
+<p-confirmdialog />
+
+<section class="brands">
+  <app-page-header eyebrow="Catálogo" title="Marcas" subtitle="Un producto tiene una sola marca. Sin marca también es válido.">
+    <div class="mb-stat">
+      <strong>{{ brands().length }}</strong>
+      <span>en total</span>
+    </div>
+    <div class="mb-stat">
+      <strong>{{ activeCount() }}</strong>
+      <span>activas</span>
+    </div>
+    <div class="mb-stat">
+      <strong>{{ featuredCount() }}</strong>
+      <span>destacadas</span>
+    </div>
+    <div class="mb-stat">
+      <strong>{{ withoutLogoCount() }}</strong>
+      <span>activas sin logo</span>
+    </div>
+  </app-page-header>
+
+  <div class="brands__workspace">
+    <!-- Lista -->
+    <aside class="panel panel--list">
+      <div class="panel__head">
+        <h2>Marcas</h2>
+        <p-button label="Nueva" icon="pi pi-plus" size="small" (onClick)="newBrand()" />
+      </div>
+
+      <input
+        pInputText
+        class="brand-search"
+        type="search"
+        placeholder="Buscar marca"
+        aria-label="Buscar marca"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)" />
+
+      @if (loading() && brands().length === 0) {
+        <app-loader message="Cargando marcas…" [compact]="true" />
+      } @else if (visibleBrands().length === 0) {
+        <div class="panel__empty">
+          <i class="pi pi-tags"></i>
+          <strong>{{ brands().length === 0 ? 'Aún no hay marcas' : 'Ninguna marca coincide' }}</strong>
+          <span>{{ brands().length === 0 ? 'Crea la primera con «Nueva».' : 'Prueba con otro nombre.' }}</span>
+        </div>
+      } @else {
+        <ul class="brand-list" role="listbox" aria-label="Marcas">
+          @for (brand of visibleBrands(); track brand.id) {
+            <li>
+              <button
+                type="button"
+                class="brand-row"
+                role="option"
+                [class.brand-row--selected]="brand.id === selectedId()"
+                [attr.aria-selected]="brand.id === selectedId()"
+                (click)="select(brand)">
+                <span class="brand-row__logo">
+                  @if (brand.logoUrl) {
+                    <img [src]="brand.logoUrl" alt="" width="56" height="32" loading="lazy" />
+                  } @else {
+                    <i class="pi pi-image" aria-hidden="true"></i>
+                  }
+                </span>
+                <span class="brand-row__text">
+                  <strong>{{ brand.name }}</strong>
+                  <small>{{ brand.productCount }} producto{{ brand.productCount === 1 ? '' : 's' }} · orden {{ brand.sortOrder }}</small>
+                </span>
+                <span class="brand-row__flags">
+                  @if (brand.isFeatured) {
+                    <i class="pi pi-star-fill" title="Destacada en el inicio" aria-label="Destacada"></i>
+                  }
+                  @if (!brand.isActive) {
+                    <p-tag value="Inactiva" severity="secondary" />
+                  }
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+
+    <!-- Formulario -->
+    <form class="panel panel--form" [formGroup]="form" (ngSubmit)="save()">
+      <div class="panel__head">
+        <div>
+          <h2>{{ selectedBrand() ? selectedBrand()!.name : 'Nueva marca' }}</h2>
+          <span class="path">/marcas/{{ form.controls.slug.value || 'url-de-la-marca' }}</span>
+        </div>
+
+        <div class="panel__actions">
+          @if (selectedBrand()) {
+            <p-button
+              [label]="selectedBrand()!.productCount > 0 ? 'Desactivar' : 'Eliminar'"
+              [icon]="selectedBrand()!.productCount > 0 ? 'pi pi-eye-slash' : 'pi pi-trash'"
+              severity="danger"
+              [text]="true"
+              size="small"
+              [disabled]="saving()"
+              (onClick)="confirmDelete()" />
+          }
+          <p-button type="submit" label="Guardar" icon="pi pi-check" size="small" [loading]="saving()" />
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="brand-name">Nombre</label>
+          <input pInputText id="brand-name" formControlName="name" placeholder="Ej: Dear Body" (input)="nameChanged()" />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <small class="error">El nombre es obligatorio.</small>
+          }
+        </div>
+
+        <div class="field">
+          <label for="brand-slug">URL</label>
+          <input pInputText id="brand-slug" formControlName="slug" placeholder="dear-body" (input)="slugTyped()" />
+          @if (form.controls.slug.invalid) {
+            <small class="error">Solo minúsculas, números y guiones.</small>
+          } @else {
+            <small class="hint">Se genera del nombre; puedes cambiarla. Debe ser única.</small>
+          }
+        </div>
+
+        <div class="field field--full">
+          <label for="brand-description">Descripción corta (opcional)</label>
+          <textarea
+            pTextarea
+            id="brand-description"
+            formControlName="description"
+            rows="2"
+            maxlength="300"
+            placeholder="Una o dos frases para la página de la marca"></textarea>
+          <small class="hint">{{ form.controls.description.value.length }}/300</small>
+        </div>
+
+        <div class="field">
+          <label for="brand-order">Orden</label>
+          <p-input-number inputId="brand-order" formControlName="sortOrder" [min]="0" [showButtons]="true" />
+          <small class="hint">Menor número, primero en /marcas y en el carrusel.</small>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Visibilidad</h3>
+        <div class="switches">
+          <label class="switch">
+            <p-toggleswitch formControlName="isActive" />
+            <span>
+              <strong>Activa</strong>
+              <small>Si se apaga, su página deja de existir (404) y no aparece en la tienda.</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <p-toggleswitch formControlName="isFeatured" />
+            <span>
+              <strong>Destacada en el inicio</strong>
+              <small>Aparece en el carrusel de logos (solo si tiene logo).</small>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Logo</h3>
+        <div class="logo-field">
+          <div class="logo-field__preview">
+            @if (logoPreview(); as logo) {
+              <img [src]="logo" [alt]="'Logo de ' + (form.controls.name.value || 'la marca')" />
+            } @else {
+              <span><i class="pi pi-image" aria-hidden="true"></i> Sin logo</span>
+            }
+          </div>
+
+          <div class="logo-field__actions">
+            <label class="logo-field__upload" for="brand-logo">
+              <i class="pi pi-upload" aria-hidden="true"></i> {{ logoPreview() ? 'Reemplazar logo' : 'Subir logo' }}
+            </label>
+            <input
+              id="brand-logo"
+              class="visually-hidden"
+              type="file"
+              [accept]="logoAccept"
+              [disabled]="saving()"
+              (change)="selectLogo($event)" />
+            @if (logoPreview()) {
+              <p-button label="Quitar logo" icon="pi pi-trash" severity="secondary" [text]="true" size="small" [disabled]="saving()" (onClick)="markLogoForRemoval()" />
+            }
+            @if (pendingLogo(); as file) {
+              <small>{{ file.name }} · se sube al guardar.</small>
+            }
+            @if (removeLogo()) {
+              <small>El logo se quitará al guardar.</small>
+            }
+            <small class="hint">Una sola imagen: PNG, SVG o WebP, máximo 1 MB. Mejor con fondo transparente. Reemplazarlo borra el anterior.</small>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <app-brand-products [brand]="selectedBrand() ?? null" (changed)="productsChanged()" />
+</section>

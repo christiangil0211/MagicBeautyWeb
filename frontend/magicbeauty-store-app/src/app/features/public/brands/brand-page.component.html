@@ -1,0 +1,87 @@
+<p-toast position="top-right" />
+
+<div class="brand-page">
+  <nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <a routerLink="/">Inicio</a>
+    <span aria-hidden="true">›</span>
+    <a routerLink="/marcas">Marcas</a>
+    @if (data(); as current) {
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">{{ current.brand.name }}</span>
+    }
+  </nav>
+
+  @if (loading()) {
+    <app-loader message="Cargando la marca…" />
+  } @else if (notFound()) {
+    <app-empty-state icon="pi-tag" title="No encontramos esta marca" message="Puede que ya no esté disponible. Mira todas nuestras marcas o el catálogo completo." [boxed]="true">
+      <a class="mb-btn" routerLink="/marcas">Ver marcas</a>
+      <a class="mb-btn mb-btn--ghost" routerLink="/catalogo">Ver catálogo</a>
+    </app-empty-state>
+  } @else if (loadFailed()) {
+    <app-empty-state icon="pi-refresh" title="No pudimos cargar esta marca" message="Revisa tu conexión e inténtalo de nuevo." [boxed]="true">
+      <button type="button" class="mb-btn" (click)="retry()">Reintentar</button>
+    </app-empty-state>
+  } @else if (data(); as current) {
+    <header class="brand-header">
+      @if (current.brand.logoUrl) {
+        <div class="brand-header__logo">
+          <img [src]="current.brand.logoUrl" [alt]="'Logo de ' + current.brand.name" width="240" height="120" fetchpriority="high" />
+        </div>
+      }
+      <div class="brand-header__text">
+        <h1>{{ current.brand.name }} <span>en Cali</span></h1>
+        <p class="brand-header__lead">Al detal y por mayor · {{ current.total }} producto{{ current.total === 1 ? '' : 's' }}</p>
+        @if (current.brand.description) {
+          <p class="brand-header__description">{{ current.brand.description }}</p>
+        }
+      </div>
+    </header>
+
+    @if (current.products.length > 0) {
+      <div class="filters" role="group" aria-label="Filtrar productos">
+        @if (categoryOptions().length > 1) {
+          <label class="filters__field">
+            <span>Categoría</span>
+            <select [value]="categoryId() ?? ''" (change)="selectCategory($any($event.target).value)">
+              <option value="">Todas ({{ current.total }})</option>
+              @for (option of categoryOptions(); track option.id) {
+                <option [value]="option.id">{{ option.name }} ({{ option.count }})</option>
+              }
+            </select>
+          </label>
+        }
+        <label class="filters__field">
+          <span>Ordenar por</span>
+          <select [value]="sort()" (change)="selectSort($any($event.target).value)">
+            <option value="name">Nombre</option>
+            <option value="price-asc">Precio: menor a mayor</option>
+            <option value="price-desc">Precio: mayor a menor</option>
+          </select>
+        </label>
+        <p class="filters__count" aria-live="polite">{{ filtered().length }} producto{{ filtered().length === 1 ? '' : 's' }}</p>
+      </div>
+
+      <div class="grid">
+        @for (product of pagedCards(); track product.id) {
+          <app-product-card
+            [product]="product"
+            [detailLink]="['/catalogo', product.reference]"
+            addLabel="Agregar a cotización"
+            [ignoreStock]="true"
+            [showFavorite]="false"
+            [showReference]="true"
+            priceLayout="columns"
+            (addToCart)="onAddToCart($event)"
+            (chooseVariant)="onChooseVariant($event)" />
+        }
+      </div>
+
+      <app-pagination [page]="page()" [pageSize]="pageSize" [total]="filtered().length" (pageChange)="goToPage($event)" />
+    } @else {
+      <app-empty-state icon="pi-shopping-bag" title="Pronto tendremos productos de esta marca" message="Mientras tanto, mira el catálogo completo." [boxed]="true">
+        <a class="mb-btn" routerLink="/catalogo">Ver catálogo</a>
+      </app-empty-state>
+    }
+  }
+</div>

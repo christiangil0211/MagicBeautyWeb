@@ -121,7 +121,7 @@
               </div>
             </td>
 
-            <td>{{ product.brandName }}</td>
+            <td>{{ product.brandName || "Sin marca" }}</td>
 
             <td>
               @if (product.categories.length > 0) {

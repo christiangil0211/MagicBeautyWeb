@@ -76,6 +76,12 @@ export const routes: Routes = [
         title: 'Productos · Magic Beauty'
       },
       {
+        path: 'brands',
+        loadComponent: () =>
+          import('./features/admin/brands/admin-brands.component').then(m => m.AdminBrandsComponent),
+        title: 'Marcas · Magic Beauty'
+      },
+      {
         path: 'catalogs',
         loadComponent: () =>
           import('./features/admin/catalogs/admin-catalogs.component').then(m => m.AdminCatalogsComponent),
@@ -104,6 +110,24 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./layouts/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
     children: [
+      {
+        path: 'marcas',
+        loadComponent: () => import('./features/public/brands/brands.component').then(m => m.BrandsComponent),
+        title: 'Marcas de maquillaje y cosméticos en Cali | Magic Beauty Cosmetics',
+        data: {
+          seo: {
+            description:
+              'Las marcas de maquillaje, skincare y cuidado capilar que encuentras en Magic Beauty Cosmetics, Cali: al detal y al por mayor. Elige una y mira sus productos.',
+            jsonLd: { breadcrumb: buildBreadcrumbJsonLd([{ name: 'Inicio', path: '/' }, { name: 'Marcas', path: '/marcas' }]) }
+          } satisfies SeoRouteData
+        }
+      },
+      {
+        // Título, canonical y JSON-LD los pone la página con los datos de la marca.
+        path: 'marcas/:slug',
+        loadComponent: () => import('./features/public/brands/brand-page.component').then(m => m.BrandPageComponent),
+        title: 'Marca · Magic Beauty Cosmetics'
+      },
       {
         path: 'calendarios-de-adviento',
         loadComponent: () => import('./features/public/advent-calendar/advent-calendar.component').then(m => m.AdventCalendarComponent),

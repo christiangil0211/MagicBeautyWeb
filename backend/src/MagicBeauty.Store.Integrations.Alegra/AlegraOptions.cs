@@ -29,9 +29,6 @@ public sealed class AlegraOptions
     /// </summary>
     public string? PriceTypeCode { get; set; }
 
-    /// <summary>Marca con la que se crean los productos nuevos (se crea si no existe).</summary>
-    public string DefaultBrandName { get; set; } = "Sin marca";
-
     /// <summary>Alegra devuelve como maximo 30 items por pagina.</summary>
     public int PageSize { get; set; } = 30;
 

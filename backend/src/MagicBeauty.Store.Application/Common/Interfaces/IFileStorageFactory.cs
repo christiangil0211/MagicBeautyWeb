@@ -1,4 +1,4 @@
 namespace MagicBeauty.Store.Application.Common.Interfaces;
 
-public enum FileStorageDestination { Products, Categories, Catalogs }
+public enum FileStorageDestination { Products, Categories, Catalogs, Brands }
 public interface IFileStorageFactory { IFileStorage Get(FileStorageDestination destination); }

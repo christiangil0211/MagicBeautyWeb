@@ -16,6 +16,9 @@ public interface ICategoryService
 
     Task<IReadOnlyList<CategoryTileDto>> GetHomeTilesAsync(CancellationToken cancellationToken);
 
+    /// <summary>Carruseles de categorías del inicio (máximo 5), en el orden de las categorías.</summary>
+    Task<IReadOnlyList<CategoryCarouselDto>> GetHomeCarouselsAsync(CancellationToken cancellationToken);
+
     Task<CategoryDto> GetByIdAsync(int id, CancellationToken cancellationToken);
 
     Task<CategoryDto> CreateAsync(CreateCategoryRequest request, CancellationToken cancellationToken);

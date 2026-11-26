@@ -1,5 +1,7 @@
+using MagicBeauty.Store.Application.Common;
 using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Application.Features.Pricing;
+using MagicBeauty.Store.Contracts.Brands.Responses;
 using MagicBeauty.Store.Contracts.Catalog.Responses;
 using MagicBeauty.Store.Domain.Entities;
 
@@ -12,11 +14,76 @@ namespace MagicBeauty.Store.Application.Features.Catalog;
 /// </summary>
 public sealed class CatalogService(
     IProductRepository productRepository,
+    IBrandRepository brandRepository,
     IPriceVisibilityPolicy priceVisibilityPolicy,
     IPriceAudienceProvider priceAudienceProvider) : ICatalogService
 {
     /// <summary>Tope de relacionados por consulta, pida lo que pida el cliente.</summary>
     private const int MaxRelatedProducts = 20;
+
+    /// <summary>Tope por página de una marca: alcanza para la marca más grande en una sola consulta.</summary>
+    public const int MaxBrandPageSize = 500;
+
+    public async Task<IReadOnlyList<PublicBrandDto>> GetBrandsAsync(CancellationToken cancellationToken)
+    {
+        var counts = await productRepository.GetCompleteProductCountsByBrandAsync(cancellationToken);
+
+        return (await brandRepository.GetAllAsync(null, cancellationToken))
+            .Where(brand => IsPublicBrand(brand) && counts.GetValueOrDefault(brand.Id) > 0)
+            .Select(brand => ToPublicBrand(brand, counts[brand.Id]))
+            .ToList();
+    }
+
+    public async Task<PublicBrandPageDto> GetBrandPageAsync(string slug, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        var normalized = slug?.Trim().ToLowerInvariant() ?? string.Empty;
+        var brand = Slugs.IsValid(normalized) ? await brandRepository.GetBySlugAsync(normalized, cancellationToken) : null;
+
+        // Una marca desactivada (o el comodín "Sin marca") no existe para la tienda.
+        if (brand is null || !IsPublicBrand(brand))
+        {
+            throw new KeyNotFoundException("La marca no existe.");
+        }
+
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxBrandPageSize);
+
+        var visiblePriceTypes = await GetVisiblePriceTypesAsync(cancellationToken);
+        var complete = (await productRepository.GetAllAsync(brand.Id, null, isActive: true, hasCategories: null, search: null, cancellationToken))
+            .Where(ProductCompleteness.IsComplete)
+            .ToList();
+
+        return new PublicBrandPageDto
+        {
+            Brand = ToPublicBrand(brand, complete.Count),
+            Total = complete.Count,
+            Page = page,
+            PageSize = pageSize,
+            Products = complete
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(product => ToListItem(product, visiblePriceTypes))
+                .ToList()
+        };
+    }
+
+    private static PublicBrandDto ToPublicBrand(Brand brand, int productCount) => new()
+    {
+        Name = brand.Name,
+        Slug = brand.Slug,
+        LogoUrl = brand.LogoUrl,
+        Description = brand.Description,
+        IsFeatured = brand.IsFeatured,
+        ProductCount = productCount
+    };
+
+    /// <summary>Enlace a la página de la marca solo si existe para la tienda.</summary>
+    private static string? PublicBrandSlug(Product product) =>
+        product.Brand is { } brand && IsPublicBrand(brand) ? brand.Slug : null;
+
+    /// <summary>Activa, con slug y que no sea el comodín "Sin marca".</summary>
+    public static bool IsPublicBrand(Brand brand) =>
+        brand.IsActive && !string.IsNullOrEmpty(brand.Slug) && !Slugs.IsNoBrandPlaceholder(brand.Name);
 
     public async Task<IReadOnlyList<CatalogProductListItemDto>> GetProductsAsync(
         int? brandId,
@@ -109,6 +176,7 @@ public sealed class CatalogService(
             Reference = product.Reference,
             Name = product.Name,
             BrandName = product.Brand?.Name ?? string.Empty,
+            BrandSlug = PublicBrandSlug(product),
             HasVariants = product.HasVariants,
             AvailableQuantity = product.Variants
                 .Where(variant => variant.IsActive)
@@ -157,6 +225,7 @@ public sealed class CatalogService(
             Name = product.Name,
             Description = product.Description,
             BrandName = product.Brand?.Name ?? string.Empty,
+            BrandSlug = PublicBrandSlug(product),
             Prices = MapVisiblePrices(product, visiblePriceTypes),
             HasVariants = product.HasVariants,
             AvailableQuantity = activeVariants.Sum(variant => variant.Quantity),

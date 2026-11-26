@@ -29,6 +29,10 @@ public sealed class AzureBlobStorageOptions
     public string CatalogContainerName { get; set; } = "catalog-files";
     public string? CatalogPublicBaseUrl { get; set; }
 
+    /// <summary>Logos de las marcas (uno por marca). Contenedor con lectura pública de blobs.</summary>
+    public string BrandContainerName { get; set; } = "brand-logos";
+    public string? BrandPublicBaseUrl { get; set; }
+
     /// <summary>Opcional: dominio propio o CDN delante del contenedor.</summary>
     public string? PublicBaseUrl { get; set; }
 

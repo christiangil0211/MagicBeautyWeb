@@ -164,6 +164,11 @@
   background: var(--mb-surface);
   cursor: pointer;
 
+  // El interruptor nunca se encoge, aunque el texto de al lado sea largo.
+  p-toggleswitch {
+    flex-shrink: 0;
+  }
+
   span {
     display: flex;
     flex-direction: column;

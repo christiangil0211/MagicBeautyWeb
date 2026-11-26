@@ -1,3 +1,4 @@
+using MagicBeauty.Store.Application.Common;
 using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Application.Features.Sitemap;
 using MagicBeauty.Store.Domain.Entities;
@@ -13,8 +14,15 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
     /// <summary>Evita consultas desmedidas si alguien pega un texto largo.</summary>
     private const int MaxSearchTerms = 6;
 
-    /// <summary>Tipo de precio publico (Detal), sembrado en PriceTypeConfiguration.</summary>
-    private const string RetailPriceTypeCode = "RETAIL";
+    private const string RetailPriceTypeCode = ProductCompleteness.RetailPriceTypeCode;
+
+    /// <summary>Mismo criterio que ProductCompleteness.IsComplete, traducible a SQL.</summary>
+    private IQueryable<Product> CompleteProducts() => dbContext.Products
+        .AsNoTracking()
+        .Where(product => product.IsActive)
+        .Where(product => product.Images.Any(image => image.IsActive))
+        .Where(product => product.Prices.Any(price =>
+            price.IsActive && price.Amount > 0 && price.PriceType != null && price.PriceType.Code == RetailPriceTypeCode));
 
     private static IEnumerable<string> SplitSearchTerms(string? search)
     {
@@ -45,7 +53,11 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
                 .ThenInclude(price => price.PriceType)
             .AsQueryable();
 
-        if (brandId.HasValue)
+        if (brandId == ProductFilters.WithoutBrand)
+        {
+            query = query.Where(product => product.BrandId == null);
+        }
+        else if (brandId.HasValue)
         {
             query = query.Where(product => product.BrandId == brandId.Value);
         }
@@ -109,15 +121,19 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
         // Solo fichas completas: activas, con al menos una foto activa y precio al
         // detal. Las demas llevan noindex en el sitio hasta que se completen (mismo
         // criterio que isCompleteProduct en el frontend).
-        return await dbContext.Products
-            .AsNoTracking()
-            .Where(product => product.IsActive)
-            .Where(product => product.Images.Any(image => image.IsActive))
-            .Where(product => product.Prices.Any(price =>
-                price.IsActive && price.Amount > 0 && price.PriceType != null && price.PriceType.Code == RetailPriceTypeCode))
+        return await CompleteProducts()
             .OrderBy(product => product.Reference)
             .Select(product => new ProductSitemapEntry(product.Reference, product.UpdatedAt))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<int, int>> GetCompleteProductCountsByBrandAsync(CancellationToken cancellationToken)
+    {
+        return await CompleteProducts()
+            .Where(product => product.BrandId != null)
+            .GroupBy(product => product.BrandId!.Value)
+            .Select(group => new { BrandId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.BrandId, item => item.Count, cancellationToken);
     }
 
     public async Task<IReadOnlyList<int>> GetCategoryIdsWithActiveProductsAsync(

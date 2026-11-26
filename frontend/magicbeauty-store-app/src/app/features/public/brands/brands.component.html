@@ -1,0 +1,43 @@
+<div class="brands-page">
+  <nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <a routerLink="/">Inicio</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page">Marcas</span>
+  </nav>
+
+  <header class="brands-page__head">
+    <h1>Marcas de maquillaje y cosméticos <span>en Cali</span></h1>
+    <p>Las marcas que encuentras en Magic Beauty Cosmetics, al detal y al por mayor. Elige una para ver todos sus productos.</p>
+  </header>
+
+  @if (loading()) {
+    <app-loader message="Cargando marcas…" />
+  } @else if (loadFailed()) {
+    <app-empty-state icon="pi-refresh" title="No pudimos cargar las marcas" message="Revisa tu conexión e inténtalo de nuevo." [boxed]="true">
+      <button type="button" class="mb-btn" (click)="load()">Reintentar</button>
+      <a class="mb-btn mb-btn--ghost" routerLink="/catalogo">Ver catálogo</a>
+    </app-empty-state>
+  } @else if (brands().length === 0) {
+    <app-empty-state icon="pi-tag" title="Muy pronto verás aquí nuestras marcas" message="Mientras tanto, mira el catálogo completo." [boxed]="true">
+      <a class="mb-btn" routerLink="/catalogo">Ver catálogo</a>
+    </app-empty-state>
+  } @else {
+    <ul class="brand-grid">
+      @for (brand of brands(); track brand.slug) {
+        <li>
+          <a class="brand-card" [routerLink]="['/marcas', brand.slug]">
+            <span class="brand-card__logo">
+              @if (brand.logoUrl) {
+                <img [src]="brand.logoUrl" [alt]="'Logo de ' + brand.name" width="200" height="100" loading="lazy" decoding="async" />
+              } @else {
+                <span class="brand-card__name-logo">{{ brand.name }}</span>
+              }
+            </span>
+            <span class="brand-card__name">{{ brand.name }}</span>
+            <span class="brand-card__count">{{ brand.productCount }} producto{{ brand.productCount === 1 ? '' : 's' }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</div>

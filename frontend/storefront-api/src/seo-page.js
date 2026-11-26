@@ -59,13 +59,24 @@ class ApiUnavailableError extends Error {}
 // ---------------------------------------------------------------- rutas
 
 /**
- * Qué pide la URL: una ficha, una categoría o algo que la app no tiene.
+ * Qué pide la URL: una ficha, una categoría, la lista de marcas, una marca o algo
+ * que la app no tiene.
  * Se toleran la barra final y la codificación de la referencia.
  */
 function parsePath(pathname) {
   const segments = pathname.replace(/\/+$/, '').split('/').filter(Boolean).map(safeDecode);
 
-  if (segments[0] !== 'catalogo' || segments.some(segment => segment === null)) {
+  if (segments.some(segment => segment === null)) {
+    return { kind: 'unknown' };
+  }
+
+  if (segments[0] === 'marcas') {
+    if (segments.length === 1) return { kind: 'brands' };
+    if (segments.length === 2) return { kind: 'brand', slug: segments[1] };
+    return { kind: 'unknown' };
+  }
+
+  if (segments[0] !== 'catalogo') {
     return { kind: 'unknown' };
   }
 
@@ -375,9 +386,125 @@ function categoryPage(trail) {
   };
 }
 
-function notFoundPage(kind) {
+const BRANDS_TITLE = 'Marcas de maquillaje y cosméticos en Cali | Magic Beauty Cosmetics';
+const BRANDS_DESCRIPTION =
+  'Las marcas de maquillaje, skincare y cuidado capilar que encuentras en Magic Beauty Cosmetics, Cali: al detal y al por mayor. Elige una y mira sus productos.';
+
+/** Open Graph no admite SVG: en ese caso queda la imagen de la tienda. */
+function shareableLogo(logoUrl) {
+  return logoUrl && !/\.svg(\?|$)/i.test(logoUrl) ? logoUrl : undefined;
+}
+
+/** Lista de marcas (los mismos datos que /marcas en la app). */
+function brandsPage(brands) {
+  const crumbs = [
+    { name: 'Inicio', path: '/' },
+    { name: 'Marcas', path: '/marcas' }
+  ];
+
   return {
-    title: kind === 'category' ? 'Categoría no encontrada · Magic Beauty Cosmetics' : kind === 'product' ? 'Producto no encontrado · Magic Beauty Cosmetics' : 'Página no encontrada · Magic Beauty Cosmetics',
+    title: BRANDS_TITLE,
+    description: BRANDS_DESCRIPTION,
+    noindex: false,
+    path: '/marcas',
+    type: 'website',
+    jsonLd: { breadcrumb: breadcrumbJsonLd(crumbs) },
+    body: [
+      breadcrumbHtml(crumbs),
+      '<h1>Marcas de maquillaje y cosméticos en Cali</h1>',
+      brands.length > 0
+        ? '<ul>' +
+          brands
+            .map(brand => `<li><a href="/marcas/${escapeHtml(encodeURIComponent(brand.slug))}">${escapeHtml(brand.name)}</a> (${brand.productCount} productos)</li>`)
+            .join('') +
+          '</ul>'
+        : '',
+      '<p><a href="/catalogo">Ver el catálogo digital</a></p>'
+    ].join('')
+  };
+}
+
+/**
+ * Página de una marca: el título pedido, canonical, CollectionPage sobre la marca
+ * con sus fichas completas y migas, igual que BrandPageComponent en la app.
+ */
+function brandPage(data) {
+  const brand = data.brand;
+  const path = '/marcas/' + encodeURIComponent(brand.slug);
+  const url = SITE_URL + path;
+  const products = data.products ?? [];
+  const total = data.total ?? products.length;
+  const crumbs = [
+    { name: 'Inicio', path: '/' },
+    { name: 'Marcas', path: '/marcas' },
+    { name: brand.name, path }
+  ];
+  const logo = shareableLogo(brand.logoUrl);
+  const count = `${total} producto${total === 1 ? '' : 's'}`;
+
+  return {
+    title: `${brand.name} en Cali al detal y por mayor | Magic Beauty Cosmetics`,
+    description: toMetaDescription(
+      brand.description?.trim() ||
+        `Compra ${brand.name} en Magic Beauty Cosmetics, Cali: ${count} al detal y por mayor. Arma tu pedido y envíalo por WhatsApp.`
+    ),
+    noindex: false,
+    path,
+    type: 'website',
+    image: logo,
+    imageAlt: logo ? 'Logo de ' + brand.name : undefined,
+    jsonLd: {
+      page: {
+        '@context': SCHEMA,
+        '@type': 'CollectionPage',
+        '@id': url + '#page',
+        name: brand.name + ' en Cali al detal y por mayor',
+        url,
+        inLanguage: 'es-CO',
+        ...(brand.description ? { description: brand.description } : {}),
+        isPartOf: { '@id': SITE_URL + '/#website' },
+        about: { '@type': 'Brand', name: brand.name, ...(brand.logoUrl ? { logo: brand.logoUrl } : {}) },
+        mainEntity: {
+          '@type': 'ItemList',
+          numberOfItems: products.length,
+          itemListElement: products.slice(0, 30).map((product, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            url: SITE_URL + '/catalogo/' + encodeURIComponent(product.reference),
+            name: product.name
+          }))
+        }
+      },
+      breadcrumb: breadcrumbJsonLd(crumbs)
+    },
+    body: [
+      breadcrumbHtml(crumbs),
+      brand.logoUrl ? `<img src="${escapeHtml(brand.logoUrl)}" alt="Logo de ${escapeHtml(brand.name)}" width="240" height="120">` : '',
+      `<h1>${escapeHtml(brand.name)} en Cali</h1>`,
+      `<p>Al detal y por mayor · ${count}</p>`,
+      brand.description ? `<p>${escapeHtml(brand.description)}</p>` : '',
+      products.length > 0
+        ? '<ul>' +
+          products
+            .slice(0, 30)
+            .map(product => `<li><a href="/catalogo/${escapeHtml(encodeURIComponent(product.reference))}">${escapeHtml(product.name)}</a></li>`)
+            .join('') +
+          '</ul>'
+        : '',
+      '<p><a href="/marcas">Ver todas las marcas</a></p>'
+    ].join('')
+  };
+}
+
+function notFoundPage(kind) {
+  const titles = {
+    category: 'Categoría no encontrada · Magic Beauty Cosmetics',
+    product: 'Producto no encontrado · Magic Beauty Cosmetics',
+    brand: 'Marca no encontrada · Magic Beauty Cosmetics'
+  };
+
+  return {
+    title: titles[kind] ?? 'Página no encontrada · Magic Beauty Cosmetics',
     noindex: true,
     jsonLd: {},
     body: ''
@@ -528,7 +655,22 @@ async function getSeoPageResponse({ originalUrl, fetchImpl = fetch, now = Date.n
         : htmlResponse(404, renderPage(shell, notFoundPage('category')), NO_CACHE);
     }
 
-    // Una ruta bajo /catalogo que la app no tiene (p. ej. /catalogo/a/b).
+    if (route.kind === 'brands') {
+      const brands = await fetchApiJson(fetchImpl, '/marcas');
+
+      return htmlResponse(200, renderPage(shell, brandsPage(brands ?? [])), PAGE_CACHE);
+    }
+
+    if (route.kind === 'brand') {
+      // Para el HTML inicial basta la primera página de productos.
+      const data = await fetchApiJson(fetchImpl, '/marcas/' + encodeURIComponent(route.slug) + '?pageSize=30');
+
+      return data
+        ? htmlResponse(200, renderPage(shell, brandPage(data)), PAGE_CACHE)
+        : htmlResponse(404, renderPage(shell, notFoundPage('brand')), NO_CACHE);
+    }
+
+    // Una ruta bajo /catalogo o /marcas que la app no tiene (p. ej. /catalogo/a/b).
     return htmlResponse(404, renderPage(shell, notFoundPage('unknown')), NO_CACHE);
   } catch (error) {
     log(`API no disponible para ${pathname}: ${error instanceof Error ? error.message : error}`);

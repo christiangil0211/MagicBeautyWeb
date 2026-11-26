@@ -129,7 +129,7 @@ public sealed class AlegraIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task CreatesMissingProductsInactiveWithTheDefaultBrandStockPriceAndLink()
+    public async Task CreatesMissingProductsInactiveWithoutBrandStockPriceAndLink()
     {
         var result = await SyncAsync(Item("700", "NEW001", "Base líquida", 42000m, 5));
         db.ChangeTracker.Clear();
@@ -137,7 +137,8 @@ public sealed class AlegraIntegrationTests : IDisposable
         Assert.Equal(1, result.Created);
         var product = await LoadAsync("NEW001");
         Assert.False(product.IsActive);
-        Assert.Equal("Sin marca", (await db.Brands.SingleAsync(brand => brand.Id == product.BrandId)).Name);
+        // La marca la decide solo la tienda: el producto nace sin marca.
+        Assert.Null(product.BrandId);
         Assert.False(product.HasVariants);
         Assert.Equal(5, product.Variants.Single().Quantity);
         Assert.Equal(42000m, product.Prices.Single().Amount);
@@ -145,11 +146,19 @@ public sealed class AlegraIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task ReusesTheDefaultBrandForEveryNewProduct()
+    public async Task NeverCreatesOrChangesBrands()
     {
-        await SyncAsync(Item("701", "NEW001", "Uno", 1000m, 1), Item("702", "NEW002", "Dos", 1000m, 1));
+        var brandsBefore = await db.Brands.CountAsync();
 
-        Assert.Equal(1, await db.Brands.CountAsync(brand => brand.Name == "Sin marca"));
+        await SyncAsync(
+            Item("701", "NEW001", "Uno", 1000m, 1),
+            Item("702", "NEW002", "Dos", 1000m, 1),
+            Item("500", "ACO011", "Labial rojo renombrado", 1000m, 1));
+        db.ChangeTracker.Clear();
+
+        Assert.Equal(brandsBefore, await db.Brands.CountAsync());
+        Assert.False(await db.Brands.AnyAsync(brand => brand.Name == "Sin marca"));
+        Assert.Equal(1, (await LoadAsync("ACO011")).BrandId);
     }
 
     [Fact]
@@ -327,7 +336,6 @@ public sealed class AlegraIntegrationTests : IDisposable
         return new AlegraProductSyncService(
             alegra.Object,
             products.Object,
-            new BrandService(new BrandRepository(db)),
             new PriceTypeService(new PriceTypeRepository(db)),
             linksDb,
             syncLock,
