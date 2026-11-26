@@ -1,6 +1,6 @@
 ﻿import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { Subscription, exhaustMap, timer } from 'rxjs';
@@ -46,6 +46,7 @@ export class SalesImportComponent {
   private readonly destroyRef = inject(DestroyRef);
   private polling?: Subscription;
 
+  readonly imported = output<void>();
   readonly run = signal<SalesImportRun | null>(null);
   readonly starting = signal(false);
   readonly error = signal('');
@@ -103,6 +104,7 @@ export class SalesImportComponent {
       next: current => {
         this.run.set(current);
         if (current.status === 'Succeeded' || current.status === 'Failed') {
+          if (current.status === 'Succeeded') this.imported.emit();
           this.pollingId.set(null);
           this.polling?.unsubscribe();
         }

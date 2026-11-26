@@ -1,4 +1,4 @@
-﻿import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, Subject, catchError, finalize, of, switchMap, timer } from 'rxjs';
@@ -14,7 +14,6 @@ import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 
 import { BrandService } from '../../../core/services/brand.service';
-import { SalesImportComponent } from './sales-import.component';
 import { AlegraSyncButtonComponent } from '../../../integrations/alegra/alegra-sync-button/alegra-sync-button.component';
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -46,7 +45,6 @@ export const WITHOUT_BRAND = 0;
     PageHeaderComponent,
     LoaderComponent,
     AlegraSyncButtonComponent,
-    SalesImportComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './admin-products.component.html',

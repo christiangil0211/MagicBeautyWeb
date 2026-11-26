@@ -5,7 +5,6 @@ import { BrandService } from '../../../core/services/brand.service';
 import { ProductService } from '../../../core/services/product.service';
 import { ProductListItem } from '../../../shared/models/product.model';
 import { AlegraService } from '../../../integrations/alegra/alegra.service';
-import { SalesImportService } from '../../../core/services/sales-import.service';
 import { AdminProductsComponent } from './admin-products.component';
 
 /**
@@ -13,14 +12,13 @@ import { AdminProductsComponent } from './admin-products.component';
  * prueba hacía una petición real a localhost y solo pasaba con el API local
  * encendido (whenStable esperaba esa respuesta para siempre).
  */
-const SALES_IDLE = { provide: SalesImportService, useValue: { latest: () => of(null) } };
 const ALEGRA_OFF = { provide: AlegraService, useValue: { isEnabled: () => of(false) } };
 
 it('searches while typing and ignores an obsolete response', async () => {
   const requests: { search: string | null | undefined; response: Subject<ProductListItem[]> }[] = [];
   TestBed.configureTestingModule({
     imports: [AdminProductsComponent],
-    providers: [provideRouter([]), ALEGRA_OFF, SALES_IDLE,
+    providers: [provideRouter([]), ALEGRA_OFF,
       { provide: BrandService, useValue: { getAll: () => of([]) } },
       { provide: ProductService, useValue: { getAll: (filters: { search?: string | null }) => {
         const response = new Subject<ProductListItem[]>();
@@ -56,7 +54,7 @@ function setupFilters() {
   const all = [item(1, true, ['Labios']), item(2, true, []), item(3, false, ['Labios']), item(4, false, [])];
   TestBed.configureTestingModule({
     imports: [AdminProductsComponent],
-    providers: [provideRouter([]), ALEGRA_OFF, SALES_IDLE,
+    providers: [provideRouter([]), ALEGRA_OFF,
       { provide: BrandService, useValue: { getAll: () => of([]) } },
       // Imita al API: el filtrado ocurre en el servidor.
       { provide: ProductService, useValue: { getAll: (filters: { isActive?: boolean | null; hasCategories?: boolean | null }) => {
