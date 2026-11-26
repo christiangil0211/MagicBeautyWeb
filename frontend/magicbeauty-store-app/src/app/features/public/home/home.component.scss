@@ -161,7 +161,11 @@
   }
 }
 
-/* ===== Productos favoritos: reserva su alto mientras se carga ===== */
+/*
+ * ===== Productos favoritos: reserva su alto mientras se carga =====
+ * Igual al alto medido de la sección ya cargada (514 px en escritorio), para que
+ * el contenido de abajo no salte cuando llegan los productos.
+ */
 .favorites--placeholder {
   min-height: 520px;
 }
@@ -341,8 +345,9 @@
     gap: 0.75rem;
   }
 
+  /* Alto medido de la sección ya cargada a 375 px (469 px): sin salto al llegar. */
   .favorites--placeholder {
-    min-height: 420px;
+    min-height: 470px;
   }
 
   .visit__map,

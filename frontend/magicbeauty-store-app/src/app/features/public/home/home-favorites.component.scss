@@ -1,6 +1,13 @@
+/* Mismo alto que el marcador del inicio mientras carga (ver home.component.scss). */
 :host {
   display: block;
-  min-height: 420px;
+  min-height: 520px;
+}
+
+@media (max-width: 640px) {
+  :host {
+    min-height: 470px;
+  }
 }
 
 /* Si no hay productos listos para el inicio (o el catálogo falló), la sección no se muestra. */
