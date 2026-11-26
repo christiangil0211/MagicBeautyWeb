@@ -148,6 +148,22 @@
   color: var(--mb-text-muted);
 }
 
+/* La marca enlaza a /marcas/{slug}. */
+.info__brand--link {
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+
+  &:hover {
+    color: var(--mb-primary-hover);
+    border-bottom-color: currentColor;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-primary-hover);
+    outline-offset: 2px;
+  }
+}
+
 .info__name {
   margin: 0.4rem 0 0.35rem;
   font-size: clamp(1.7rem, 3vw, 2.3rem);

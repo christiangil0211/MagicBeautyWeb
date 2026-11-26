@@ -1,14 +1,25 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { publicBrandName } from '../seo/seo.model';
 import { CatalogProductListItem, ProductDetail } from '../../shared/models/product.model';
 
 export interface CatalogFilters {
   brandId?: number | null;
   categoryId?: number | null;
   search?: string | null;
+}
+
+/**
+ * Marca que ve la clienta: vacía si el producto no tiene marca. Mientras exista la
+ * antigua marca "Sin marca" en la base (antes del script de datos), también se
+ * oculta: en la tienda nunca aparece "SIN MARCA", simplemente no hay marca.
+ */
+function withPublicBrand<T extends { brandName: string }>(item: T): T {
+  const brandName = publicBrandName(item.brandName) ?? '';
+  return brandName === item.brandName ? item : { ...item, brandName };
 }
 
 /**
@@ -40,10 +51,9 @@ export class CatalogService {
       params = params.set('search', filters.search);
     }
 
-    return this.http.get<CatalogProductListItem[]>(`${this.apiUrl}/products`, {
-      params,
-      transferCache: false
-    });
+    return this.http
+      .get<CatalogProductListItem[]>(`${this.apiUrl}/products`, { params, transferCache: false })
+      .pipe(map(items => items.map(withPublicBrand)));
   }
 
   /** Productos de la misma categoría que el de la referencia, sin incluirlo. */
@@ -51,12 +61,12 @@ export class CatalogService {
     return this.http.get<CatalogProductListItem[]>(
       `${this.apiUrl}/products/${encodeURIComponent(reference)}/related`,
       { params: new HttpParams().set('limit', limit), transferCache: false }
-    );
+    ).pipe(map(items => items.map(withPublicBrand)));
   }
 
   getProductDetail(reference: string): Observable<ProductDetail> {
-    return this.http.get<ProductDetail>(`${this.apiUrl}/products/${reference}`, {
-      transferCache: false
-    });
+    return this.http
+      .get<ProductDetail>(`${this.apiUrl}/products/${reference}`, { transferCache: false })
+      .pipe(map(withPublicBrand));
   }
 }

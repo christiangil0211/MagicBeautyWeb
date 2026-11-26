@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { NEVER, Observable, of, throwError } from 'rxjs';
 
 import { AuthService } from '../../../core/services/auth.service';
+import { BrandService } from '../../../core/services/brand.service';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { OrderDraftService } from '../../../core/services/order-draft.service';
@@ -38,7 +39,8 @@ async function render(
       provideRouter([]),
       { provide: AuthService, useValue: { canManageStore: signal(options.admin ?? false) } },
       { provide: CategoryService, useValue: { getHomeTiles: () => options.tiles$ ?? of(options.tiles ?? []) } },
-      { provide: CatalogService, useValue: { getProducts: () => options.products$ ?? of(options.products ?? []) } }
+      { provide: CatalogService, useValue: { getProducts: () => options.products$ ?? of(options.products ?? []) } },
+      { provide: BrandService, useValue: { getPublicBrands: () => of([]) } }
     ],
     deferBlockBehavior: DeferBlockBehavior.Manual
   });

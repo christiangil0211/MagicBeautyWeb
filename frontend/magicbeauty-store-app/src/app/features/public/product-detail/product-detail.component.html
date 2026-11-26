@@ -65,7 +65,14 @@
 
     <!-- Información -->
     <div class="info">
-      <span class="info__brand">{{ item.brandName }}</span>
+      <!-- La marca enlaza a su página; sin marca no se muestra nada. -->
+      @if (item.brandName) {
+        @if (item.brandSlug) {
+          <a class="info__brand info__brand--link" [routerLink]="['/marcas', item.brandSlug]">{{ item.brandName }}</a>
+        } @else {
+          <span class="info__brand">{{ item.brandName }}</span>
+        }
+      }
       <h1 class="info__name">{{ item.name }}</h1>
       <span class="info__reference">Ref. {{ item.reference }}</span>
 

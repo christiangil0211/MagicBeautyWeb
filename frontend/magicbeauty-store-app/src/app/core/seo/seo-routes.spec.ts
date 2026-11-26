@@ -391,3 +391,81 @@ describe('category pages', () => {
   expect(page.jsonLd.some(item => item['@type'] === 'BreadcrumbList')).toBe(true);
   expect(page.jsonLd.some(item => item['@type'] === 'Product' || item['@type'] === 'Offer')).toBe(false);
 });
+
+describe('brand pages', () => {
+  const brandPage = {
+    brand: { name: 'Dear Body', slug: 'dear-body', logoUrl: 'https://blob/dear-body.png', description: 'Cuidado corporal con aromas.', isFeatured: true, productCount: 1 },
+    products: [
+      { id: 7, reference: 'ACE009', name: 'Aceite capilar', brandName: 'Dear Body', brandSlug: 'dear-body', hasVariants: false, availableQuantity: 4,
+        mainImageUrl: 'https://cdn/ace009.jpg', categoryIds: [6], prices: [{ priceTypeCode: 'RETAIL', priceTypeName: 'Detal', amount: 25000 }] }
+    ],
+    total: 1,
+    page: 1,
+    pageSize: 500
+  };
+
+  it('gives each brand the requested title, a canonical, a CollectionPage and breadcrumbs', async () => {
+    const page = await open('/marcas/dear-body', { '/marcas/dear-body': { body: brandPage }, '/categories/catalog-tree': { body: TREE } });
+
+    expect(page.title).toBe('Dear Body en Cali al detal y por mayor | Magic Beauty Cosmetics');
+    expect(page.description).toBe('Cuidado corporal con aromas.');
+    expect(page.robots).toBe('index, follow');
+    expect(page.canonical).toBe(SITE + '/marcas/dear-body');
+    expect(page.ogImage).toBe('https://blob/dear-body.png');
+    expect(page.jsonLd.map(block => block['@type'])).toEqual(['CollectionPage', 'BreadcrumbList']);
+    expect(page.jsonLd[0]['about']).toEqual({ '@type': 'Brand', name: 'Dear Body', logo: 'https://blob/dear-body.png' });
+    expect(Array.from(page.element.querySelectorAll('h1'), h1 => h1.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Dear Body en Cali']);
+    expect(page.element.querySelectorAll('app-brand-page app-product-card').length).toBe(1);
+  });
+
+  it('marks an unknown or inactive brand noindex without a canonical', async () => {
+    const page = await open('/marcas/no-existe', { '/marcas/no-existe': { body: { error: 'La marca no existe.' }, status: 404 } });
+
+    expect(page.title).toBe('Marca no encontrada · Magic Beauty Cosmetics');
+    expect(page.robots).toBe('noindex, follow');
+    expect(page.canonical).toBeNull();
+    expect(page.element.textContent).toContain('No encontramos esta marca');
+  });
+
+  it('never marks a brand noindex because the API failed', async () => {
+    const page = await open('/marcas/dear-body', { '/marcas/dear-body': { body: { error: 'Falla' }, status: 503 } });
+
+    expect(page.robots).toBe('index, follow');
+    expect(page.element.textContent).toContain('No pudimos cargar esta marca');
+  });
+
+  it('lists every brand at /marcas with its own title and canonical', async () => {
+    const page = await open('/marcas', { '/marcas': { body: [brandPage.brand, { ...brandPage.brand, name: 'Purpure', slug: 'purpure', logoUrl: null }] } });
+
+    expect(page.title).toBe('Marcas de maquillaje y cosméticos en Cali | Magic Beauty Cosmetics');
+    expect(page.canonical).toBe(SITE + '/marcas');
+    expect(Array.from(page.element.querySelectorAll('a.brand-card'), link => link.getAttribute('href'))).toEqual(['/marcas/dear-body', '/marcas/purpure']);
+    // Sin logo, el nombre en texto ocupa su lugar.
+    expect(page.element.querySelector('a[href="/marcas/purpure"] .brand-card__name-logo')?.textContent).toBe('Purpure');
+  });
+
+  it('links the brand of a product to its brand page and hides it when there is no brand', async () => {
+    const withBrand = await open('/catalogo/ACE009', {
+      '/catalog/products/ACE009': { body: { ...PRODUCT, brandSlug: 'milagros' } },
+      '/catalog/products/ACE009/related': { body: [] }
+    });
+    expect(withBrand.element.querySelector('a.info__brand')?.getAttribute('href')).toBe('/marcas/milagros');
+
+    TestBed.resetTestingModule();
+    const withoutBrand = await open('/catalogo/ACE009', {
+      '/catalog/products/ACE009': { body: { ...PRODUCT, brandName: '', brandSlug: null } },
+      '/catalog/products/ACE009/related': { body: [] }
+    });
+    expect(withoutBrand.element.querySelector('.info__brand')).toBeNull();
+    expect(withoutBrand.jsonLd.find(block => block['@type'] === 'Product')!['brand']).toBeUndefined();
+  });
+
+  it('never shows the old "Sin marca" placeholder as a brand', async () => {
+    const page = await open('/catalogo/ACE009', {
+      '/catalog/products/ACE009': { body: { ...PRODUCT, brandName: 'Sin marca', brandSlug: null } },
+      '/catalog/products/ACE009/related': { body: [] }
+    });
+
+    expect(page.element.textContent?.toLowerCase()).not.toContain('sin marca');
+  });
+});

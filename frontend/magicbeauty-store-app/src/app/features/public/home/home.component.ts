@@ -18,6 +18,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { CategoryTile } from '../../../shared/models/category.model';
 import { WHOLESALE_PATH } from '../portal/portal-navigation';
+import { HomeBrandLogosComponent } from './home-brand-logos.component';
 import { HomeFallbackComponent } from './home-fallback.component';
 import { HomeFavoritesComponent } from './home-favorites.component';
 import { HOME_API_TIMEOUT_MS, HomeSectionState } from './home-sections';
@@ -46,7 +47,7 @@ function formatHour(time: string): string {
  */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, ToastModule, HomeFavoritesComponent, HomeFallbackComponent],
+  imports: [RouterLink, ToastModule, HomeFavoritesComponent, HomeFallbackComponent, HomeBrandLogosComponent],
   providers: [MessageService],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'

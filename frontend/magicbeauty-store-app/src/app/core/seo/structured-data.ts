@@ -141,3 +141,41 @@ export function buildProductJsonLd(product: ProductDetail, path: string): object
       : {})
   };
 }
+
+/**
+ * Página de una marca: CollectionPage sobre la marca (Brand, con logo si lo tiene)
+ * y la lista de sus fichas completas. Mismo contenido que entrega la función de
+ * Static Web Apps en el HTML inicial.
+ */
+export function buildBrandPageJsonLd(
+  brand: { name: string; slug: string; logoUrl?: string | null; description?: string | null },
+  products: readonly { reference: string; name: string }[]
+): object {
+  const url = absoluteUrl('/marcas/' + encodeURIComponent(brand.slug));
+
+  return {
+    '@context': SCHEMA,
+    '@type': 'CollectionPage',
+    '@id': url + '#page',
+    name: brand.name + ' en Cali al detal y por mayor',
+    url,
+    inLanguage: 'es-CO',
+    ...(brand.description ? { description: brand.description } : {}),
+    isPartOf: { '@id': STORE_SITE_URL + '/#website' },
+    about: {
+      '@type': 'Brand',
+      name: brand.name,
+      ...(brand.logoUrl ? { logo: brand.logoUrl } : {})
+    },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: products.length,
+      itemListElement: products.slice(0, 30).map((product, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        url: absoluteUrl('/catalogo/' + encodeURIComponent(product.reference)),
+        name: product.name
+      }))
+    }
+  };
+}
