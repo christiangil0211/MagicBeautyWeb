@@ -21,6 +21,7 @@ import { WHOLESALE_PATH } from '../portal/portal-navigation';
 import { HomeBrandLogosComponent } from './home-brand-logos.component';
 import { HomeFallbackComponent } from './home-fallback.component';
 import { HomeFavoritesComponent } from './home-favorites.component';
+import { HomeCategoryCarouselsComponent } from './home-category-carousels.component';
 import { HOME_API_TIMEOUT_MS, HomeSectionState } from './home-sections';
 
 /** "Compra por categoría" muestra como máximo una fila de 8. */
@@ -47,7 +48,7 @@ function formatHour(time: string): string {
  */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, ToastModule, HomeFavoritesComponent, HomeFallbackComponent, HomeBrandLogosComponent],
+  imports: [RouterLink, ToastModule, HomeFavoritesComponent, HomeFallbackComponent, HomeBrandLogosComponent, HomeCategoryCarouselsComponent],
   providers: [MessageService],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'

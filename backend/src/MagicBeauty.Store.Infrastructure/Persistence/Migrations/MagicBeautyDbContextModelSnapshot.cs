@@ -115,6 +115,9 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.Property<int?>("ParentCategoryId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("ShowAsHomeCarousel")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("ShowInHome")
                         .HasColumnType("bit");
 

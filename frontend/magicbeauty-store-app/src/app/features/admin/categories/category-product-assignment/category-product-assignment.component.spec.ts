@@ -15,6 +15,7 @@ const shampooCategory: Category = {
   displayOrder: 10,
   isActive: true,
   showInHome: false,
+  showAsHomeCarousel: false,
   showInNavigation: true,
   showInMegaMenu: false,
   createdAt: '',

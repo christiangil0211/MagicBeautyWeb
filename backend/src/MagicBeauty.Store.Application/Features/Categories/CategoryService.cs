@@ -10,6 +10,10 @@ namespace MagicBeauty.Store.Application.Features.Categories;
 public sealed class CategoryService(ICategoryRepository categoryRepository, IFileStorageFactory storageFactory, ILogger<CategoryService> logger) : ICategoryService
 {
     private readonly IFileStorage storage = storageFactory.Get(FileStorageDestination.Categories);
+
+    /// <summary>Máximo de carruseles de categorías en el inicio, para que no se llene solo de categorías.</summary>
+    public const int MaxHomeCarousels = 5;
+
     public async Task<IReadOnlyList<CategoryDto>> GetAllAsync(CancellationToken cancellationToken)
     {
         var categories = await categoryRepository.GetAllAsync(cancellationToken);
@@ -104,6 +108,38 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
             .ToList();
     }
 
+    /// <summary>
+    /// Carruseles de categorías del inicio, en el orden de las categorías. Solo
+    /// categorías activas cuya rama completa está activa: una padre inactiva
+    /// oculta también el carrusel de sus hijas, igual que en el catálogo.
+    /// </summary>
+    public async Task<IReadOnlyList<CategoryCarouselDto>> GetHomeCarouselsAsync(CancellationToken cancellationToken)
+    {
+        var categories = await categoryRepository.GetAllForTreeAsync(cancellationToken);
+        var byId = categories.ToDictionary(category => category.Id);
+
+        bool BranchIsActive(Category category)
+        {
+            var current = category;
+            var visited = new HashSet<int>();
+
+            while (current is not null && visited.Add(current.Id))
+            {
+                if (!current.IsActive) return false;
+                if (!current.ParentCategoryId.HasValue) return true;
+                current = byId.GetValueOrDefault(current.ParentCategoryId.Value);
+            }
+
+            return false;
+        }
+
+        return categories
+            .Where(category => category.ShowAsHomeCarousel && BranchIsActive(category))
+            .Take(MaxHomeCarousels)
+            .Select(category => new CategoryCarouselDto { Id = category.Id, Name = category.Name, Slug = category.Slug })
+            .ToList();
+    }
+
     public async Task<CategoryDto> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         var category = await categoryRepository.GetByIdAsync(id, cancellationToken);
@@ -131,6 +167,7 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
             DisplayOrder = request.DisplayOrder,
             IsActive = request.IsActive,
             ShowInHome = request.ShowInHome,
+            ShowAsHomeCarousel = request.ShowAsHomeCarousel,
             ShowInNavigation = request.ShowInNavigation,
             ShowInMegaMenu = request.ShowInMegaMenu,
             CreatedAt = now,
@@ -154,6 +191,12 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
 
         await ValidateUpdateAsync(id, request, cancellationToken);
 
+        // Solo al encenderlo: una categoría que ya lo tenía puede seguir guardándose.
+        if (request.ShowAsHomeCarousel && !category.ShowAsHomeCarousel)
+        {
+            await ValidateHomeCarouselLimitAsync(id, cancellationToken);
+        }
+
         category.Name = request.Name.Trim();
         category.Description = Normalize(request.Description);
         category.Slug = request.Slug.Trim().ToLowerInvariant();
@@ -161,6 +204,7 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
         category.DisplayOrder = request.DisplayOrder;
         category.IsActive = request.IsActive;
         category.ShowInHome = request.ShowInHome;
+        category.ShowAsHomeCarousel = request.ShowAsHomeCarousel;
         category.ShowInNavigation = request.ShowInNavigation;
         category.ShowInMegaMenu = request.ShowInMegaMenu;
         category.UpdatedAt = DateTime.UtcNow;
@@ -298,6 +342,21 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
         {
             throw new InvalidOperationException("La categoría padre no existe.");
         }
+
+        if (request.ShowAsHomeCarousel)
+        {
+            await ValidateHomeCarouselLimitAsync(null, cancellationToken);
+        }
+    }
+
+    /// <summary>Al encender el carrusel de una categoría, no puede haber ya 5 encendidos en otras.</summary>
+    private async Task ValidateHomeCarouselLimitAsync(int? categoryId, CancellationToken cancellationToken)
+    {
+        if (await categoryRepository.CountHomeCarouselsAsync(categoryId, cancellationToken) >= MaxHomeCarousels)
+        {
+            throw new InvalidOperationException(
+                $"Ya hay {MaxHomeCarousels} categorías con carrusel en el inicio, que es el máximo. Apaga el carrusel de otra categoría primero.");
+        }
     }
 
     private async Task ValidateUpdateAsync(int id, UpdateCategoryRequest request, CancellationToken cancellationToken)
@@ -388,6 +447,7 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
             HomeImageUrl = category.HomeImageUrl,
             IconUrl = category.IconUrl,
             ShowInHome = category.ShowInHome,
+            ShowAsHomeCarousel = category.ShowAsHomeCarousel,
             ShowInNavigation = category.ShowInNavigation,
             ShowInMegaMenu = category.ShowInMegaMenu,
             CreatedAt = category.CreatedAt,
@@ -407,6 +467,7 @@ public sealed class CategoryService(ICategoryRepository categoryRepository, IFil
             IsActive = category.IsActive,
             ShowInNavigation = category.ShowInNavigation,
             ShowInHome = category.ShowInHome,
+            ShowAsHomeCarousel = category.ShowAsHomeCarousel,
             ShowInMegaMenu = category.ShowInMegaMenu
         };
     }
