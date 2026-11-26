@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { timeout } from 'rxjs';
 
 import { CatalogService } from '../../../core/services/catalog.service';

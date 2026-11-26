@@ -1,4 +1,4 @@
-﻿/** Fila del listado de administración. */
+/** Fila del listado de administración. */
 export interface ProductListItem {
   id: number;
   reference: string;

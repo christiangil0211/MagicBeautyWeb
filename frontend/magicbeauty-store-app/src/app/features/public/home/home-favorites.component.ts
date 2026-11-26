@@ -1,4 +1,4 @@
-﻿import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { catchError, map, of, switchMap, timeout } from 'rxjs';
 
 import { CatalogService } from '../../../core/services/catalog.service';

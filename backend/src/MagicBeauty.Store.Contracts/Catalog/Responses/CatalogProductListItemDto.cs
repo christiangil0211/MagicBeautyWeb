@@ -1,4 +1,4 @@
-﻿namespace MagicBeauty.Store.Contracts.Catalog.Responses;
+namespace MagicBeauty.Store.Contracts.Catalog.Responses;
 
 /// <summary>
 /// Tarjeta publica de producto. No incluye conceptos de administracion ni

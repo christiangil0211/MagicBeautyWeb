@@ -1,4 +1,4 @@
-﻿import { DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
+import { DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { NEVER, Observable, of, throwError } from 'rxjs';

@@ -1,4 +1,4 @@
-﻿using MagicBeauty.Store.Application.Features.Catalog;
+using MagicBeauty.Store.Application.Features.Catalog;
 using MagicBeauty.Store.Contracts.Catalog.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

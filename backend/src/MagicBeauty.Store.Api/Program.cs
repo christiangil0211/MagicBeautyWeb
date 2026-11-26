@@ -1,4 +1,4 @@
-﻿using System.Threading.RateLimiting;
+using System.Threading.RateLimiting;
 
 using MagicBeauty.Store.Api.Filters;
 using MagicBeauty.Store.Api.Middleware;
