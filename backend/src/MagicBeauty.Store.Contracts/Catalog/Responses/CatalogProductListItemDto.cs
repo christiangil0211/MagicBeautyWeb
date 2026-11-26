@@ -1,4 +1,4 @@
-namespace MagicBeauty.Store.Contracts.Catalog.Responses;
+﻿namespace MagicBeauty.Store.Contracts.Catalog.Responses;
 
 /// <summary>
 /// Tarjeta publica de producto. No incluye conceptos de administracion ni
@@ -8,13 +8,16 @@ public sealed class CatalogProductListItemDto
 {
     public int Id { get; set; }
 
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsBestSeller { get; set; }
+
     public string Reference { get; set; } = string.Empty;
 
     public string Name { get; set; } = string.Empty;
 
     public string BrandName { get; set; } = string.Empty;
 
-    /// <summary>Slug de la marca para enlazar a /marcas/{slug}; NULL si no tiene marca o está inactiva.</summary>
+    /// <summary>Slug de la marca para enlazar a /marcas/{slug}; NULL si no tiene marca o estÃ¡ inactiva.</summary>
     public string? BrandSlug { get; set; }
 
     public bool HasVariants { get; set; }

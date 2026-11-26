@@ -1,4 +1,4 @@
-using MagicBeauty.Store.Application.Features.Catalog;
+﻿using MagicBeauty.Store.Application.Features.Catalog;
 using MagicBeauty.Store.Contracts.Catalog.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,8 +20,13 @@ public sealed class CatalogController(ICatalogService catalogService) : Controll
         [FromQuery] int? brandId,
         [FromQuery] int? categoryId,
         [FromQuery] string? search,
+        [FromQuery] bool homeRanking,
+        [FromServices] MagicBeauty.Store.Api.Sales.BestSellers ranking,
         CancellationToken cancellationToken)
     {
+        if (homeRanking && categoryId is > 0 && brandId is null && string.IsNullOrWhiteSpace(search))
+            return Ok(await ranking.GetAsync(categoryId, ranking.DefaultDays, null, cancellationToken));
+
         var products = await catalogService.GetProductsAsync(
             brandId,
             categoryId,
