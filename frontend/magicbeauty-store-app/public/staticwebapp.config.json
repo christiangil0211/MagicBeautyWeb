@@ -20,6 +20,14 @@
       "rewrite": "/api/seo-page"
     },
     {
+      "route": "/marcas",
+      "rewrite": "/api/seo-page"
+    },
+    {
+      "route": "/marcas/*",
+      "rewrite": "/api/seo-page"
+    },
+    {
       "route": "/inicio",
       "redirect": "/",
       "statusCode": 301
