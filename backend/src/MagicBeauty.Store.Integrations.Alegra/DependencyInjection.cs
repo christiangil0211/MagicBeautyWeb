@@ -65,7 +65,7 @@ public static class DependencyInjection
     /// </summary>
     public static RouteGroupBuilder MapAlegraIntegration(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup(RoutePrefix).WithTags("IntegraciÃ³n Alegra");
+        var group = endpoints.MapGroup(RoutePrefix).WithTags("Integración Alegra");
 
         // El frontend muestra el boton solo si la integracion esta lista.
         group.MapGet("/status", (IOptions<AlegraOptions> options) =>
@@ -78,7 +78,7 @@ public static class DependencyInjection
         {
             if (!options.Value.Enabled || !options.Value.IsConfigured)
             {
-                return Error(StatusCodes.Status404NotFound, "La integraciÃ³n con Alegra no estÃ¡ activa.");
+                return Error(StatusCodes.Status404NotFound, "La integración con Alegra no está activa.");
             }
 
             try

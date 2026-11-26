@@ -17,7 +17,7 @@ public sealed class CatalogProductListItemDto
 
     public string BrandName { get; set; } = string.Empty;
 
-    /// <summary>Slug de la marca para enlazar a /marcas/{slug}; NULL si no tiene marca o estÃ¡ inactiva.</summary>
+    /// <summary>Slug de la marca para enlazar a /marcas/{slug}; NULL si no tiene marca o está inactiva.</summary>
     public string? BrandSlug { get; set; }
 
     public bool HasVariants { get; set; }

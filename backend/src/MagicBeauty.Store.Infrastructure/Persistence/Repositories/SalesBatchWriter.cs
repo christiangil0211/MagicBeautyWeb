@@ -11,6 +11,7 @@ public sealed class SalesBatchWriter(MagicBeautyDbContext db, TimeProvider clock
         {
             db.ChangeTracker.Clear();
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            await SalesImportLock.EnsureHeldAsync(db, cancellationToken);
             var run = await db.Set<ImportRun>().SingleAsync(x => x.Id == runId, cancellationToken);
             if (run.Status != ImportStatus.Running)
                 throw new InvalidOperationException("La importación ya no está activa.");

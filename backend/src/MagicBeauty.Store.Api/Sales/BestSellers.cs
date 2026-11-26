@@ -1,14 +1,12 @@
 ﻿using MagicBeauty.Store.Application.Features.Catalog;
 using MagicBeauty.Store.Contracts.Catalog.Responses;
-using MagicBeauty.Store.Domain.Entities;
-using MagicBeauty.Store.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
+using MagicBeauty.Store.Application.Features.Sales;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace MagicBeauty.Store.Api.Sales;
 
 public sealed class BestSellers(
-    MagicBeautyDbContext db, ICatalogService catalog, IMemoryCache cache,
+    ISalesRankingReader sales, ICatalogService catalog, IMemoryCache cache,
     TimeProvider clock, IConfiguration configuration)
 {
     private static readonly SemaphoreSlim CacheMissLock = new(1);
@@ -48,28 +46,39 @@ public sealed class BestSellers(
         }
     }
 
+    private sealed class DailyTotals(DateOnly day)
+    {
+        public DateOnly Day { get; } = day;
+        public System.Collections.Concurrent.ConcurrentDictionary<int, IReadOnlyDictionary<int, decimal>> ByDays { get; } = new();
+    }
+
+    private bool TryGetTotals(DateOnly day, int days, out IReadOnlyDictionary<int, decimal>? totals)
+    {
+        totals = null;
+        return cache.TryGetValue<DailyTotals>(SalesImportWorker.RankingCacheKey, out var entries)
+            && entries?.Day == day && entries.ByDays.TryGetValue(days, out totals);
+    }
+
     private async Task<IReadOnlyDictionary<int, decimal>> GetTotalsAsync(int days, CancellationToken token)
     {
         var today = SalesCalendar.Today(clock);
-        var key = (today, days);
-        var entries = GetEntries();
-        if (entries.TryGetValue(key, out var cached)) return cached;
+        if (TryGetTotals(today, days, out var cached)) return cached!;
 
         await CacheMissLock.WaitAsync(token);
         try
         {
-            entries = GetEntries();
-            if (entries.TryGetValue(key, out cached)) return cached;
+            if (TryGetTotals(today, days, out cached)) return cached!;
 
-            var startDate = today.AddDays(1 - days);
-            var totals = await (from sale in db.Set<Sale>().AsNoTracking()
-                                join line in db.Set<SaleLine>().AsNoTracking() on sale.Id equals line.SaleId
-                                where sale.SaleDate >= startDate && sale.SaleDate <= today && line.ProductId != null
-                                      && (sale.Status == SaleStatus.Open || sale.Status == SaleStatus.Closed)
-                                group line by line.ProductId into lines
-                                select new { Id = lines.Key!.Value, Units = lines.Sum(x => x.Quantity) })
-                .ToDictionaryAsync(x => x.Id, x => x.Units, token);
-            entries[key] = totals;
+            if (!cache.TryGetValue<DailyTotals>(SalesImportWorker.RankingCacheKey, out var entries) || entries?.Day != today)
+            {
+                entries = new DailyTotals(today);
+                cache.Set(SalesImportWorker.RankingCacheKey, entries);
+            }
+
+            var totals = await sales.GetUnitsByProductAsync(today.AddDays(1 - days), today, token);
+            // An invalidation may have removed this entry during the query. In that
+            // case the result serves this request only and cannot repopulate the cache.
+            entries.ByDays[days] = totals;
             return totals;
         }
         finally
@@ -77,8 +86,4 @@ public sealed class BestSellers(
             CacheMissLock.Release();
         }
     }
-
-    private System.Collections.Concurrent.ConcurrentDictionary<(DateOnly, int), IReadOnlyDictionary<int, decimal>> GetEntries() =>
-        cache.GetOrCreate(SalesImportWorker.RankingCacheKey,
-            _ => new System.Collections.Concurrent.ConcurrentDictionary<(DateOnly, int), IReadOnlyDictionary<int, decimal>>())!;
 }

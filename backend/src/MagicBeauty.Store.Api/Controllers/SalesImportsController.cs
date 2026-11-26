@@ -30,50 +30,60 @@ public sealed class SalesImportsController(
         if (source is null)
             return StatusCode(503, new { message = "No hay una fuente de ventas habilitada." });
 
-        ImportRun run;
-        if (resumeId is { } id)
-        {
-            var failed = await db.Set<ImportRun>().FindAsync([id], token);
-            if (failed is null || failed.Source != source.Source || failed.Status != ImportStatus.Failed)
-                return BadRequest(new { message = "La ejecución solicitada no se puede reanudar." });
-
-            var newer = await db.Set<ImportRun>().AnyAsync(
-                x => x.Source == failed.Source && x.StartedAt > failed.StartedAt, token);
-            if (newer) return Conflict(new { message = "Hay una importación posterior. Inicia una nueva carga." });
-            run = failed;
-        }
-        else
-        {
-            var last = await LastSuccessAsync(source.Source, token);
-            var today = SalesCalendar.Today(clock);
-            var overlap = Math.Clamp(configuration.GetValue("Sales:OverlapDays", 7), 0, 90);
-            run = new ImportRun
-            {
-                Id = Guid.NewGuid(),
-                Source = source.Source,
-                From = last is null ? today.AddMonths(-3) : (last.LastSaleDate ?? last.Through).AddDays(-overlap),
-                Through = today,
-                StartedAt = clock.GetUtcNow()
-            };
-            db.Add(run);
-        }
-
-        run.Active = true;
-        run.Status = ImportStatus.Queued;
-        run.Error = null;
-        run.FinishedAt = null;
+        var runId = resumeId ?? Guid.NewGuid();
         try
         {
-            await db.SaveChangesAsync(token);
+            if (resumeId is { } id)
+            {
+                var failed = await db.Set<ImportRun>().AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, token);
+                if (failed is null || failed.Source != source.Source || failed.Status != ImportStatus.Failed)
+                {
+                    active = await ActiveIdAsync(token);
+                    if (active is { } activeId) return AlreadyActive(activeId);
+                    return BadRequest(new { message = "La ejecución solicitada no se puede reanudar." });
+                }
+
+                var newer = await db.Set<ImportRun>().AnyAsync(
+                    x => x.Source == failed.Source && x.StartedAt > failed.StartedAt, token);
+                if (newer) return Conflict(new { message = "Hay una importación posterior. Inicia una nueva carga." });
+
+                var queued = await db.Set<ImportRun>().Where(x => x.Id == id && x.Status == ImportStatus.Failed)
+                    .ExecuteUpdateAsync(update => update
+                        .SetProperty(x => x.Status, ImportStatus.Queued)
+                        .SetProperty(x => x.Active, true)
+                        .SetProperty(x => x.FinishedAt, (DateTimeOffset?)null)
+                        .SetProperty(x => x.Error, (string?)null), token);
+                if (queued == 0) return AlreadyActive(id);
+            }
+            else
+            {
+                var last = await LastSuccessAsync(source.Source, token);
+                var watermark = await db.Set<ImportRun>()
+                    .Where(x => x.Source == source.Source && x.Status == ImportStatus.Succeeded)
+                    .MaxAsync(x => x.LastSaleDate, token);
+                var today = SalesCalendar.Today(clock);
+                var overlap = Math.Clamp(configuration.GetValue("Sales:OverlapDays", 7), 0, 90);
+                db.Add(new ImportRun
+                {
+                    Id = runId,
+                    Source = source.Source,
+                    From = last is null ? today.AddMonths(-3) : (watermark ?? last.Through).AddDays(-overlap),
+                    Through = today,
+                    StartedAt = clock.GetUtcNow(),
+                    Status = ImportStatus.Queued,
+                    Active = true
+                });
+                await db.SaveChangesAsync(token);
+            }
         }
-        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
+        catch (Exception exception) when (exception is SqlException { Number: 2601 or 2627 } || exception is DbUpdateException { InnerException: SqlException { Number: 2601 or 2627 } })
         {
             active = await ActiveIdAsync(token);
             return active is { } activeId ? AlreadyActive(activeId) : Conflict();
         }
 
-        queue.Enqueue(run.Id);
-        return AcceptedAtAction(nameof(Get), new { id = run.Id }, new { id = run.Id });
+        queue.Enqueue(runId);
+        return AcceptedAtAction(nameof(Get), new { id = runId }, new { id = runId });
     }
 
     [HttpGet("{id:guid}")]

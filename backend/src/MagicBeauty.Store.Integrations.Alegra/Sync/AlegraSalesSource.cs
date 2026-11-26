@@ -13,10 +13,7 @@ internal sealed class AlegraSalesSource(
     public string Source => "alegra";
     public bool IsEnabled => options.Value.Enabled && options.Value.IsConfigured;
 
-    public Task<IReadOnlyDictionary<string, int>> GetItemMappingsAsync(CancellationToken cancellationToken) =>
-        ReadMappingsAsync(cancellationToken);
-
-    private async Task<IReadOnlyDictionary<string, int>> ReadMappingsAsync(CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyDictionary<string, int>> GetItemMappingsAsync(CancellationToken cancellationToken) =>
         await db.ProductLinks.AsNoTracking().ToDictionaryAsync(x => x.AlegraItemId, x => x.ProductId, cancellationToken);
 
     public async Task<SalesBatch> ReadAsync(DateOnly from, DateOnly through, int offset, CancellationToken cancellationToken)
@@ -28,11 +25,11 @@ internal sealed class AlegraSalesSource(
         {
             var id = invoice.Id;
             if (string.IsNullOrWhiteSpace(id) || invoice.Date < from || invoice.Date > through)
-                throw new AlegraException("La respuesta de facturas no respeta el intervalo solicitado.");
+                throw new SalesSourceReadException("La respuesta de facturas no respeta el intervalo solicitado.");
 
             var detail = invoice.Items is null ? await client.GetInvoiceAsync(id, cancellationToken) : invoice;
             if (detail.Id != id || detail.Date < from || detail.Date > through || detail.Items is null)
-                throw new AlegraException("No se pudo validar el detalle de una factura.");
+                throw new SalesSourceReadException("No se pudo validar el detalle de una factura.");
 
             var status = detail.Status?.ToLowerInvariant() switch
             {
@@ -44,7 +41,7 @@ internal sealed class AlegraSalesSource(
             };
             var lines = detail.Items.Select(item => new ImportedSaleLine(
                 item.Id ?? "", item.Reference, item.Name,
-                item.Quantity ?? throw new AlegraException("Una línea de factura no contiene una cantidad válida."))).ToArray();
+                item.Quantity ?? throw new SalesSourceReadException("Una línea de factura no contiene una cantidad válida."))).ToArray();
             sales.Add(new ImportedSale(id, detail.Date, status, lines));
         }
 

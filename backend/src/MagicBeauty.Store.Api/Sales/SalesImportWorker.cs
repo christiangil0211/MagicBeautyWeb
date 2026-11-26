@@ -10,7 +10,7 @@ public sealed class SalesImportWorker(
     IServiceScopeFactory scopes, SalesImportQueue queue, TimeProvider clock,
     IMemoryCache cache, ILogger<SalesImportWorker> logger) : BackgroundService
 {
-    internal const string RankingCacheKey = "SalesRanking";
+    public const string RankingCacheKey = "SalesRanking";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -19,14 +19,18 @@ public sealed class SalesImportWorker(
         {
             await using var scope = scopes.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<MagicBeautyDbContext>();
-            await db.Set<ImportRun>()
-                .Where(x => x.Status == ImportStatus.Queued || x.Status == ImportStatus.Running)
-                .ExecuteUpdateAsync(update => update
-                    .SetProperty(x => x.Status, ImportStatus.Failed)
-                    .SetProperty(x => x.Active, (bool?)null)
-                    .SetProperty(x => x.FinishedAt, clock.GetUtcNow())
-                    .SetProperty(x => x.Error, "La aplicación se reinició. Reanuda la importación desde el administrador."),
-                    stoppingToken);
+            await using var guard = await SalesImportLock.TryAcquireAsync(db, 0, stoppingToken);
+            if (guard is not null)
+            {
+                await db.Set<ImportRun>()
+                    .Where(x => x.Status == ImportStatus.Queued || x.Status == ImportStatus.Running)
+                    .ExecuteUpdateAsync(update => update
+                        .SetProperty(x => x.Status, ImportStatus.Failed)
+                        .SetProperty(x => x.Active, (bool?)null)
+                        .SetProperty(x => x.FinishedAt, clock.GetUtcNow())
+                        .SetProperty(x => x.Error, "La aplicación se reinició. Reanuda la importación desde el administrador."),
+                        stoppingToken);
+            }
             queue.MarkReady();
         }
         catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
@@ -39,7 +43,33 @@ public sealed class SalesImportWorker(
         {
             try
             {
-                await ImportAsync(id, stoppingToken);
+                await using var scope = scopes.CreateAsyncScope();
+                var db = scope.ServiceProvider.GetRequiredService<MagicBeautyDbContext>();
+                await using var guard = await SalesImportLock.TryAcquireAsync(db, 15_000, stoppingToken);
+                if (guard is null)
+                {
+                    logger.LogWarning("Otra instancia controla la importación {RunId}.", id);
+                    continue;
+                }
+
+                try
+                {
+                    await ImportAsync(id, db, scope.ServiceProvider, stoppingToken);
+                }
+                catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
+                {
+                    logger.LogWarning("La importación {RunId} falló ({ErrorType}).", id, ex.GetType().Name);
+                    var message = ex is SalesSourceReadException sourceError
+                        ? sourceError.Message
+                        : "No se pudo completar el lote. Revisa la configuración y reanuda.";
+                    await db.Set<ImportRun>().Where(x => x.Id == id && x.Active == true)
+                        .ExecuteUpdateAsync(update => update
+                            .SetProperty(x => x.Status, ImportStatus.Failed)
+                            .SetProperty(x => x.Active, (bool?)null)
+                            .SetProperty(x => x.FinishedAt, clock.GetUtcNow())
+                            .SetProperty(x => x.Error, message),
+                            stoppingToken);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -47,23 +77,7 @@ public sealed class SalesImportWorker(
             }
             catch (Exception ex)
             {
-                logger.LogWarning("La importación {RunId} falló ({ErrorType}).", id, ex.GetType().Name);
-                try
-                {
-                    await using var scope = scopes.CreateAsyncScope();
-                    var db = scope.ServiceProvider.GetRequiredService<MagicBeautyDbContext>();
-                    await db.Set<ImportRun>().Where(x => x.Id == id && x.Active == true)
-                        .ExecuteUpdateAsync(update => update
-                            .SetProperty(x => x.Status, ImportStatus.Failed)
-                            .SetProperty(x => x.Active, (bool?)null)
-                            .SetProperty(x => x.FinishedAt, clock.GetUtcNow())
-                            .SetProperty(x => x.Error, "No se pudo completar el lote. Revisa la configuración y reanuda."),
-                            stoppingToken);
-                }
-                catch (Exception persistenceError) when (!stoppingToken.IsCancellationRequested)
-                {
-                    logger.LogError("No se pudo guardar el estado de la importación {RunId} ({ErrorType}).", id, persistenceError.GetType().Name);
-                }
+                logger.LogError("No se pudo finalizar la importación {RunId} ({ErrorType}).", id, ex.GetType().Name);
             }
             finally
             {
@@ -72,19 +86,17 @@ public sealed class SalesImportWorker(
         }
     }
 
-    private async Task ImportAsync(Guid id, CancellationToken token)
+    private async Task ImportAsync(Guid id, MagicBeautyDbContext db, IServiceProvider services, CancellationToken token)
     {
-        await using var scope = scopes.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<MagicBeautyDbContext>();
         var run = await db.Set<ImportRun>().AsNoTracking().SingleAsync(x => x.Id == id, token);
-        var source = scope.ServiceProvider.GetServices<ISalesSource>()
+        var source = services.GetServices<ISalesSource>()
             .Single(x => x.Source == run.Source && x.IsEnabled);
         var started = await db.Set<ImportRun>().Where(x => x.Id == id && x.Status == ImportStatus.Queued)
             .ExecuteUpdateAsync(update => update.SetProperty(x => x.Status, ImportStatus.Running), token);
         if (started == 0) return;
 
         await CopyMappingsAsync(db, source, token);
-        var writer = scope.ServiceProvider.GetRequiredService<ISalesBatchWriter>();
+        var writer = services.GetRequiredService<ISalesBatchWriter>();
         var offset = run.NextOffset;
 
         if (!run.AllPagesRead)
