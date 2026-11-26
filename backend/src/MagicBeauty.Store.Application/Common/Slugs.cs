@@ -30,6 +30,12 @@ public static partial class Slugs
     public static string NameKey(string? name) =>
         NonAlphanumeric().Replace(RemoveAccents(name ?? string.Empty).ToUpperInvariant(), string.Empty);
 
+    /// <summary>
+    /// La antigua marca comodín "Sin marca" (y variantes). No es una marca real: la
+    /// tienda no la publica aunque siga en la base hasta el script de datos.
+    /// </summary>
+    public static bool IsNoBrandPlaceholder(string? name) => NameKey(name) == "SINMARCA";
+
     /// <summary>Nombre limpio: sin espacios al inicio ni al final y sin espacios repetidos.</summary>
     public static string CleanName(string? name) => Whitespace().Replace((name ?? string.Empty).Trim(), " ");
 

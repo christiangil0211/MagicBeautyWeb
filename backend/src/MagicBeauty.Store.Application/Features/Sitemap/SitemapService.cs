@@ -1,6 +1,7 @@
 using System.Text;
 using System.Xml.Linq;
 using MagicBeauty.Store.Application.Common.Interfaces;
+using MagicBeauty.Store.Application.Features.Catalog;
 using MagicBeauty.Store.Application.Features.Categories;
 using MagicBeauty.Store.Contracts.Categories.Responses;
 
@@ -37,7 +38,7 @@ public sealed class SitemapService(
         // Marcas activas con al menos una ficha completa: las mismas de /marcas.
         var brandCounts = await productRepository.GetCompleteProductCountsByBrandAsync(cancellationToken);
         var brands = (await brandRepository.GetAllAsync(null, cancellationToken))
-            .Where(brand => brand.IsActive && !string.IsNullOrEmpty(brand.Slug) && brandCounts.GetValueOrDefault(brand.Id) > 0)
+            .Where(brand => CatalogService.IsPublicBrand(brand) && brandCounts.GetValueOrDefault(brand.Id) > 0)
             .OrderBy(brand => brand.Slug, StringComparer.Ordinal)
             .ToList();
 

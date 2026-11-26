@@ -336,7 +336,9 @@ public sealed class PublicBrandsTests : IDisposable
             new Brand { Id = 1, Name = "Purpure", Slug = "purpure", IsActive = true, IsFeatured = true, LogoUrl = "https://blob/purpure.png", SortOrder = 2 },
             new Brand { Id = 2, Name = "Dear Body", Slug = "dear-body", IsActive = true, SortOrder = 1 },
             new Brand { Id = 3, Name = "Retirada", Slug = "retirada", IsActive = false },
-            new Brand { Id = 4, Name = "Sin fichas completas", Slug = "sin-fichas", IsActive = true });
+            new Brand { Id = 4, Name = "Sin fichas completas", Slug = "sin-fichas", IsActive = true },
+            // Comodín antiguo: sigue en la base hasta el script de datos, pero no es una marca.
+            new Brand { Id = 5, Name = "Sin marca", Slug = "sin-marca", IsActive = true });
         db.Products.AddRange(
             Complete(new Product { Id = 1, Reference = "PUR001", Name = "Labial", BrandId = 1, IsActive = true }),
             Complete(new Product { Id = 2, Reference = "PUR002", Name = "Brillo", BrandId = 1, IsActive = true }),
@@ -345,7 +347,8 @@ public sealed class PublicBrandsTests : IDisposable
             Complete(new Product { Id = 5, Reference = "DEA005", Name = "Splash", BrandId = 2, IsActive = true }),
             Complete(new Product { Id = 6, Reference = "RET006", Name = "De marca inactiva", BrandId = 3, IsActive = true }),
             new Product { Id = 7, Reference = "SIN007", Name = "Incompleto", BrandId = 4, IsActive = true },
-            Complete(new Product { Id = 8, Reference = "BOL008", Name = "Bolso", BrandId = null, IsActive = true }));
+            Complete(new Product { Id = 8, Reference = "BOL008", Name = "Bolso", BrandId = null, IsActive = true }),
+            Complete(new Product { Id = 9, Reference = "DIA009", Name = "Diadema", BrandId = 5, IsActive = true }));
         db.SaveChanges();
 
         var policy = new Mock<IPriceVisibilityPolicy>();
@@ -388,6 +391,7 @@ public sealed class PublicBrandsTests : IDisposable
     [Theory]
     [InlineData("no-existe")]
     [InlineData("retirada")]
+    [InlineData("sin-marca")]
     [InlineData("../admin")]
     [InlineData("")]
     public async Task UnknownOrInactiveBrandsAreNotFound(string slug)
@@ -404,6 +408,7 @@ public sealed class PublicBrandsTests : IDisposable
         Assert.Equal(string.Empty, products.Single(product => product.Reference == "BOL008").BrandName);
         Assert.Null(products.Single(product => product.Reference == "RET006").BrandSlug);
         Assert.Equal("dear-body", products.Single(product => product.Reference == "DEA005").BrandSlug);
+        Assert.Null(products.Single(product => product.Reference == "DIA009").BrandSlug);
     }
 
     [Fact]

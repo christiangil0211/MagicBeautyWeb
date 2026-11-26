@@ -29,7 +29,7 @@ public sealed class CatalogService(
         var counts = await productRepository.GetCompleteProductCountsByBrandAsync(cancellationToken);
 
         return (await brandRepository.GetAllAsync(null, cancellationToken))
-            .Where(brand => brand.IsActive && !string.IsNullOrEmpty(brand.Slug) && counts.GetValueOrDefault(brand.Id) > 0)
+            .Where(brand => IsPublicBrand(brand) && counts.GetValueOrDefault(brand.Id) > 0)
             .Select(brand => ToPublicBrand(brand, counts[brand.Id]))
             .ToList();
     }
@@ -39,8 +39,8 @@ public sealed class CatalogService(
         var normalized = slug?.Trim().ToLowerInvariant() ?? string.Empty;
         var brand = Slugs.IsValid(normalized) ? await brandRepository.GetBySlugAsync(normalized, cancellationToken) : null;
 
-        // Una marca desactivada no existe para la tienda.
-        if (brand is null || !brand.IsActive)
+        // Una marca desactivada (o el comodín "Sin marca") no existe para la tienda.
+        if (brand is null || !IsPublicBrand(brand))
         {
             throw new KeyNotFoundException("La marca no existe.");
         }
@@ -79,7 +79,11 @@ public sealed class CatalogService(
 
     /// <summary>Enlace a la página de la marca solo si existe para la tienda.</summary>
     private static string? PublicBrandSlug(Product product) =>
-        product.Brand is { IsActive: true } brand && !string.IsNullOrEmpty(brand.Slug) ? brand.Slug : null;
+        product.Brand is { } brand && IsPublicBrand(brand) ? brand.Slug : null;
+
+    /// <summary>Activa, con slug y que no sea el comodín "Sin marca".</summary>
+    public static bool IsPublicBrand(Brand brand) =>
+        brand.IsActive && !string.IsNullOrEmpty(brand.Slug) && !Slugs.IsNoBrandPlaceholder(brand.Name);
 
     public async Task<IReadOnlyList<CatalogProductListItemDto>> GetProductsAsync(
         int? brandId,
