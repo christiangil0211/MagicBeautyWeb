@@ -6,10 +6,11 @@
 
 /*
  * ===== Carrusel del inicio =====
- * Imágenes completas (texto dibujado), una a la vez. Los puntos van sobre la imagen,
- * en una cápsula oscura translúcida; el activo se alarga.
+ * Imágenes completas (texto dibujado), una a la vez. Los controles van sobre la
+ * imagen, en una cápsula oscura translúcida; el punto activo se alarga.
  */
 .home-carousel { background: var(--mb-bg-store); }
+.home-carousel__stage { position: relative; }
 .home-slide { animation: banner-appear 250ms ease-out; }
 .home-slide__title { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /*
@@ -35,66 +36,69 @@
 .home-slide__hotspot:hover { background: rgba(255, 255, 255, 0.12); box-shadow: 0 6px 18px rgba(207, 20, 103, 0.25); }
 .home-slide__hotspot:focus-visible { outline-offset: 2px; }
 
-.home-dots {
+/* Flechas, puntos y pausa. Cada control mide al menos 24 × 24 px (WCAG 2.5.8). */
+.home-controls {
   position: absolute; left: 50%; bottom: clamp(4px, 0.7vw, 10px); transform: translateX(-50%);
-  display: flex; align-items: center; gap: 2px; padding: 3px 8px; border-radius: 999px;
-  background: rgba(40, 40, 46, 0.55); backdrop-filter: blur(2px);
+  display: flex; align-items: center; gap: 2px; padding: 2px 6px; border-radius: 999px;
+  background: rgba(40, 40, 46, 0.62); backdrop-filter: blur(2px);
 }
-.home-dots__dot {
-  display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0;
-  background: transparent; cursor: pointer;
+.home-controls__button, .home-controls__dot {
+  display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0;
+  border-radius: 999px; background: transparent; color: #fff; cursor: pointer;
 }
-.home-dots__dot::before {
+.home-controls__button i { font-size: 0.8rem; }
+.home-controls__button:hover { background: rgba(255, 255, 255, 0.16); }
+.home-controls__dot::before {
   content: ''; width: 8px; height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.75);
   transition: width 0.25s ease, background 0.25s ease;
 }
-.home-dots__dot:hover::before { background: #fff; }
-.home-dots__dot[aria-current='true'] { width: 34px; }
-.home-dots__dot[aria-current='true']::before { width: 24px; background: #fff; }
-.home-dots__dot:focus-visible { outline: 2px solid #fff; outline-offset: -2px; border-radius: 999px; }
+.home-controls__dot:hover::before { background: #fff; }
+.home-controls__dot[aria-current='true'] { width: 36px; }
+.home-controls__dot[aria-current='true']::before { width: 24px; background: #fff; }
+.home-controls__button:focus-visible, .home-controls__dot:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 
-.home-slide__details { max-width: 1280px; margin-inline: auto; padding: 12px 24px 40px; text-align: center; }
+/* Todos los textos apilados en la misma celda: la zona mide lo del más alto. */
+.home-details { display: grid; max-width: 1280px; margin-inline: auto; padding: 12px 24px 20px; text-align: center; }
+.home-slide__details { grid-area: 1 / 1; visibility: hidden; }
+.home-slide__details.is-active { visibility: visible; }
 .home-slide__details p { margin: 0; color: var(--mb-text-secondary); font-size: 13px; line-height: 1.5; }
 .home-slide__details strong { color: var(--mb-wine); }
 .home-slide__ctas { display: none; }
-.home-slide:not(:has(.home-slide__details)) .home-slide__media { margin-bottom: 40px; }
 
 @keyframes banner-appear { from { opacity: 0.6; } to { opacity: 1; } }
 
 @media (max-width: 640px) {
-  /* La imagen queda pequeña: los puntos salen debajo para no tapar sus botones. */
-  .home-dots { position: static; transform: none; width: fit-content; margin: 8px auto 0; padding: 1px 6px; }
-  .home-dots__dot { width: 18px; height: 18px; }
-  .home-dots__dot::before { width: 6px; height: 6px; }
-  .home-dots__dot[aria-current='true'] { width: 26px; }
-  .home-dots__dot[aria-current='true']::before { width: 18px; }
-  .home-slide__details { padding: 12px 16px 20px; }
-  .home-slide:not(:has(.home-slide__details)) .home-slide__media { margin-bottom: 20px; }
+  /* La imagen queda pequeña: los controles salen debajo para no tapar sus botones. */
+  .home-controls { position: static; transform: none; width: fit-content; margin: 8px auto 0; padding: 0 4px; }
+  .home-details { padding: 12px 16px 16px; }
   .home-slide__ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
-  .home-slide__cta { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 44px; padding: 10px 22px; border: 1px solid var(--mb-primary); border-radius: var(--mb-radius-pill); background: var(--mb-primary); color: white; font-weight: 600; text-decoration: none; }
-  .home-slide__cta:hover { background: var(--mb-primary-hover); }
+  .home-slide__details p + .home-slide__ctas { margin-top: 12px; }
+  .home-slide__details > .home-slide__ctas:first-child { margin-top: 0; }
+  /* Fucsia oscuro: texto blanco de 14 px con contraste AA. */
+  .home-slide__cta { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 44px; padding: 10px 22px; border: 1px solid var(--mb-primary-hover); border-radius: var(--mb-radius-pill); background: var(--mb-primary-hover); color: white; font-weight: 600; text-decoration: none; }
+  .home-slide__cta:hover { background: var(--mb-wine); }
   .home-slide__cta--outline { background: var(--mb-surface); color: var(--mb-primary-hover); }
   .home-slide__cta--outline:hover { background: var(--mb-primary-soft); }
   .home-slide__cta:focus-visible { outline: 3px solid var(--mb-primary-hover); outline-offset: 3px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .home-slide { animation: none; }
-  .home-dots__dot::before { transition: none; }
+  .home-controls__dot::before { transition: none; }
 }
 
 /*
  * ===== Título de la página =====
- * Bajo el carrusel, en las pestañas que no son el inicio. Deja espacio abajo para
- * las pestañas del portal, que se montan 32px sobre el banner.
+ * Bajo el carrusel, fijo. Deja espacio abajo para las pestañas del portal, que se
+ * montan 32px sobre el banner.
  */
 .page-heading { max-width: 1280px; margin-inline: auto; padding: 0 24px 56px; text-align: center; }
 .page-heading__title { margin: 0; color: var(--mb-heading); font-family: 'Playfair Display', Georgia, serif; font-size: clamp(1.9rem, 3vw, 2.6rem); font-weight: 400; line-height: 1.1; }
+/* Texto grande: el fucsia de la marca ya cumple el contraste AA (3:1). */
 .page-heading__title span { color: var(--mb-primary); }
 .page-heading__text { max-width: 60ch; margin: 8px auto 0; color: var(--mb-text-secondary); font-size: 0.95rem; line-height: 1.5; }
-/* Sin aviso bajo la imagen, el título queda más cerca del banner. */
-.home-carousel:has(+ .page-heading) .home-slide:not(:has(.home-slide__details)) .home-slide__media { margin-bottom: 20px; }
 
 @media (max-width: 640px) {
   .page-heading { padding: 0 16px 20px; }
+  .page-heading__title { font-size: 1.65rem; }
   .page-heading__text { font-size: 0.88rem; }
 }

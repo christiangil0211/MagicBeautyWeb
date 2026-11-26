@@ -121,10 +121,13 @@ describe('staticwebapp.config.json', () => {
     expect(config.routes.filter(item => item.headers?.['Cache-Control']).some(item => /html|^\/\*?$/.test(item.route))).toBe(false);
   });
 
-  it('only redirects the old /inicio URL, permanently and never from the home page itself', () => {
+  it('only redirects the old home URLs, permanently and never from the home page itself', () => {
     const redirects = config.routes.filter(item => item.redirect);
 
-    expect(redirects).toEqual([{ route: '/inicio', redirect: '/', statusCode: 301 }]);
+    expect(redirects).toEqual([
+      { route: '/inicio', redirect: '/', statusCode: 301 },
+      { route: '/mi-tienda', redirect: '/', statusCode: 301 }
+    ]);
   });
 });
 
@@ -184,7 +187,7 @@ describe('prerendered routes', () => {
       .filter(route => route.data?.['portalBanner'] && !route.data?.['seo']?.noindex)
       .map(route => route.path);
 
-    expect(prerendered).toEqual(['', 'catalogo', 'catalogos', 'calendarios-de-adviento']);
+    expect(prerendered).toEqual(['', 'mayoristas', 'catalogo', 'catalogos', 'calendarios-de-adviento']);
     const campaign = routes.find(route => route.path === '')!.children!.find(route => route.path === 'calendarios-de-adviento')!;
     expect(campaign.data?.['seo']?.noindex).not.toBe(true);
     portal.push(campaign.path);

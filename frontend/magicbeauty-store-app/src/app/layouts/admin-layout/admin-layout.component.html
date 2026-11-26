@@ -1,9 +1,9 @@
 <div class="admin-shell">
   <aside class="admin-sidebar" [class.open]="isSidebarOpen()">
-    <!-- El administrador siempre tiene sesión: su inicio es el de la tienda con sesión. -->
+    <!-- El administrador siempre tiene sesión: su inicio es el de la tienda. -->
     <a
       class="admin-sidebar__brand"
-      routerLink="/mi-tienda"
+      routerLink="/"
       title="Ir al inicio de la tienda"
       aria-label="Magic Beauty Cosmetics, ir al inicio de la tienda"
       (click)="closeSidebar()">

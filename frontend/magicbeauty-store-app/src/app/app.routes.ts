@@ -10,7 +10,7 @@ import { buildBreadcrumbJsonLd, buildStoreJsonLd, buildWebSiteJsonLd } from './c
 import { PORTAL_BANNERS } from './features/public/portal/portal-navigation';
 
 const authenticatedStore: CanMatchFn = (_route, segments) => {
-  if (!['mi-tienda', 'categoria', 'productos'].includes(segments[0]?.path)) return false;
+  if (!['categoria', 'productos'].includes(segments[0]?.path)) return false;
   return inject(AuthService).ensureSession().pipe(map(session => session.isAuthenticated));
 };
 
@@ -97,8 +97,8 @@ export const routes: Routes = [
   {
     /*
      * Portal público: mientras se termina el e-commerce, la tienda se presenta en
-     * cuatro pestañas. HomeComponent y CatalogComponent siguen en el código para
-     * el e-commerce, pero sin ruta pública; sus URL antiguas redirigen al portal.
+     * cinco pestañas (inicio, catálogo digital, catálogos, mayoristas y pedido).
+     * CatalogComponent sigue en el código para el e-commerce, sin ruta pública.
      */
     path: '',
     loadComponent: () =>
@@ -114,16 +114,6 @@ export const routes: Routes = [
             jsonLd: { breadcrumb: buildBreadcrumbJsonLd([{ name: 'Inicio', path: '/' }, { name: 'Calendario de Adviento Magic Beauty 2026', path: '/calendarios-de-adviento' }]) }
           } satisfies SeoRouteData
         }
-      },
-      {
-        // Inicio de la tienda con sesión. No es /inicio: esa URL la redirige el
-        // hosting con 301 a la portada (staticwebapp.config.json), y el hosting no
-        // sabe si hay sesión.
-        path: 'mi-tienda',
-        canMatch: [authenticatedStore],
-        // Mismo carrusel de campañas que el inicio público.
-        data: { ...NO_INDEX, portalBanner: PORTAL_BANNERS.benefits },
-        loadComponent: () => import('./features/public/home/home.component').then(m => m.HomeComponent)
       },
       {
         path: '',
@@ -158,16 +148,36 @@ export const routes: Routes = [
           import('./features/public/portal/portal-shell.component').then(m => m.PortalShellComponent),
         children: [
           {
+            // Inicio de la tienda, para visitantes y para quien tiene sesión.
             path: '',
             pathMatch: 'full',
-            loadComponent: () =>
-              import('./features/public/benefits/benefits.component').then(m => m.BenefitsComponent),
+            loadComponent: () => import('./features/public/home/home.component').then(m => m.HomeComponent),
             title: SEO_DEFAULTS.title,
             data: {
-              portalBanner: PORTAL_BANNERS.benefits,
+              portalBanner: PORTAL_BANNERS.home,
               seo: {
                 description: SEO_DEFAULTS.description,
                 jsonLd: { store: buildStoreJsonLd(), website: buildWebSiteJsonLd() }
+              } satisfies SeoRouteData
+            }
+          },
+          {
+            // Antes era la portada: ventajas, cómo comprar y catálogos para negocios.
+            path: 'mayoristas',
+            loadComponent: () =>
+              import('./features/public/benefits/benefits.component').then(m => m.BenefitsComponent),
+            title: 'Maquillaje y cosméticos al por mayor en Cali · Magic Beauty Cosmetics',
+            data: {
+              portalBanner: PORTAL_BANNERS.wholesale,
+              seo: {
+                description:
+                  'Compra maquillaje y cosméticos al por mayor en Cali con Magic Beauty Cosmetics: precios especiales para tu negocio, catálogo en PDF y pedidos por WhatsApp.',
+                jsonLd: {
+                  breadcrumb: buildBreadcrumbJsonLd([
+                    { name: 'Inicio', path: '/' },
+                    { name: 'Mayoristas', path: '/mayoristas' }
+                  ])
+                }
               } satisfies SeoRouteData
             }
           },
@@ -242,7 +252,7 @@ export const routes: Routes = [
         redirectTo: '/catalogo/categoria/:slug'
       },
       {
-        // Sin sesión, el inicio de la tienda es el portal.
+        // Inicio anterior de la tienda con sesión: ahora el inicio es uno solo.
         path: 'mi-tienda',
         redirectTo: ''
       },

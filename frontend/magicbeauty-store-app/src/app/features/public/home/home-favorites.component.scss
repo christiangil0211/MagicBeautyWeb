@@ -1,0 +1,99 @@
+/* Mismo alto que el marcador del inicio mientras carga (ver home.component.scss). */
+:host {
+  display: block;
+  min-height: 520px;
+}
+
+@media (max-width: 640px) {
+  :host {
+    min-height: 470px;
+  }
+}
+
+/* Si no hay productos listos para el inicio (o el catálogo falló), la sección no se muestra. */
+:host(.favorites--empty) {
+  display: none;
+}
+
+.favorites__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.favorites__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.4rem;
+  font-family: var(--mb-font-display);
+  font-size: 1.05rem;
+  font-style: italic;
+  color: var(--mb-primary-hover);
+
+  i {
+    font-size: 0.8rem;
+  }
+}
+
+.section-title {
+  margin: 0;
+  font-family: var(--mb-font-display);
+  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--mb-heading);
+}
+
+.favorites__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0 0.2rem;
+  border-bottom: 1px solid var(--mb-border);
+  color: var(--mb-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    color: var(--mb-primary-hover);
+    border-color: var(--mb-primary-hover);
+  }
+}
+
+/* La cuadrícula solo posiciona: la tarjeta es la misma del catálogo digital. */
+.favorites__grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 1100px) {
+  .favorites__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Celular: una fila que se desliza, en vez de seis filas de tarjetas. */
+@media (max-width: 640px) {
+  .favorites__grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 46%;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scroll-snap-type: x mandatory;
+
+    > * {
+      scroll-snap-align: start;
+    }
+  }
+}

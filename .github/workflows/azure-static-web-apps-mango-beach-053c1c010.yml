@@ -12,6 +12,15 @@ on:
       - release
       - develop
 
+# Una sola ejecución a la vez por PR (o por rama en el push a release). Sin esto, al
+# fusionar un PR segundos después de abrirlo, el cierre ("close") corría mientras el
+# despliegue de la vista previa seguía en curso: no encontraba el entorno, terminaba
+# "con éxito" y el despliegue lo creaba después, dejando una vista previa huérfana que
+# ocupaba uno de los 3 cupos del plan Free. En cola, el cierre espera al despliegue.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')

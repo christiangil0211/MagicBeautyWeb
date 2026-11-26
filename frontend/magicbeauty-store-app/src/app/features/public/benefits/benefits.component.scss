@@ -131,7 +131,8 @@
   border: 1px solid var(--mb-primary);
   border-radius: var(--mb-radius-sm);
   background: var(--mb-surface);
-  color: var(--mb-primary);
+  /* Texto pequeño: el fucsia oscuro cumple el contraste AA sobre blanco. */
+  color: var(--mb-primary-hover);
   font-size: 0.82rem;
   font-weight: 600;
   text-decoration: none;

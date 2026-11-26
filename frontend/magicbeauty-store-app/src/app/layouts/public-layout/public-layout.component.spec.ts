@@ -107,14 +107,14 @@ it('hides the whole navigation menu from visitors while the portal is the only e
   expect(fixture.nativeElement.textContent).not.toContain('Favoritos');
 });
 
-it('shows the menu to an administrator with the portal as one more option', async () => {
+it('shows the menu to an administrator with the wholesale page as one more option', async () => {
   const fixture = createPortalLayout(true);
   await fixture.whenStable();
   const nav = fixture.nativeElement.querySelector('.store-menu') as HTMLElement;
   const labels = Array.from(nav.querySelectorAll('.store-menu__link')).map(link => link.textContent?.replace(/\s+/g, ' ').trim());
 
   expect(labels).toEqual(['Root', 'Hazte mayorista', 'Gestionar y administrar']);
-  expect(nav.querySelector('.store-menu__link--portal')?.getAttribute('href')).toBe('/');
+  expect(nav.querySelector('.store-menu__link--portal')?.getAttribute('href')).toBe('/mayoristas');
 });
 
 it('links the official social networks in the footer, opening in a new tab', async () => {

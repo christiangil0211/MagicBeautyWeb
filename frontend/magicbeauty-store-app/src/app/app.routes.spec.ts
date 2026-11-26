@@ -62,7 +62,7 @@ it('keeps an unknown address on its own not-found page instead of sending it hom
   expect(harness.fixture.nativeElement.querySelector('app-not-found')).not.toBeNull();
 });
 
-it.each(['/', '/catalogo', '/catalogos', '/pedido', '/catalogo/ACO011', '/catalogo/categoria/labios'])('serves the portal route %s', async url => {
+it.each(['/', '/mayoristas', '/catalogo', '/catalogos', '/pedido', '/catalogo/ACO011', '/catalogo/categoria/labios'])('serves the portal route %s', async url => {
   setup();
   const harness = await RouterTestingHarness.create();
   await navigateAs(harness, url);
@@ -119,7 +119,7 @@ it('highlights the parent category when browsing an authenticated subcategory', 
 });
 
 
-it('returns to wholesale benefits after login and category navigation', async () => {
+it('returns to the store home after login and category navigation, with "Hazte mayorista" active only on its page', async () => {
   setup();
   const harness = await RouterTestingHarness.create();
   await navigateAs(harness, '/categoria/maquillaje', true);
@@ -127,33 +127,36 @@ it('returns to wholesale benefits after login and category navigation', async ()
   const element = harness.fixture.nativeElement as HTMLElement;
   expect(TestBed.inject(Router).url).toBe('/');
   expect(element.querySelector('app-store-layout')).toBeNull();
-  expect(element.querySelector('app-portal-shell')).not.toBeNull();
+  expect(element.querySelector('app-portal-shell app-home')).not.toBeNull();
   expect(element.querySelector('.home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendario-magic-beauty-2026.jpg');
+  expect(element.querySelector('.desktop-search')).not.toBeNull();
+  expect(element.querySelector('.store-menu__link--portal')?.getAttribute('href')).toBe('/mayoristas');
+  expect(element.querySelector('.store-menu__link--portal.active')).toBeNull();
+
+  await navigateAs(harness, '/mayoristas', true);
+  harness.fixture.detectChanges();
+  expect(element.querySelector('app-benefits')).not.toBeNull();
   expect(element.querySelector('.store-menu__link--portal.active')).not.toBeNull();
 });
 
-
-it('shows the full store home and header search for an authenticated visitor', async () => {
+it.each([false, true])('sends the old /mi-tienda home to the single store home (authenticated: %s)', async authenticated => {
   setup();
   const harness = await RouterTestingHarness.create();
-  await navigateAs(harness, '/mi-tienda', true);
-  const element = harness.fixture.nativeElement as HTMLElement;
-  expect(TestBed.inject(Router).url).toBe('/mi-tienda');
-  // Con sesión el inicio conserva el carrusel de campañas del inicio público.
-  expect(element.querySelector('app-home .home-slide__link img')?.getAttribute('src')).toBe('/images/campaigns/banner-calendario-magic-beauty-2026.jpg');
-  expect(element.querySelector('.hero__title')).toBeNull();
-  expect(element.querySelector('.shop-by-category')).not.toBeNull();
-  expect(element.querySelector('.desktop-search')).not.toBeNull();
-  expect(element.querySelector('app-portal-shell')).toBeNull();
+  await navigateAs(harness, '/mi-tienda', authenticated);
+  expect(TestBed.inject(Router).url).toBe('/');
+  expect(harness.fixture.nativeElement.querySelector('app-portal-shell app-home')).not.toBeNull();
 });
 
-it('keeps anonymous visitors in the wholesale portal when opening the store home', async () => {
+it('shows the store home to anonymous visitors without the admin menu or the header search', async () => {
   setup();
   const harness = await RouterTestingHarness.create();
-  await navigateAs(harness, '/mi-tienda');
-  expect(TestBed.inject(Router).url).toBe('/');
-  expect(harness.fixture.nativeElement.querySelector('app-portal-shell')).not.toBeNull();
-  expect(harness.fixture.nativeElement.querySelector('.desktop-search')).toBeNull();
+  await navigateAs(harness, '/');
+  const element = harness.fixture.nativeElement as HTMLElement;
+  expect(element.querySelector('app-portal-shell app-home')).not.toBeNull();
+  expect(element.querySelector('.desktop-search')).toBeNull();
+  expect(element.querySelector('.store-menu')).toBeNull();
+  expect(element.textContent).not.toContain('Gestionar y administrar');
+  expect(element.textContent).not.toContain('Administrar tienda');
 });
 
 it.each([false, true])('sends the old /inicio URL to the home page (authenticated: %s)', async authenticated => {

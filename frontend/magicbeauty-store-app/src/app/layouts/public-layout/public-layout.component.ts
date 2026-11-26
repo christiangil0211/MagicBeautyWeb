@@ -8,7 +8,7 @@ import { STORE_CONTACT, STORE_SOCIAL_LINKS, whatsappDisplayPhone, whatsappUrl } 
 import { AuthService } from '../../core/services/auth.service';
 import { OrderDraftService } from '../../core/services/order-draft.service';
 import { CategoryService } from '../../core/services/category.service';
-import { PORTAL_MENU_LABEL, PORTAL_TABS, isPortalUrl } from '../../features/public/portal/portal-navigation';
+import { PORTAL_MENU_LABEL, PORTAL_TABS, WHOLESALE_PATH } from '../../features/public/portal/portal-navigation';
 import { CategoryMenuItem } from '../../shared/models/category.model';
 import { SearchBoxComponent } from '../../shared/components/search-box/search-box.component';
 import { WhatsappButtonComponent } from '../../shared/components/whatsapp-button/whatsapp-button.component';
@@ -51,6 +51,8 @@ export class PublicLayoutComponent {
   readonly adminLinks = ADMIN_LINKS;
   readonly portalTabs = PORTAL_TABS;
   readonly portalMenuLabel = PORTAL_MENU_LABEL;
+  /** "Hazte mayorista" lleva a su página y solo se marca activo en ella. */
+  readonly wholesalePath = WHOLESALE_PATH;
 
   /** Unidades del pedido temporal, para el contador de "Mi pedido". */
   readonly orderCount = inject(OrderDraftService).itemCount;
@@ -76,8 +78,6 @@ export class PublicLayoutComponent {
   readonly showHeaderSearch = computed(() => this.ecommerceNavigation() || this.isAuthenticated());
   readonly showMenu = computed(() => this.ecommerceNavigation() || this.isAuthenticated());
 
-  /** El ítem del portal se marca en cualquiera de sus pestañas. */
-  readonly onPortal = signal(false);
   readonly activeCategorySlug = signal<string | null>(null);
 
   readonly isAccountOpen = signal(false);
@@ -144,7 +144,6 @@ export class PublicLayoutComponent {
       const onCatalog = ['catalogo', 'productos'].includes(tree.root.children['primary']?.segments.map(s => s.path).join('/') ?? '');
 
       this.searchTerm.set(onCatalog ? (tree.queryParams['q'] ?? '') : '');
-      this.onPortal.set(isPortalUrl(this.router.url));
       const segments = tree.root.children['primary']?.segments ?? [];
       this.activeCategorySlug.set(segments[0]?.path === 'categoria' ? (segments[1]?.path ?? null) : null);
     };
