@@ -7,15 +7,34 @@
   [style]="{ width: 'min(92vw, 560px)' }" appendTo="body">
   @switch (step()) {
     @case ('confirm') {
-      <p class="intro">Se traerán las facturas de Alegra y se actualizará el ranking de la tienda. La primera carga consulta los últimos tres meses.</p>
-      @if (lastSuccess(); as date) {
-        <p class="note"><i class="pi pi-history" aria-hidden="true"></i> Última importación exitosa {{ date | date:'medium' }}</p>
-        <label class="note">
-          <input type="checkbox" [checked]="refreshDetails()" (change)="refreshDetails.set($any($event.target).checked)">
-          Volver a consultar los últimos tres meses para completar los datos de facturas ya importadas
-        </label>
-      }
+      <div class="confirm">
+        <div class="confirm__summary">
+          <span class="confirm__icon" aria-hidden="true"><i class="pi pi-download"></i></span>
+          <div>
+            <strong>{{ lastSuccess() ? 'Actualizar el registro de ventas' : 'Cargar los últimos tres meses' }}</strong>
+            <p>{{ lastSuccess()
+              ? 'Se consultarán las facturas recientes de Alegra y se actualizará el ranking de la tienda.'
+              : 'Se importarán las facturas de Alegra para consultar las ventas y calcular el ranking de la tienda.' }}</p>
+          </div>
+        </div>
+
+        @if (lastSuccess(); as date) {
+          <div class="last-import">
+            <span><i class="pi pi-clock" aria-hidden="true"></i> Última importación exitosa</span>
+            <time [attr.datetime]="date">{{ date | date:'dd/MM/yyyy, HH:mm':'-0500' }}</time>
+          </div>
+
+          <label class="refresh-option" [class.refresh-option--selected]="refreshDetails()">
+            <input type="checkbox" [checked]="refreshDetails()" (change)="refreshDetails.set($any($event.target).checked)">
+            <span>
+              <strong>Completar datos de facturas anteriores</strong>
+              <span>Consulta de nuevo los últimos tres meses para recuperar vencimientos y datos de pago. Puede tardar más.</span>
+            </span>
+          </label>
+        }
+      </div>
     }
+
     @case ('running') {
       <app-loader message="Importando ventas… puede tardar unos minutos." [compact]="true" />
       <div class="stats" aria-label="Progreso de la importación">
@@ -58,7 +77,7 @@
   <ng-template #footer>
     @if (step() === 'confirm') {
       <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="close()" />
-      <p-button label="Importar ahora" icon="pi pi-download" (onClick)="start()" />
+      <p-button [label]="refreshDetails() ? 'Actualizar tres meses' : 'Importar ahora'" icon="pi pi-download" (onClick)="start()" />
     } @else if (busy()) {
       <p-button label="Importando…" icon="pi pi-spin pi-spinner" [disabled]="true" />
     } @else {
