@@ -1,0 +1,35 @@
+:host { display: contents; }
+
+.intro { color: var(--mb-text-secondary); font-size: .9rem; line-height: 1.5; margin-top: 0; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: .6rem;
+
+  div {
+    display: grid;
+    gap: .15rem;
+    padding: .7rem .8rem;
+    border: 1px solid var(--mb-border-soft);
+    border-radius: var(--mb-radius-sm);
+    background: var(--mb-surface);
+  }
+
+  strong { color: var(--mb-heading); font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+  span { color: var(--mb-text-secondary); font-size: .75rem; }
+}
+
+.note, .error, .success {
+  padding: .7rem .85rem;
+  border-radius: var(--mb-radius-sm);
+  font-size: .85rem;
+
+  i { margin-right: .4rem; }
+}
+
+.note { background: var(--mb-pink-50); color: var(--mb-text-secondary); }
+.error { border: 1px solid var(--mb-danger-border); background: var(--mb-danger-soft); color: var(--mb-danger); }
+.success { color: var(--mb-success); background: var(--mb-surface-2); }
+
+details ul { max-height: 12rem; overflow-y: auto; }

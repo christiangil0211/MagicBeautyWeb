@@ -1,81 +1,91 @@
-﻿<app-page-header eyebrow="Administración" title="Ventas" subtitle="Consulta las facturas importadas y sus productos.">
-  <app-sales-import (imported)="load(1)" />
-</app-page-header>
+﻿<section class="sales">
+  <app-page-header eyebrow="Administración" title="Ventas" subtitle="Consulta las facturas importadas y sus productos.">
+    <app-sales-import (settled)="load(1)" />
+  </app-page-header>
 
-<form (ngSubmit)="apply()">
-  <label>Desde <input type="date" name="from" [(ngModel)]="from" [max]="through || '9999-12-31'"></label>
-  <label>Hasta <input type="date" name="through" [(ngModel)]="through" [min]="from"></label>
-  <label>Estado
-    <select name="status" [(ngModel)]="status">
-      <option value="">Todos</option>
-      @for (state of states; track state.value) {
-        <option [value]="state.value">{{ state.label }}</option>
+  <div class="panel">
+    <form class="filters" (ngSubmit)="apply()">
+      <label>Desde <input pInputText type="date" name="from" [(ngModel)]="from" [max]="through || '9999-12-31'"></label>
+      <label>Hasta <input pInputText type="date" name="through" [(ngModel)]="through" [min]="from"></label>
+      <label>Estado
+        <p-select inputId="sale-status" name="status" [options]="states" optionLabel="label" optionValue="value"
+          [(ngModel)]="status" placeholder="Todos" [showClear]="true" appendTo="body" />
+      </label>
+      <label class="search">Factura o producto
+        <input pInputText type="search" name="search" [(ngModel)]="search" placeholder="ID, referencia o nombre">
+      </label>
+      <p-button type="submit" label="Filtrar" icon="pi pi-filter" size="small" />
+      <p-button type="button" label="Limpiar" icon="pi pi-times" severity="secondary" [text]="true" size="small" (onClick)="clear()" />
+    </form>
+
+    <div class="mb-table-wrap" [class.is-loading]="loading()">
+      @if (loading()) {
+        <app-loader mode="overlay" message="Cargando ventas…" />
       }
-    </select>
-  </label>
-  <label>Factura o producto
-    <input type="search" name="search" [(ngModel)]="search" placeholder="ID, referencia o nombre">
-  </label>
-  <p-button type="submit" label="Filtrar" icon="pi pi-filter" />
-  <p-button type="button" label="Limpiar" severity="secondary" (onClick)="clear()" />
-</form>
-
-@if (loading()) {
-  <p role="status">Consultando ventas…</p>
-} @else if (error()) {
-  <p role="alert">{{ error() }}</p>
-} @else if (result(); as data) {
-  @if (data.items.length === 0) {
-    <p>No hay facturas para los filtros seleccionados.</p>
-  } @else {
-    <div class="table-scroll">
-      <table aria-label="Facturas importadas">
-        <thead><tr><th>Factura</th><th>Fecha</th><th>Estado</th><th>Líneas</th><th>Unidades</th><th>Acciones</th></tr></thead>
-        <tbody>
-          @for (sale of data.items; track sale.id) {
-            <tr>
-              <td>{{ sale.externalId }}</td><td>{{ sale.saleDate }}</td><td>{{ statusLabel(sale.status) }}</td>
-              <td>{{ sale.lineCount }}</td><td>{{ sale.units | number }}</td>
-              <td><p-button type="button" label="Ver líneas" severity="secondary" (onClick)="openDetail(sale)" /></td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <p-table [value]="result()?.items ?? []" styleClass="mb-table" dataKey="id" [rowHover]="true">
+        <ng-template pTemplate="header">
+          <tr><th>Factura</th><th>Fecha</th><th>Estado</th><th class="number">Líneas</th><th class="number">Unidades</th><th>Detalle</th></tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-sale>
+          <tr>
+            <td><span class="reference">{{ sale.externalId }}</span></td>
+            <td>{{ sale.saleDate }}</td>
+            <td><p-tag [value]="statusLabel(sale.status)" [severity]="statusSeverity(sale.status)" /></td>
+            <td class="number">{{ sale.lineCount | number }}</td>
+            <td class="number">{{ sale.units | number }}</td>
+            <td><p-button label="Ver líneas" icon="pi pi-list" size="small" severity="secondary" [text]="true" (onClick)="openDetail(sale)" /></td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr><td colspan="6" class="empty">
+            @if (error()) {
+              <p role="alert">{{ error() }}</p>
+              <p-button label="Volver a consultar" icon="pi pi-refresh" severity="secondary" [text]="true" (onClick)="load(1)" />
+            } @else if (result()) {
+              No hay facturas para los filtros seleccionados.
+            }
+          </td></tr>
+        </ng-template>
+      </p-table>
     </div>
-    <nav class="pagination" aria-label="Paginación de ventas">
-      <p-button label="Anterior" [disabled]="data.page === 1" (onClick)="load(data.page - 1)" />
-      <span>Página {{ data.page }} · {{ data.total | number }} facturas</span>
-      <p-button label="Siguiente" [disabled]="data.page * data.pageSize >= data.total" (onClick)="load(data.page + 1)" />
-    </nav>
-  }
-}
 
-@if (selected(); as sale) {
-  <section aria-labelledby="sale-detail">
-    <h2 id="sale-detail">Factura {{ sale.externalId }}</h2>
-    <p-button label="Cerrar detalle" severity="secondary" (onClick)="closeDetail()" />
-    @if (detailError()) {
-      <p role="alert">{{ detailError() }}</p>
-    } @else if (lines(); as detail) {
-      @if (detail.length === 0) {
-        <p>Esta factura no tiene líneas registradas.</p>
-      } @else {
-        <div class="table-scroll">
-          <table aria-label="Líneas de la factura">
-            <thead><tr><th>Ítem</th><th>Referencia</th><th>Producto</th><th>Unidades</th><th>Vínculo</th></tr></thead>
-            <tbody>
-              @for (line of detail; track line.id) {
-                <tr>
-                  <td>{{ line.externalItemId }}</td><td>{{ line.reference || '—' }}</td><td>{{ line.name || '—' }}</td>
-                  <td>{{ line.quantity | number }}</td><td>{{ line.productId === null ? 'Sin vínculo' : 'Vinculado' }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    } @else {
-      <p role="status">Consultando líneas…</p>
+    @if (result(); as data) {
+      <nav class="pagination" aria-label="Paginación de ventas">
+        <span>{{ data.total | number }} facturas · Página {{ data.page }}</span>
+        <p-button label="Anterior" icon="pi pi-angle-left" size="small" severity="secondary" [outlined]="true"
+          [disabled]="loading() || data.page === 1" (onClick)="load(data.page - 1)" />
+        <p-button label="Siguiente" icon="pi pi-angle-right" iconPos="right" size="small" severity="secondary" [outlined]="true"
+          [disabled]="loading() || data.page * data.pageSize >= data.total" (onClick)="load(data.page + 1)" />
+      </nav>
     }
-  </section>
-}
+  </div>
+
+  @if (selected(); as sale) {
+    <section class="panel" aria-labelledby="sale-detail">
+      <div class="detail-header">
+        <h2 id="sale-detail">Factura {{ sale.externalId }}</h2>
+        <p-button label="Cerrar detalle" icon="pi pi-times" severity="secondary" [text]="true" (onClick)="closeDetail()" />
+      </div>
+      @if (detailError()) {
+        <p role="alert">{{ detailError() }}</p>
+      } @else if (lines(); as detail) {
+        <p-table [value]="detail" styleClass="mb-table" dataKey="id">
+          <ng-template pTemplate="header">
+            <tr><th>Ítem</th><th>Referencia</th><th>Producto</th><th class="number">Unidades</th><th>Vínculo</th></tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-line>
+            <tr>
+              <td>{{ line.externalItemId }}</td><td>{{ line.reference || '—' }}</td><td>{{ line.name || '—' }}</td>
+              <td class="number">{{ line.quantity | number }}</td>
+              <td><p-tag [value]="line.productId === null ? 'Sin vínculo' : 'Vinculado'"
+                [severity]="line.productId === null ? 'warn' : 'success'" /></td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage"><tr><td colspan="5" class="empty">Esta factura no tiene líneas registradas.</td></tr></ng-template>
+        </p-table>
+      } @else {
+        <app-loader [compact]="true" message="Cargando líneas…" />
+      }
+    </section>
+  }
+</section>

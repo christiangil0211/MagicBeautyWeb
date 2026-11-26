@@ -3,115 +3,101 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
-import { Subscription, exhaustMap, timer } from 'rxjs';
+import { DialogModule } from 'primeng/dialog';
+import { EMPTY, Subscription, catchError, exhaustMap, timer } from 'rxjs';
 
 import { SalesImportRun, SalesImportService } from '../../../core/services/sales-import.service';
+import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 
 @Component({
   selector: 'app-sales-import',
-  imports: [ButtonModule, DatePipe, DecimalPipe],
-  template: `
-    <p-button label="Importar ventas" icon="pi pi-download" severity="secondary"
-      [loading]="starting()" [disabled]="active()" (onClick)="start()" />
-    @if (run()?.status === 'Failed') {
-      <p-button label="Reanudar" severity="secondary" [disabled]="starting()" (onClick)="start(run()?.id)" />
-    }
-    <div aria-live="polite">
-      @if (error(); as message) {
-        <p>{{ message }}</p>
-        <button type="button" (click)="refresh()">Consultar estado</button>
-      }
-      @if (run(); as current) {
-        <p>{{ labels[current.status] }} · {{ current.pages }} páginas · {{ current.invoices }} facturas</p>
-        @if (current.error) { <p>{{ current.error }}</p> }
-        @if (current.lastSuccessAt) {
-          <p>Última importación exitosa {{ current.lastSuccessAt | date:'medium' }}</p>
-        }
-        @if (current.unlinkedPercent !== null) {
-          <details>
-            <summary>{{ current.unlinkedPercent | number:'1.0-2' }} % de unidades sin vínculo</summary>
-            <ul>
-              @for (item of current.unlinked; track item.externalItemId) {
-                <li>{{ item.externalItemId }} · {{ item.units | number }} unidades</li>
-              }
-            </ul>
-          </details>
-        }
-      }
-    </div>
-  `
+  imports: [ButtonModule, DatePipe, DecimalPipe, DialogModule, LoaderComponent],
+  templateUrl: './sales-import.component.html',
+  styleUrl: './sales-import.component.scss'
 })
 export class SalesImportComponent {
   private readonly api = inject(SalesImportService);
   private readonly destroyRef = inject(DestroyRef);
   private polling?: Subscription;
 
-  readonly imported = output<void>();
+  readonly settled = output<void>();
   readonly run = signal<SalesImportRun | null>(null);
-  readonly starting = signal(false);
+  readonly lastSuccess = signal<string | null>(null);
+  readonly open = signal(false);
+  readonly step = signal<'confirm' | 'running' | 'result' | 'error'>('confirm');
+  readonly checking = signal(true);
   readonly error = signal('');
-  readonly active = computed(() => {
-    const status = this.run()?.status;
-    return status === 'Queued' || status === 'Running' || (this.pollingId() !== null && !status);
-  });
-  private readonly pollingId = signal<string | null>(null);
-  readonly labels = { Queued: 'En espera', Running: 'En curso', Succeeded: 'Completada', Failed: 'Fallida' };
+  readonly busy = computed(() => this.step() === 'running');
 
-  constructor() {
-    this.refresh();
-  }
-
-  refresh(): void {
+  ngOnInit(): void {
     this.api.latest().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: current => {
-        this.error.set('');
+        this.checking.set(false);
         this.run.set(current);
-        if (current?.status === 'Queued' || current?.status === 'Running') this.watch(current.id);
+        this.lastSuccess.set(current?.lastSuccessAt ?? null);
+        if (current?.status === 'Queued' || current?.status === 'Running') {
+          this.open.set(true);
+          this.watch(current.id);
+        } else {
+          this.settled.emit();
+        }
       },
-      error: () => this.error.set('No se pudo consultar el estado de la importación.')
+      error: () => {
+        this.checking.set(false);
+        this.settled.emit();
+      }
     });
   }
 
+  show(): void {
+    if (this.busy()) return;
+    this.error.set('');
+    this.step.set(this.run()?.status === 'Failed' ? 'result' : 'confirm');
+    this.open.set(true);
+  }
+
+  close(): void {
+    if (!this.busy()) this.open.set(false);
+  }
+
   start(resumeId?: string): void {
-    if (this.starting() || this.active()) return;
-    this.starting.set(true);
+    if (this.busy()) return;
+    this.step.set('running');
     this.error.set('');
     this.api.start(resumeId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ id }) => {
         this.run.set(null);
         this.watch(id);
-        this.starting.set(false);
       },
       error: (response: HttpErrorResponse) => {
-        this.starting.set(false);
         if (response.status === 409 && typeof response.error?.id === 'string') {
           this.run.set(null);
           this.watch(response.error.id);
           return;
         }
+        this.step.set('error');
         this.error.set(response.error?.message ?? 'No se pudo iniciar la importación.');
       }
     });
   }
 
   private watch(id: string): void {
+    this.step.set('running');
     this.polling?.unsubscribe();
-    this.pollingId.set(id);
-    this.polling = timer(0, 4000).pipe(
-      exhaustMap(() => this.api.get(id)),
+    this.polling = timer(0, 5000).pipe(
+      exhaustMap(() => this.api.get(id).pipe(catchError(() => {
+        this.error.set('Se interrumpió la consulta de estado. Seguiremos consultando la importación.');
+        return EMPTY;
+      }))),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: current => {
-        this.run.set(current);
-        if (current.status === 'Succeeded' || current.status === 'Failed') {
-          if (current.status === 'Succeeded') this.imported.emit();
-          this.pollingId.set(null);
-          this.polling?.unsubscribe();
-        }
-      },
-      error: () => {
-        this.pollingId.set(null);
-        this.error.set('No se pudo actualizar el estado de la importación.');
+    ).subscribe(current => {
+      this.run.set(current);
+      this.error.set('');
+      if (current.status === 'Succeeded' || current.status === 'Failed') {
+        this.polling?.unsubscribe();
+        this.lastSuccess.set(current.lastSuccessAt);
+        this.step.set('result');
+        this.settled.emit();
       }
     });
   }

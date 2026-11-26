@@ -105,6 +105,16 @@ public sealed class SalesImportsController(
     {
         if (run is null) return NoContent();
 
+        if (run.Status is ImportStatus.Queued or ImportStatus.Running)
+        {
+            return Ok(new
+            {
+                run.Id, status = run.Status.ToString(), run.Pages, run.Invoices, run.Error,
+                run.From, run.Through, lastSuccessAt = (DateTimeOffset?)null,
+                unlinkedPercent = (decimal?)null, unlinked = Array.Empty<object>()
+            });
+        }
+
         var last = await LastSuccessAsync(run.Source, token);
         var eligible = from line in db.Set<SaleLine>()
                        join sale in db.Set<Sale>() on line.SaleId equals sale.Id

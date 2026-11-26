@@ -1,0 +1,46 @@
+:host { display: block; }
+
+.sales { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.panel {
+  background: var(--mb-surface);
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius);
+  padding: 1.25rem;
+  box-shadow: var(--mb-shadow-sm);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: .75rem;
+  margin-bottom: 1.1rem;
+
+  label { display: grid; gap: .35rem; font-size: .82rem; font-weight: 600; color: var(--mb-text-secondary); }
+  .search { flex: 1 1 15rem; }
+}
+
+.reference {
+  padding: .2rem .45rem;
+  border-radius: var(--mb-radius-xs);
+  background: var(--mb-surface-2);
+  color: var(--mb-primary);
+  font-family: ui-monospace, monospace;
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.number { text-align: right; font-variant-numeric: tabular-nums; }
+.empty { text-align: center; color: var(--mb-text-secondary); padding: 1.5rem; }
+
+.pagination, .detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+}
+
+.pagination { margin-top: 1rem; color: var(--mb-text-secondary); font-size: .85rem; }
+.pagination span, .detail-header h2 { margin-inline-end: auto; }
+.detail-header h2 { font-size: 1rem; color: var(--mb-heading); }
