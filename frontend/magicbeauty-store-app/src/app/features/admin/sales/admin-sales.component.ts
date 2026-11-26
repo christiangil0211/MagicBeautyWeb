@@ -14,6 +14,7 @@ import { Subscription } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { formatCop } from '../../../shared/utils/currency';
 import { SalesImportComponent } from './sales-import.component';
 
 interface SaleRow {
@@ -38,6 +39,8 @@ interface SaleLine {
   reference: string | null;
   externalItemId: string;
   quantity: number;
+  unitPrice: number | null;
+  total: number | null;
   productId: number | null;
 }
 
@@ -68,6 +71,12 @@ export class AdminSalesComponent {
     dueDate: string | null;
     paymentForm: string | null;
     paymentMethod: string | null;
+    subtotal: number | null;
+    discount: number | null;
+    tax: number | null;
+    total: number | null;
+    totalPaid: number | null;
+    balance: number | null;
     lines: SaleLine[];
   } | null>(null);
   readonly detailError = signal('');
@@ -131,6 +140,10 @@ export class AdminSalesComponent {
     this.selected.set(null);
     this.detail.set(null);
     this.detailError.set('');
+  }
+
+  amount(value: number | null | undefined): string {
+    return value == null ? '—' : formatCop(value);
   }
 
   statusSeverity(status: string): 'success' | 'info' | 'secondary' | 'danger' {

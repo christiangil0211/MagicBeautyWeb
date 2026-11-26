@@ -46,6 +46,12 @@ public sealed class SalesBatchWriter(MagicBeautyDbContext db, TimeProvider clock
                 sale.DueDate = document.DueDate;
                 sale.PaymentForm = document.PaymentForm;
                 sale.PaymentMethod = document.PaymentMethod;
+                sale.Subtotal = document.Subtotal;
+                sale.Discount = document.Discount;
+                sale.Tax = document.Tax;
+                sale.Total = document.Total;
+                sale.TotalPaid = document.TotalPaid;
+                sale.Balance = document.Balance;
                 sale.ImportedAt = clock.GetUtcNow();
                 db.RemoveRange(sale.Lines);
                 sale.Lines.Clear();
@@ -61,6 +67,8 @@ public sealed class SalesBatchWriter(MagicBeautyDbContext db, TimeProvider clock
                         Name = line.Name,
                         Reference = line.Reference,
                         Quantity = line.Quantity,
+                        UnitPrice = line.UnitPrice,
+                        Total = line.Total,
                         ProductId = mappings.TryGetValue(line.ExternalItemId, out var productId) ? productId : null
                     });
                 }

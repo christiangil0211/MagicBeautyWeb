@@ -57,8 +57,9 @@ public sealed class AdminSalesController(MagicBeautyDbContext db) : ControllerBa
             .Select(sale => new
             {
                 sale.SaleDate, sale.DueDate, sale.PaymentForm, sale.PaymentMethod,
+                sale.Subtotal, sale.Discount, sale.Tax, sale.Total, sale.TotalPaid, sale.Balance,
                 lines = sale.Lines.OrderBy(line => line.Id)
-                    .Select(line => new { line.Id, line.ExternalItemId, line.Reference, line.Name, line.Quantity, line.ProductId }).ToList()
+                    .Select(line => new { line.Id, line.ExternalItemId, line.Reference, line.Name, line.Quantity, line.UnitPrice, line.Total, line.ProductId }).ToList()
             }).SingleOrDefaultAsync(token);
 
         if (lines is null) return NotFound();

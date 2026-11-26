@@ -41,14 +41,24 @@ internal sealed class AlegraSalesSource(
             };
             var lines = detail.Items.Select(item => new ImportedSaleLine(
                 item.Id ?? "", item.Reference, item.Name,
-                item.Quantity ?? throw new SalesSourceReadException("Una línea de factura no contiene una cantidad válida."))).ToArray();
+                item.Quantity ?? throw new SalesSourceReadException("Una línea de factura no contiene una cantidad válida."))
+            {
+                UnitPrice = item.Price,
+                Total = item.Total
+            }).ToArray();
             sales.Add(new ImportedSale(id, detail.Date, status, lines)
             {
                 DueDate = DateOnly.TryParseExact(detail.DueDate ?? invoice.DueDate, "yyyy-MM-dd",
                     System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None,
                     out var dueDate) ? dueDate : null,
                 PaymentForm = PaymentLabel(detail.PaymentForm ?? invoice.PaymentForm, true),
-                PaymentMethod = PaymentLabel(detail.PaymentMethod ?? invoice.PaymentMethod, false)
+                PaymentMethod = PaymentLabel(detail.PaymentMethod ?? invoice.PaymentMethod, false),
+                Subtotal = detail.Subtotal ?? invoice.Subtotal,
+                Discount = detail.Discount ?? invoice.Discount,
+                Tax = detail.Tax ?? invoice.Tax,
+                Total = detail.Total ?? invoice.Total,
+                TotalPaid = detail.TotalPaid ?? invoice.TotalPaid,
+                Balance = detail.Balance ?? invoice.Balance
             });
         }
 

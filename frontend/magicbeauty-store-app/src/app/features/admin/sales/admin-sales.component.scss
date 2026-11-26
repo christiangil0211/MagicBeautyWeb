@@ -62,3 +62,19 @@
 }
 
 .detail-title { margin: 0 0 .65rem; font-size: 1rem; color: var(--mb-heading); }
+
+.invoice-financial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem 1.25rem;
+  margin-top: 1rem;
+
+  p { margin: .5rem 0 0; color: var(--mb-text-secondary); font-size: .8rem; }
+  dl { width: min(100%, 21rem); margin: 0 0 0 auto; }
+  dl div { display: flex; justify-content: space-between; gap: .75rem; padding: .35rem .55rem; }
+  dt { color: var(--mb-text-secondary); font-size: .85rem; }
+  dd { margin: 0; color: var(--mb-heading); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .invoice-financial__total { background: var(--mb-pink-50); border-radius: var(--mb-radius-xs); }
+}

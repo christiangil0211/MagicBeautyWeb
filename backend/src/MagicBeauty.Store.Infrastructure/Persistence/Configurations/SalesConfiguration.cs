@@ -17,6 +17,12 @@ public sealed class SalesConfiguration :
         builder.HasIndex(x => new { x.SaleDate, x.Status });
         builder.Property(x => x.PaymentForm).HasMaxLength(80);
         builder.Property(x => x.PaymentMethod).HasMaxLength(80);
+        builder.Property(x => x.Subtotal).HasPrecision(19, 4);
+        builder.Property(x => x.Discount).HasPrecision(19, 4);
+        builder.Property(x => x.Tax).HasPrecision(19, 4);
+        builder.Property(x => x.Total).HasPrecision(19, 4);
+        builder.Property(x => x.TotalPaid).HasPrecision(19, 4);
+        builder.Property(x => x.Balance).HasPrecision(19, 4);
         builder.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.SaleId);
     }
 
@@ -27,6 +33,8 @@ public sealed class SalesConfiguration :
         builder.Property(x => x.Reference).HasMaxLength(128);
         builder.Property(x => x.Name).HasMaxLength(256);
         builder.Property(x => x.Quantity).HasPrecision(19, 6);
+        builder.Property(x => x.UnitPrice).HasPrecision(19, 4);
+        builder.Property(x => x.Total).HasPrecision(19, 4);
         builder.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.SetNull);
     }
 

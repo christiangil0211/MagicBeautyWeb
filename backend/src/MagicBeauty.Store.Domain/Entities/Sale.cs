@@ -11,6 +11,12 @@ public sealed class Sale
     public DateOnly? DueDate { get; set; }
     public string? PaymentForm { get; set; }
     public string? PaymentMethod { get; set; }
+    public decimal? Subtotal { get; set; }
+    public decimal? Discount { get; set; }
+    public decimal? Tax { get; set; }
+    public decimal? Total { get; set; }
+    public decimal? TotalPaid { get; set; }
+    public decimal? Balance { get; set; }
     public SaleStatus Status { get; set; }
     public DateTimeOffset ImportedAt { get; set; }
     public ICollection<SaleLine> Lines { get; } = new List<SaleLine>();
@@ -25,6 +31,8 @@ public sealed class SaleLine
     public string? Reference { get; set; }
     public string? Name { get; set; }
     public decimal Quantity { get; set; }
+    public decimal? UnitPrice { get; set; }
+    public decimal? Total { get; set; }
 }
 
 public sealed class SourceItemMapping
