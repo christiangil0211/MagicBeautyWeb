@@ -1,4 +1,4 @@
-﻿using MagicBeauty.Store.Api.Security;
+using MagicBeauty.Store.Api.Security;
 using MagicBeauty.Store.Domain.Entities;
 using MagicBeauty.Store.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -56,6 +56,7 @@ public sealed class AdminSalesController(MagicBeautyDbContext db) : ControllerBa
         var lines = await db.Set<Sale>().AsNoTracking().Where(sale => sale.Id == id)
             .Select(sale => new
             {
+                sale.SaleDate, sale.DueDate, sale.PaymentForm, sale.PaymentMethod,
                 lines = sale.Lines.OrderBy(line => line.Id)
                     .Select(line => new { line.Id, line.ExternalItemId, line.Reference, line.Name, line.Quantity, line.ProductId }).ToList()
             }).SingleOrDefaultAsync(token);

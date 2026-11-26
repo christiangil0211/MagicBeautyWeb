@@ -1,4 +1,4 @@
-﻿using MagicBeauty.Store.Application.Features.Sales;
+using MagicBeauty.Store.Application.Features.Sales;
 using MagicBeauty.Store.Domain.Entities;
 using MagicBeauty.Store.Integrations.Alegra.Client;
 using MagicBeauty.Store.Integrations.Alegra.Persistence;
@@ -42,9 +42,28 @@ internal sealed class AlegraSalesSource(
             var lines = detail.Items.Select(item => new ImportedSaleLine(
                 item.Id ?? "", item.Reference, item.Name,
                 item.Quantity ?? throw new SalesSourceReadException("Una línea de factura no contiene una cantidad válida."))).ToArray();
-            sales.Add(new ImportedSale(id, detail.Date, status, lines));
+            sales.Add(new ImportedSale(id, detail.Date, status, lines)
+            {
+                DueDate = DateOnly.TryParseExact(detail.DueDate ?? invoice.DueDate, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None,
+                    out var dueDate) ? dueDate : null,
+                PaymentForm = PaymentLabel(detail.PaymentForm ?? invoice.PaymentForm, true),
+                PaymentMethod = PaymentLabel(detail.PaymentMethod ?? invoice.PaymentMethod, false)
+            });
         }
 
         return new SalesBatch(sales, offset + invoices.Count, invoices.Count < pageSize);
     }
+    private static string? PaymentLabel(string? value, bool isForm) => (value?.Trim().ToUpperInvariant(), isForm) switch
+    {
+        ("CASH", true) => "Contado",
+        ("CREDIT", true) => "Crédito",
+        ("CASH", false) => "Efectivo",
+        ("CREDIT_CARD", false) => "Tarjeta de crédito",
+        ("DEBIT_CARD", false) => "Tarjeta débito",
+        ("BANK_DEPOSIT", false) => "Consignación bancaria",
+        ("CREDIT_TRANSFER_BANK", false) => "Transferencia bancaria",
+        (null or "", _) => null,
+        _ => value is { Length: <= 80 } ? value.Trim() : null
+    };
 }

@@ -1,4 +1,4 @@
-﻿using MagicBeauty.Store.Api.Sales;
+using MagicBeauty.Store.Api.Sales;
 using MagicBeauty.Store.Api.Security;
 using MagicBeauty.Store.Application.Features.Sales;
 using MagicBeauty.Store.Domain.Entities;
@@ -18,7 +18,7 @@ public sealed class SalesImportsController(
     TimeProvider clock, IConfiguration configuration) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Start([FromQuery] Guid? resumeId, CancellationToken token)
+    public async Task<IActionResult> Start([FromQuery] Guid? resumeId, CancellationToken token, [FromQuery] bool refreshDetails = false)
     {
         if (!queue.Ready.IsCompletedSuccessfully)
             return StatusCode(503, new { message = "La importación de ventas no está disponible." });
@@ -67,7 +67,7 @@ public sealed class SalesImportsController(
                 {
                     Id = runId,
                     Source = source.Source,
-                    From = last is null ? today.AddMonths(-3) : (watermark ?? last.Through).AddDays(-overlap),
+                    From = last is null || refreshDetails ? today.AddMonths(-3) : (watermark ?? last.Through).AddDays(-overlap),
                     Through = today,
                     StartedAt = clock.GetUtcNow(),
                     Status = ImportStatus.Queued,

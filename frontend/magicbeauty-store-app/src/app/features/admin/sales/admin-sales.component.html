@@ -33,7 +33,7 @@
             <td><p-tag [value]="statusLabel(sale.status)" [severity]="statusSeverity(sale.status)" /></td>
             <td class="number">{{ sale.lineCount | number }}</td>
             <td class="number">{{ sale.units | number }}</td>
-            <td><p-button label="Detalles de la factura" icon="pi pi-file" size="small" severity="secondary" [text]="true" (onClick)="openDetail(sale)" /></td>
+            <td><p-button label="Ver detalle de factura" icon="pi pi-file" size="small" severity="secondary" [text]="true" (onClick)="openDetail(sale)" /></td>
           </tr>
         </ng-template>
         <ng-template pTemplate="emptymessage">
@@ -67,15 +67,20 @@
     @if (selected(); as sale) {
       <dl class="invoice-summary">
         <div><dt>Factura</dt><dd><span class="reference">{{ sale.externalId }}</span></dd></div>
-        <div><dt>Fecha</dt><dd>{{ sale.saleDate }}</dd></div>
+                <div><dt>Fecha de emisión</dt><dd>{{ detail()?.saleDate || sale.saleDate }}</dd></div>
+        @if (detail(); as invoice) {
+          <div><dt>Vencimiento</dt><dd>{{ invoice.dueDate || 'Sin registrar' }}</dd></div>
+          <div><dt>Tipo de pago</dt><dd>{{ invoice.paymentForm || 'Sin registrar' }}</dd></div>
+          <div><dt>Medio de pago</dt><dd>{{ invoice.paymentMethod || 'Sin registrar' }}</dd></div>
+        }
         <div><dt>Estado</dt><dd><p-tag [value]="statusLabel(sale.status)" [severity]="statusSeverity(sale.status)" /></dd></div>
         <div><dt>Unidades</dt><dd>{{ sale.units | number }}</dd></div>
       </dl>
       <h3 class="detail-title">Productos de la factura</h3>
       @if (detailError()) {
         <p role="alert">{{ detailError() }}</p>
-      } @else if (lines(); as detail) {
-        <p-table [value]="detail" styleClass="mb-table" dataKey="id" [scrollable]="true" scrollHeight="min(38vh, 24rem)">
+      } @else if (detail(); as invoice) {
+        <p-table [value]="invoice.lines" styleClass="mb-table" dataKey="id" [scrollable]="true" scrollHeight="min(38vh, 24rem)">
           <ng-template pTemplate="header">
             <tr><th>Ítem</th><th>Referencia</th><th>Producto</th><th class="number">Unidades</th><th>Vínculo</th></tr>
           </ng-template>

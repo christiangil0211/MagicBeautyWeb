@@ -1,8 +1,13 @@
-﻿using MagicBeauty.Store.Domain.Entities;
+using MagicBeauty.Store.Domain.Entities;
 
 namespace MagicBeauty.Store.Application.Features.Sales;
 
-public sealed record ImportedSale(string ExternalId, DateOnly SaleDate, SaleStatus Status, IReadOnlyList<ImportedSaleLine> Lines);
+public sealed record ImportedSale(string ExternalId, DateOnly SaleDate, SaleStatus Status, IReadOnlyList<ImportedSaleLine> Lines)
+{
+    public DateOnly? DueDate { get; init; }
+    public string? PaymentForm { get; init; }
+    public string? PaymentMethod { get; init; }
+}
 
 public sealed record ImportedSaleLine(string ExternalItemId, string? Reference, string? Name, decimal Quantity);
 

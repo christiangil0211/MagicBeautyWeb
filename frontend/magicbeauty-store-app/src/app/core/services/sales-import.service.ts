@@ -1,4 +1,4 @@
-﻿import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
@@ -29,8 +29,10 @@ export class SalesImportService {
     return this.http.get<SalesImportRun>(`${this.url}/${encodeURIComponent(id)}`, { transferCache: false });
   }
 
-  start(resumeId?: string) {
-    const params = resumeId ? new HttpParams().set('resumeId', resumeId) : undefined;
+  start(resumeId?: string, refreshDetails = false) {
+    let params = new HttpParams();
+    if (resumeId) params = params.set('resumeId', resumeId);
+    if (refreshDetails) params = params.set('refreshDetails', true);
     return this.http.post<{ id: string }>(this.url, {}, { params });
   }
 }

@@ -1,4 +1,4 @@
-﻿using MagicBeauty.Store.Domain.Entities;
+using MagicBeauty.Store.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -15,6 +15,8 @@ public sealed class SalesConfiguration :
         builder.Property(x => x.ExternalId).HasMaxLength(128).IsRequired();
         builder.HasIndex(x => new { x.Source, x.ExternalId }).IsUnique();
         builder.HasIndex(x => new { x.SaleDate, x.Status });
+        builder.Property(x => x.PaymentForm).HasMaxLength(80);
+        builder.Property(x => x.PaymentMethod).HasMaxLength(80);
         builder.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.SaleId);
     }
 

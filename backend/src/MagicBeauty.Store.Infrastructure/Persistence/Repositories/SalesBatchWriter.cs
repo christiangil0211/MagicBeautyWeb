@@ -1,4 +1,4 @@
-﻿using MagicBeauty.Store.Application.Features.Sales;
+using MagicBeauty.Store.Application.Features.Sales;
 using MagicBeauty.Store.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,6 +43,9 @@ public sealed class SalesBatchWriter(MagicBeautyDbContext db, TimeProvider clock
 
                 sale.SaleDate = document.SaleDate;
                 sale.Status = document.Status;
+                sale.DueDate = document.DueDate;
+                sale.PaymentForm = document.PaymentForm;
+                sale.PaymentMethod = document.PaymentMethod;
                 sale.ImportedAt = clock.GetUtcNow();
                 db.RemoveRange(sale.Lines);
                 sale.Lines.Clear();

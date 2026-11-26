@@ -1,4 +1,4 @@
-﻿import { DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -25,6 +25,7 @@ export class SalesImportComponent {
   readonly lastSuccess = signal<string | null>(null);
   readonly open = signal(false);
   readonly step = signal<'confirm' | 'running' | 'result' | 'error'>('confirm');
+  readonly refreshDetails = signal(false);
   readonly checking = signal(true);
   readonly error = signal('');
   readonly busy = computed(() => this.step() === 'running');
@@ -52,6 +53,7 @@ export class SalesImportComponent {
   show(): void {
     if (this.busy()) return;
     this.error.set('');
+    this.refreshDetails.set(false);
     this.step.set(this.run()?.status === 'Failed' ? 'result' : 'confirm');
     this.open.set(true);
   }
@@ -64,7 +66,7 @@ export class SalesImportComponent {
     if (this.busy()) return;
     this.step.set('running');
     this.error.set('');
-    this.api.start(resumeId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    (this.refreshDetails() && !resumeId ? this.api.start(undefined, true) : this.api.start(resumeId)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ id }) => {
         this.run.set(null);
         this.watch(id);

@@ -1,4 +1,4 @@
-﻿<p-button label="Importar ventas" icon="pi pi-download" severity="secondary"
+<p-button label="Importar ventas" icon="pi pi-download" severity="secondary"
   [outlined]="true" [disabled]="checking() || busy()" (onClick)="show()" />
 
 <p-dialog header="Importar ventas" [visible]="open()" (visibleChange)="$event ? null : close()"
@@ -10,6 +10,10 @@
       <p class="intro">Se traerán las facturas de Alegra y se actualizará el ranking de la tienda. La primera carga consulta los últimos tres meses.</p>
       @if (lastSuccess(); as date) {
         <p class="note"><i class="pi pi-history" aria-hidden="true"></i> Última importación exitosa {{ date | date:'medium' }}</p>
+        <label class="note">
+          <input type="checkbox" [checked]="refreshDetails()" (change)="refreshDetails.set($any($event.target).checked)">
+          Volver a consultar los últimos tres meses para completar los datos de facturas ya importadas
+        </label>
       }
     }
     @case ('running') {

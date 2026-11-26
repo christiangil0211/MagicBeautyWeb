@@ -680,6 +680,9 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
                     b.Property<string>("ExternalId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -687,6 +690,14 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset>("ImportedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("PaymentForm")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
 
                     b.Property<DateOnly>("SaleDate")
                         .HasColumnType("date");

@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace MagicBeauty.Store.Integrations.Alegra.Client;
 
@@ -7,6 +7,11 @@ internal sealed class AlegraInvoice
     [JsonConverter(typeof(FlexibleStringConverter))]
     public string? Id { get; init; }
     public DateOnly Date { get; init; }
+    public string? DueDate { get; init; }
+    [JsonConverter(typeof(FlexibleStringConverter))]
+    public string? PaymentForm { get; init; }
+    [JsonConverter(typeof(FlexibleStringConverter))]
+    public string? PaymentMethod { get; init; }
     public string? Status { get; init; }
     public List<AlegraInvoiceLine>? Items { get; init; }
 }

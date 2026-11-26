@@ -1,4 +1,4 @@
-﻿namespace MagicBeauty.Store.Domain.Entities;
+namespace MagicBeauty.Store.Domain.Entities;
 
 public enum SaleStatus { Unknown, Open, Closed, Draft, Voided }
 
@@ -8,6 +8,9 @@ public sealed class Sale
     public string Source { get; set; } = "";
     public string ExternalId { get; set; } = "";
     public DateOnly SaleDate { get; set; }
+    public DateOnly? DueDate { get; set; }
+    public string? PaymentForm { get; set; }
+    public string? PaymentMethod { get; set; }
     public SaleStatus Status { get; set; }
     public DateTimeOffset ImportedAt { get; set; }
     public ICollection<SaleLine> Lines { get; } = new List<SaleLine>();

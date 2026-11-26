@@ -63,7 +63,13 @@ export class AdminSalesComponent {
   readonly loading = signal(false);
   readonly error = signal('');
   readonly selected = signal<SaleRow | null>(null);
-  readonly lines = signal<SaleLine[] | null>(null);
+  readonly detail = signal<{
+    saleDate: string;
+    dueDate: string | null;
+    paymentForm: string | null;
+    paymentMethod: string | null;
+    lines: SaleLine[];
+  } | null>(null);
   readonly detailError = signal('');
   from = '';
   through = '';
@@ -112,10 +118,10 @@ export class AdminSalesComponent {
   openDetail(row: SaleRow): void {
     this.closeDetail();
     this.selected.set(row);
-    this.detailRequest = this.http.get<{ lines: SaleLine[] }>(`${this.url}/${row.id}`, {
+    this.detailRequest = this.http.get<NonNullable<ReturnType<typeof this.detail>>>(`${this.url}/${row.id}`, {
       transferCache: false
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: response => this.lines.set(response.lines),
+      next: response => this.detail.set(response),
       error: () => this.detailError.set('No se pudo consultar el detalle.')
     });
   }
@@ -123,7 +129,7 @@ export class AdminSalesComponent {
   closeDetail(): void {
     this.detailRequest?.unsubscribe();
     this.selected.set(null);
-    this.lines.set(null);
+    this.detail.set(null);
     this.detailError.set('');
   }
 
