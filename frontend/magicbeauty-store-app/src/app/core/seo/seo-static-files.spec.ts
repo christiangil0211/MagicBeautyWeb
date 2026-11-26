@@ -95,10 +95,12 @@ describe('staticwebapp.config.json', () => {
     const routes = config.routes.map(item => item.route);
     expect(rule('/catalogo')?.rewrite).toBe('/catalogo/index.html');
     expect(routes.indexOf('/catalogo')).toBeLessThan(routes.indexOf('/catalogo/*'));
-    // Las únicas funciones: sitemap y fichas. Nada más se reescribe hacia /api.
+    // Las únicas funciones: sitemap, fichas y marcas. Nada más se reescribe hacia /api.
     expect(config.routes.filter(item => item.rewrite?.startsWith('/api/')).map(item => item.route)).toEqual([
       '/sitemap.xml',
-      '/catalogo/*'
+      '/catalogo/*',
+      '/marcas',
+      '/marcas/*'
     ]);
   });
 

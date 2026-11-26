@@ -15,7 +15,8 @@ public sealed class Product
 
     public string? Description { get; set; }
 
-    public int BrandId { get; set; }
+    /// <summary>NULL = producto sin marca (accesorios, empaques). Nunca tiene dos marcas.</summary>
+    public int? BrandId { get; set; }
 
     public Brand? Brand { get; set; }
 

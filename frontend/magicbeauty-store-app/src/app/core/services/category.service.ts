@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import {
   Category,
   CategoryMenuItem,
+  CategoryCarousel,
   CategoryTile,
   CategoryTree,
   CreateCategoryRequest,
@@ -40,6 +41,11 @@ export class CategoryService {
   /** Categorías destacadas para la sección "Compra por categoría". */
   getHomeTiles(): Observable<CategoryTile[]> {
     return this.http.get<CategoryTile[]>(`${this.apiUrl}/home`);
+  }
+
+  /** Categorías con carrusel de productos en el inicio (máximo 5), en su orden. */
+  getHomeCarousels(): Observable<CategoryCarousel[]> {
+    return this.http.get<CategoryCarousel[]>(`${this.apiUrl}/home-carousels`);
   }
 
   getById(id: number): Observable<Category> {

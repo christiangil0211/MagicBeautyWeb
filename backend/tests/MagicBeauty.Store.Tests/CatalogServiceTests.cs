@@ -40,7 +40,7 @@ public sealed class CatalogServiceTests
         var audience = new Mock<IPriceAudienceProvider>();
         audience.Setup(item => item.GetCurrent()).Returns(PriceAudience.Anonymous);
 
-        var service = new CatalogService(products.Object, policy.Object, audience.Object);
+        var service = new CatalogService(products.Object, Mock.Of<IBrandRepository>(), policy.Object, audience.Object);
 
         var item = Assert.Single(await service.GetProductsAsync(null, null, null, default));
 

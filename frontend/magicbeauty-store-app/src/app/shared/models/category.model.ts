@@ -11,6 +11,8 @@ export interface Category {
   homeImageUrl?: string | null;
   iconUrl?: string | null;
   showInHome: boolean;
+  /** Carrusel de productos de esta categoría (y sus subcategorías) en el inicio. Máximo 5. */
+  showAsHomeCarousel: boolean;
   showInNavigation: boolean;
   showInMegaMenu: boolean;
   createdAt: string;
@@ -26,6 +28,8 @@ export interface CategoryTree {
   isActive: boolean;
   showInNavigation: boolean;
   showInHome: boolean;
+  /** Carrusel de productos de esta categoría (y sus subcategorías) en el inicio. Máximo 5. */
+  showAsHomeCarousel: boolean;
   showInMegaMenu: boolean;
   children: CategoryTree[];
 }
@@ -38,6 +42,8 @@ export interface CreateCategoryRequest {
   displayOrder: number;
   isActive: boolean;
   showInHome: boolean;
+  /** Carrusel de productos de esta categoría (y sus subcategorías) en el inicio. Máximo 5. */
+  showAsHomeCarousel: boolean;
   showInNavigation: boolean;
   showInMegaMenu: boolean;
 }
@@ -59,3 +65,13 @@ export interface CategoryTile {
   slug: string;
   imageUrl?: string | null;
 }
+
+/** Carrusel de productos de una categoría en el inicio (máximo 5). */
+export interface CategoryCarousel {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+/** Máximo de carruseles de categorías en el inicio (el API lo valida igual). */
+export const MAX_HOME_CATEGORY_CAROUSELS = 5;

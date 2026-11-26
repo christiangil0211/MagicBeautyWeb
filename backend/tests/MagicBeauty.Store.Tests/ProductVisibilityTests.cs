@@ -242,6 +242,7 @@ public sealed class ProductVisibilityTests
 
         return new CatalogService(
             repository,
+            Mock.Of<IBrandRepository>(),
             policy.Object,
             Mock.Of<IPriceAudienceProvider>(provider => provider.GetCurrent() == PriceAudience.Anonymous));
     }

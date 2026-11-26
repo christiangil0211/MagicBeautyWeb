@@ -55,6 +55,15 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
         return Ok(tiles);
     }
 
+    [AllowAnonymous]
+    [HttpGet("home-carousels")]
+    public async Task<ActionResult<IReadOnlyList<CategoryCarouselDto>>> GetHomeCarousels(CancellationToken cancellationToken)
+    {
+        var carousels = await categoryService.GetHomeCarouselsAsync(cancellationToken);
+
+        return Ok(carousels);
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<CategoryDto>> GetById(int id, CancellationToken cancellationToken)
     {

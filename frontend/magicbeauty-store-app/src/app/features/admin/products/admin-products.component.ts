@@ -26,6 +26,9 @@ interface StatusOption {
   value: boolean | null;
 }
 
+/** Valor del filtro de marca que pide los productos sin marca. */
+export const WITHOUT_BRAND = 0;
+
 @Component({
   selector: 'app-admin-products',
   imports: [
@@ -79,6 +82,8 @@ export class AdminProductsComponent {
 
   readonly brandOptions = computed(() => [
     { label: 'Todas las marcas', value: null },
+    // brandId=0 pide los productos sin marca (los id de marca empiezan en 1).
+    { label: 'Sin marca', value: WITHOUT_BRAND },
     ...this.brands().map(brand => ({ label: brand.name, value: brand.id }))
   ]);
 

@@ -1,10 +1,10 @@
 import { CatalogProductListItem } from '../../../shared/models/product.model';
 
 /** Cuántos productos muestra "Productos favoritos" del inicio. */
-export const HOME_FAVORITES_MAX = 12;
+export const HOME_FAVORITES_MAX = 16;
 
 /** Ningún grupo de categoría acapara la sección. */
-export const HOME_FAVORITES_PER_CATEGORY = 2;
+export const HOME_FAVORITES_PER_CATEGORY = 4;
 
 /**
  * Producto que puede salir en el inicio: con foto, precio detal y existencias.
@@ -22,7 +22,7 @@ export function isHomeReady(product: CatalogProductListItem): boolean {
 /**
  * Elige los favoritos del inicio. Mientras no exista el "destacado" administrable
  * (fase C), el criterio es automático: productos listos para el inicio, en un
- * orden que cambia cada día (`seed`), con máximo dos por categoría para que haya
+ * orden que cambia cada día (`seed`), con máximo cuatro por categoría para que haya
  * variedad.
  */
 export function pickHomeFavorites(
@@ -46,7 +46,7 @@ export function pickHomeFavorites(
   for (const product of candidates) {
     if (picked.length >= max) break;
 
-    const group = product.categoryIds.length ? String(Math.min(...product.categoryIds)) : 'sin-categoria';
+    const group = categoryGroup(product);
     const count = perGroup.get(group) ?? 0;
 
     if (count >= perCategory) continue;
@@ -70,4 +70,9 @@ function seededRandom(seed: string): () => number {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/** Grupo de variedad de un producto: su categoría de menor Id, o "sin categoría". */
+export function categoryGroup(product: CatalogProductListItem): string {
+  return product.categoryIds.length ? String(Math.min(...product.categoryIds)) : 'sin-categoria';
 }

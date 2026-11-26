@@ -47,14 +47,14 @@
           <p-select
             inputId="brand"
             formControlName="brandId"
-            [options]="brandOptions()"
+            [options]="brandSelectOptions()"
             optionLabel="label"
             optionValue="value"
-            placeholder="Selecciona la marca"
+            [filter]="true"
+            filterBy="label"
+            placeholder="Sin marca"
             appendTo="body" />
-          @if (form.controls.brandId.touched && form.controls.brandId.invalid) {
-            <small class="error">La marca es obligatoria.</small>
-          }
+          <small class="hint">Una sola marca por producto. Déjalo en "Sin marca" si no aplica.</small>
         </div>
 
         <div class="field field--full">

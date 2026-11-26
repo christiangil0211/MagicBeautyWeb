@@ -2,10 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 
-using MagicBeauty.Store.Application.Features.Brands;
 using MagicBeauty.Store.Application.Features.PriceTypes;
 using MagicBeauty.Store.Application.Features.Products;
-using MagicBeauty.Store.Contracts.Brands.Requests;
 using MagicBeauty.Store.Contracts.PriceTypes.Responses;
 using MagicBeauty.Store.Contracts.Products.Requests;
 using MagicBeauty.Store.Contracts.Products.Responses;
@@ -51,7 +49,6 @@ public sealed class AlegraSyncLock
 public sealed partial class AlegraProductSyncService(
     IAlegraClient alegraClient,
     IProductService productService,
-    IBrandService brandService,
     IPriceTypeService priceTypeService,
     AlegraDbContext linksDb,
     AlegraSyncLock syncLock,
@@ -93,7 +90,6 @@ public sealed partial class AlegraProductSyncService(
         var catalog = new StoreCatalog(await productService.GetAllAsync(null, null, null, null, null, cancellationToken));
         var links = await LoadLinksAsync(catalog, cancellationToken);
         var seenIds = new HashSet<string>(StringComparer.Ordinal);
-        int? brandId = null;
 
         try
         {
@@ -161,8 +157,7 @@ public sealed partial class AlegraProductSyncService(
                         continue;
                     }
 
-                    brandId ??= await ResolveDefaultBrandAsync(settings, cancellationToken);
-                    var created = await CreateAsync(reference, name, item, brandId.Value, priceType, settings, cancellationToken);
+                    var created = await CreateAsync(reference, name, item, priceType, settings, cancellationToken);
                     catalog.Add(created);
                     var createdLink = links.Add(created.Id, alegraId);
                     createdLink.DescriptionHash = DescriptionHash(item);
@@ -269,6 +264,7 @@ public sealed partial class AlegraProductSyncService(
             {
                 Name = name,
                 Description = description,
+                // La marca nunca se toca desde Alegra: se conserva la de la tienda.
                 BrandId = product.BrandId,
                 IsActive = item.IsActive
             }, cancellationToken);
@@ -320,7 +316,6 @@ public sealed partial class AlegraProductSyncService(
         string reference,
         string name,
         AlegraItem item,
-        int brandId,
         PriceTypeDto? priceType,
         AlegraOptions settings,
         CancellationToken cancellationToken)
@@ -332,7 +327,8 @@ public sealed partial class AlegraProductSyncService(
             Reference = reference,
             Name = name,
             Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
-            BrandId = brandId,
+            // La marca la decide solo la tienda: Alegra no la trae y el producto nace sin marca.
+            BrandId = null,
             HasVariants = false,
             // Nace inactivo: el administrador le pone categorias e imagenes y lo publica.
             IsActive = false,
@@ -375,15 +371,6 @@ public sealed partial class AlegraProductSyncService(
         }
 
         return priceType;
-    }
-
-    private async Task<int> ResolveDefaultBrandAsync(AlegraOptions settings, CancellationToken cancellationToken)
-    {
-        var name = string.IsNullOrWhiteSpace(settings.DefaultBrandName) ? "Sin marca" : settings.DefaultBrandName.Trim();
-        var brand = (await brandService.GetAllAsync(cancellationToken))
-            .FirstOrDefault(brand => string.Equals(brand.Name, name, StringComparison.OrdinalIgnoreCase));
-
-        return brand?.Id ?? (await brandService.CreateAsync(new CreateBrandRequest { Name = name }, cancellationToken)).Id;
     }
 
     /// <summary>Precio de la lista configurada; null si Alegra no lo trae o no es positivo.</summary>

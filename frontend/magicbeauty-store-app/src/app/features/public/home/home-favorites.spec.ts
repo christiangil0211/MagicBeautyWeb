@@ -27,13 +27,13 @@ describe('isHomeReady', () => {
 describe('pickHomeFavorites', () => {
   const catalog = Array.from({ length: 60 }, (_, i) => product(i + 1, [Math.floor(i / 6) + 1]));
 
-  it('returns at most twelve products and at most two per category', () => {
+  it('returns at most sixteen products and at most four per category', () => {
     const picked = pickHomeFavorites(catalog, '2026-11-25');
     const perCategory = new Map<number, number>();
     picked.forEach(item => perCategory.set(item.categoryIds[0], (perCategory.get(item.categoryIds[0]) ?? 0) + 1));
 
-    expect(picked.length).toBe(12);
-    expect(Math.max(...perCategory.values())).toBeLessThanOrEqual(2);
+    expect(picked.length).toBe(16);
+    expect(Math.max(...perCategory.values())).toBeLessThanOrEqual(4);
   });
 
   it('is stable for a day and changes on another day', () => {
@@ -45,11 +45,11 @@ describe('pickHomeFavorites', () => {
 
   it('skips products that are not ready and counts products without a category as one group', () => {
     const picked = pickHomeFavorites(
-      [product(1, []), product(2, []), product(3, []), product(4, [9], { availableQuantity: 0 })],
+      [product(1, []), product(2, []), product(3, []), product(5, []), product(6, []), product(4, [9], { availableQuantity: 0 })],
       'x'
     );
 
-    expect(picked).toHaveLength(2);
+    expect(picked).toHaveLength(4);
     expect(picked.some(item => item.id === 4)).toBe(false);
   });
 });

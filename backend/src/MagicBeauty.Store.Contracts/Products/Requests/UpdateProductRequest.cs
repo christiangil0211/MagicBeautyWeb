@@ -9,7 +9,8 @@ public sealed class UpdateProductRequest
 
     public string? Description { get; set; }
 
-    public int BrandId { get; set; }
+    /// <summary>NULL = sin marca.</summary>
+    public int? BrandId { get; set; }
 
     public bool IsActive { get; set; } = true;
 }

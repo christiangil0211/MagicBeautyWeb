@@ -15,6 +15,7 @@ const category: Category = {
   displayOrder: 0,
   isActive: true,
   showInHome: false,
+  showAsHomeCarousel: false,
   showInNavigation: true,
   showInMegaMenu: false,
   createdAt: '',
@@ -319,4 +320,22 @@ it('builds the branch of the selected category from the root', () => {
 
   component.onNodeSelect({ data: branch[0] });
   expect(component.selectedCategoryPath()).toEqual(['Cuidado Capilar']);
+});
+
+it('sends the home carousel switch and blocks a sixth carousel before calling the API', async () => {
+  const { api, component } = setup();
+  component.categories.set(
+    [1, 2, 3, 4, 5].map((id) => ({ ...category, id, slug: 'c' + id, showAsHomeCarousel: true })),
+  );
+
+  component.form.patchValue({ showAsHomeCarousel: true });
+  await component.save();
+  expect(api.create).not.toHaveBeenCalled();
+  expect(component.carouselCount()).toBe(5);
+
+  // Editar una de las cinco que ya lo tienen sí se puede guardar.
+  component.selectedId.set(3);
+  await component.save();
+  expect(api.update).toHaveBeenCalledOnce();
+  expect((api.update.mock.calls[0] as unknown[])[1]).toMatchObject({ showAsHomeCarousel: true });
 });

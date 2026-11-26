@@ -18,7 +18,7 @@ import { TreeModule } from 'primeng/tree';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { CategoryService } from '../../../core/services/category.service';
-import { Category } from '../../../shared/models/category.model';
+import { Category, MAX_HOME_CATEGORY_CAROUSELS } from '../../../shared/models/category.model';
 import { CategoryProductAssignmentComponent } from './category-product-assignment/category-product-assignment.component';
 
 interface ParentOption {
@@ -132,6 +132,21 @@ export class AdminCategoriesComponent {
     () => this.categories().filter((category) => category.showInHome).length,
   );
 
+  readonly maxCarousels = MAX_HOME_CATEGORY_CAROUSELS;
+
+  /** Categorías con carrusel en el inicio (máximo 5, el API también lo valida). */
+  readonly carouselCount = computed(
+    () => this.categories().filter((category) => category.showAsHomeCarousel).length,
+  );
+
+  /** Carruseles encendidos en otras categorías: si ya son 5, esta no puede encender el suyo. */
+  readonly carouselsElsewhere = computed(
+    () =>
+      this.categories().filter(
+        (category) => category.showAsHomeCarousel && category.id !== this.selectedId(),
+      ).length,
+  );
+
   /**
    * La jerarquía no tiene tope de niveles: lo normal son tres, pero puede bajar más.
    * La única restricción real es que un padre no puede ser la propia categoría
@@ -172,6 +187,7 @@ export class AdminCategoriesComponent {
     showInNavigation: [true],
     showInMegaMenu: [false],
     showInHome: [false],
+    showAsHomeCarousel: [false],
     imageUrl: [''],
     homeImageUrl: [''],
     iconUrl: [''],
@@ -247,6 +263,7 @@ export class AdminCategoriesComponent {
       showInNavigation: true,
       showInMegaMenu: false,
       showInHome: false,
+      showAsHomeCarousel: false,
       imageUrl: '',
       homeImageUrl: '',
       iconUrl: '',
@@ -284,6 +301,14 @@ export class AdminCategoriesComponent {
         severity: 'warn',
         summary: 'Falta la imagen del inicio',
         detail: 'Selecciona una imagen para la tarjeta.',
+      });
+      return;
+    }
+    if (value.showAsHomeCarousel && this.carouselsElsewhere() >= this.maxCarousels) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Ya hay ' + this.maxCarousels + ' carruseles en el inicio',
+        detail: 'Es el máximo. Apaga el carrusel de otra categoría primero.',
       });
       return;
     }
@@ -415,6 +440,7 @@ export class AdminCategoriesComponent {
       showInNavigation: category.showInNavigation,
       showInMegaMenu: category.showInMegaMenu,
       showInHome: category.showInHome,
+      showAsHomeCarousel: category.showAsHomeCarousel,
       imageUrl: category.imageUrl ?? '',
       homeImageUrl: category.homeImageUrl ?? '',
       iconUrl: category.iconUrl ?? '',

@@ -364,3 +364,89 @@ test('answers a short 503 that reloads itself when not even the shell can be rea
   assert.equal(response.headers['Cache-Control'], 'no-store');
   assert.match(response.body, /http-equiv="refresh"/);
 });
+
+// ---------------------------------------------------------------- marcas
+
+const BRAND_PAGE = {
+  brand: { name: 'Dear Body', slug: 'dear-body', logoUrl: 'https://blob/brands/2/logo.png', description: null, isFeatured: true, productCount: 2 },
+  products: [
+    { id: 4, reference: 'ACE004', name: 'Aceite corporal', brandName: 'Dear Body', brandSlug: 'dear-body', prices: [], categoryIds: [], availableQuantity: 1, hasVariants: false },
+    { id: 5, reference: 'SPL005', name: 'Splash', brandName: 'Dear Body', brandSlug: 'dear-body', prices: [], categoryIds: [], availableQuantity: 1, hasVariants: false }
+  ],
+  total: 2,
+  page: 1,
+  pageSize: 30
+};
+
+test('recognizes the brand list and brand pages', () => {
+  assert.deepEqual(parsePath('/marcas'), { kind: 'brands' });
+  assert.deepEqual(parsePath('/marcas/'), { kind: 'brands' });
+  assert.deepEqual(parsePath('/marcas/dear-body'), { kind: 'brand', slug: 'dear-body' });
+  assert.deepEqual(parsePath('/marcas/dear-body/extra'), { kind: 'unknown' });
+});
+
+test('a brand page brings the requested title, canonical, CollectionPage, breadcrumbs and its products in the HTML', async () => {
+  const response = await open('/marcas/dear-body', { '/marcas/dear-body?pageSize=30': { json: BRAND_PAGE } });
+  const page = read(response.body);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['Cache-Control'], 'public, max-age=300');
+  assert.equal(page.title, 'Dear Body en Cali al detal y por mayor | Magic Beauty Cosmetics');
+  assert.equal(page.robots, 'index, follow');
+  assert.equal(page.canonical, SITE + '/marcas/dear-body');
+  assert.match(page.description, /Dear Body/);
+  assert.equal(page.ogImage, 'https://blob/brands/2/logo.png');
+
+  const [collection, breadcrumb] = page.jsonLd;
+  assert.equal(collection['@type'], 'CollectionPage');
+  assert.deepEqual(collection.about, { '@type': 'Brand', name: 'Dear Body', logo: 'https://blob/brands/2/logo.png' });
+  assert.deepEqual(collection.mainEntity.itemListElement.map(item => item.url), [SITE + '/catalogo/ACE004', SITE + '/catalogo/SPL005']);
+  assert.deepEqual(breadcrumb.itemListElement.map(item => item.item), [SITE + '/', SITE + '/marcas', SITE + '/marcas/dear-body']);
+
+  assert.match(page.visible, /<h1>Dear Body en Cali<\/h1>/);
+  assert.match(page.visible, /href="\/catalogo\/ACE004"/);
+  assert.match(response.body, /main-ABC123\.js/, 'la app arranca igual');
+});
+
+test('an SVG logo is not used as the social preview image', async () => {
+  const svg = { ...BRAND_PAGE, brand: { ...BRAND_PAGE.brand, logoUrl: 'https://blob/brands/2/logo.svg' } };
+  const page = read((await open('/marcas/dear-body', { '/marcas/dear-body?pageSize=30': { json: svg } })).body);
+
+  assert.equal(page.ogImage, SITE + '/images/og-magic-beauty.jpg');
+});
+
+test('an unknown or inactive brand is a 404 only when the API confirms it', async () => {
+  const response = await open('/marcas/no-existe', { '/marcas/no-existe?pageSize=30': { status: 404, json: { error: 'La marca no existe.' } } });
+  const page = read(response.body);
+
+  assert.equal(response.status, 404);
+  assert.equal(response.headers['Cache-Control'], 'no-store');
+  assert.equal(page.title, 'Marca no encontrada · Magic Beauty Cosmetics');
+  assert.equal(page.robots, 'noindex, follow');
+  assert.equal(page.canonical, null);
+});
+
+test('a brand page answers 503 with the shell (never 404) when the API fails', async () => {
+  const response = await open('/marcas/dear-body', { '/marcas/dear-body?pageSize=30': { status: 503, text: 'Unavailable' } });
+
+  assert.equal(response.status, 503);
+  assert.equal(response.body, SHELL);
+  assert.equal(response.headers['Retry-After'], '300');
+});
+
+test('the brand list brings its title, canonical and links to every brand', async () => {
+  const response = await open('/marcas', { '/marcas': { json: [BRAND_PAGE.brand, { name: 'Purpure', slug: 'purpure', logoUrl: null, isFeatured: false, productCount: 5 }] } });
+  const page = read(response.body);
+
+  assert.equal(response.status, 200);
+  assert.equal(page.title, 'Marcas de maquillaje y cosméticos en Cali | Magic Beauty Cosmetics');
+  assert.equal(page.canonical, SITE + '/marcas');
+  assert.match(page.visible, /href="\/marcas\/dear-body"/);
+  assert.match(page.visible, /href="\/marcas\/purpure"/);
+});
+
+test('a path the app does not have under /marcas is a 404', async () => {
+  const response = await open('/marcas/dear-body/extra');
+
+  assert.equal(response.status, 404);
+});

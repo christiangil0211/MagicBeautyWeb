@@ -33,7 +33,8 @@ de un producto solo se carga cuando algo difiere.
 | Estado | `inactive` en Alegra desactiva el producto; `active` lo activa. |
 | Precio | El de la lista `PriceListId` reemplaza el tipo de precio `PriceTypeCode` (vacío = el predeterminado). Los demás tipos de precio se conservan. |
 | Inventario | La existencia de la variante única queda igual a `availableQuantity` de Alegra, con un movimiento `ADJUSTMENT` ("Sincronización con Alegra"). Los productos **con tonos** no se tocan (se avisa en el resumen). |
-| Referencias nuevas | Se crean **inactivas**, sin tonos, con la marca `DefaultBrandName` (se crea si no existe), para que el administrador les ponga categorías e imágenes. |
+| Referencias nuevas | Se crean **inactivas**, sin tonos y **sin marca** (`BrandId` NULL), para que el administrador les ponga marca, categorías e imágenes. |
+| Marca | La decide solo la tienda (Admin › Marcas o la ficha del producto). La sincronización **nunca crea ni cambia** una marca. |
 
 Se omiten (y se reportan) los ítems sin referencia, con un formato de referencia
 distinto al de la tienda o repetidos. Un error en un producto no detiene a los demás.
@@ -42,6 +43,13 @@ Solo corre una actualización a la vez.
 Los datos de la tienda pasan por los servicios de `Application` (`IProductService`,
 `IBrandService`, `IPriceTypeService`): la integración no toca las tablas ni las entidades
 de la tienda. Lo único que guarda es su propia tabla de vínculos, en el esquema `alegra`.
+
+### Marca (a futuro)
+
+Alegra hoy no trae la marca del ítem. Si en el futuro la trajera, **solo se usaría para llenar
+la marca cuando el producto no tenga una** (`BrandId` NULL). Nunca reemplazaría la marca que
+la tienda ya asignó. No está implementado: queda anotado como regla para cuando exista.
+
 
 ## Base de datos (esquema `alegra`)
 
@@ -75,8 +83,7 @@ Sección `Integrations:Alegra` (en Azure: `Integrations__Alegra__Token`, etc.):
     "Email": "correo-de-la-cuenta@alegra",
     "Token": "token-de-la-api",
     "PriceListId": 1,
-    "PriceTypeCode": "",
-    "DefaultBrandName": "Sin marca"
+    "PriceTypeCode": ""
   }
 }
 ```

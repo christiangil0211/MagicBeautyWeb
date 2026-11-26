@@ -46,6 +46,15 @@ public sealed class CategoryRepository(MagicBeautyDbContext dbContext) : ICatego
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<int> CountHomeCarouselsAsync(int? excludedId, CancellationToken cancellationToken)
+    {
+        return await dbContext.Categories
+            .CountAsync(category =>
+                category.ShowAsHomeCarousel &&
+                (!excludedId.HasValue || category.Id != excludedId.Value),
+                cancellationToken);
+    }
+
     public async Task<Category?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         return await dbContext.Categories

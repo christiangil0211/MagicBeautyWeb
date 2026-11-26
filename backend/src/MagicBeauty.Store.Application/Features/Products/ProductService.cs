@@ -677,9 +677,10 @@ public sealed partial class ProductService(
         return variant;
     }
 
-    private async Task EnsureBrandExistsAsync(int brandId, CancellationToken cancellationToken)
+    /// <summary>Sin marca (NULL) es válido: solo se comprueba la marca cuando viene.</summary>
+    private async Task EnsureBrandExistsAsync(int? brandId, CancellationToken cancellationToken)
     {
-        if (await brandRepository.GetByIdAsync(brandId, cancellationToken) is null)
+        if (brandId.HasValue && await brandRepository.GetByIdAsync(brandId.Value, cancellationToken) is null)
         {
             throw new InvalidOperationException("La marca no existe.");
         }

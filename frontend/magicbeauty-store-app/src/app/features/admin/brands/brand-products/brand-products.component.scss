@@ -1,0 +1,99 @@
+:host {
+  display: block;
+}
+
+.panel {
+  padding: 1.6rem;
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius);
+  background: var(--mb-surface);
+  box-shadow: var(--mb-shadow-sm);
+}
+
+.panel__head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--mb-text-secondary);
+  font-size: 0.82rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0 1rem;
+}
+
+.toolbar__search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.thumb {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.thumb--empty {
+  display: grid;
+  place-items: center;
+  background: var(--mb-surface-2);
+  color: var(--mb-text-muted);
+}
+
+.reference {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--mb-surface-2);
+  font-size: 0.75rem;
+}
+
+.chip--current {
+  background: var(--mb-primary-soft);
+  color: var(--mb-primary-hover);
+  font-weight: 600;
+}
+
+.chip--none {
+  border: 1px dashed var(--mb-border);
+  background: transparent;
+  color: var(--mb-text-secondary);
+}
+
+.row--in-brand td {
+  background: var(--mb-pink-50);
+}
+
+.empty {
+  padding: 2rem;
+  color: var(--mb-text-secondary);
+  text-align: center;
+}
+
+/* Lista del diálogo "Mover de marca" (fuera del componente: el diálogo vive en el body). */
+::ng-deep .move-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}

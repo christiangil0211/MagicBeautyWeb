@@ -16,6 +16,9 @@ public sealed class UpdateCategoryRequest
 
     public bool ShowInHome { get; set; }
 
+    /// <summary>Carrusel de productos de esta categoría (y sus subcategorías) en el inicio. Máximo 5.</summary>
+    public bool ShowAsHomeCarousel { get; set; }
+
     public bool ShowInNavigation { get; set; } = true;
 
     public bool ShowInMegaMenu { get; set; }

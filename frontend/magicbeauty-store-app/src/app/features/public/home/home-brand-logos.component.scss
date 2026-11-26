@@ -1,0 +1,208 @@
+:host {
+  display: block;
+}
+
+.brand-logos__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.section-title {
+  margin: 0;
+  font-family: var(--mb-font-display);
+  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--mb-heading);
+}
+
+.brand-logos__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0 0.2rem;
+  border-bottom: 1px solid var(--mb-border);
+  color: var(--mb-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--mb-primary-hover);
+    border-color: var(--mb-primary-hover);
+  }
+}
+
+.brand-logos__viewport {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand-logos__track {
+  display: grid;
+  flex: 1;
+  grid-auto-flow: column;
+  grid-auto-columns: 176px;
+  gap: 1rem;
+  margin: 0;
+  padding: 0.25rem;
+  overflow-x: auto;
+  list-style: none;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Margen arriba para que la tarjeta elevada al pasar el mouse no se recorte. */
+  padding-top: 0.5rem;
+
+  li {
+    scroll-snap-align: start;
+  }
+}
+
+/*
+ * Logo con sus colores reales y el nombre debajo. Al pasar el mouse (o con el
+ * foco del teclado) la tarjeta se tiñe de rosa, el borde y el nombre pasan al
+ * fucsia de la marca y la tarjeta se eleva un poco.
+ */
+.brand-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 0.75rem 0.75rem 0.85rem;
+  border: 1px solid var(--mb-border-soft);
+  border-radius: var(--mb-radius);
+  background: var(--mb-surface);
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--mb-primary-hover);
+    background: var(--mb-primary-soft);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+
+    .brand-logo__name {
+      color: var(--mb-primary-hover);
+    }
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mb-primary-hover);
+    outline-offset: 2px;
+  }
+}
+
+.brand-logo__image {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 80px;
+
+  img {
+    max-width: 100%;
+    max-height: 80px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+}
+
+.brand-logo__name {
+  color: var(--mb-heading);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.brand-logos__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Pausar / reanudar el avance automático. */
+.brand-logos__toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--mb-border);
+  border-radius: 999px;
+  background: var(--mb-surface);
+  color: var(--mb-heading);
+  font-size: 0.75rem;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--mb-primary-hover);
+    color: var(--mb-primary-hover);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mb-primary-hover);
+    outline-offset: 2px;
+  }
+}
+
+.brand-logos__arrow {
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--mb-border);
+  border-radius: 999px;
+  background: var(--mb-surface);
+  color: var(--mb-heading);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--mb-primary-hover);
+    color: var(--mb-primary-hover);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mb-primary-hover);
+    outline-offset: 2px;
+  }
+}
+
+@media (max-width: 640px) {
+  .brand-logos__track {
+    grid-auto-columns: 42%;
+  }
+
+  /* En el celular se desliza con el dedo: las flechas sobran. */
+  .brand-logos__arrow {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo,
+  .brand-logo__name {
+    transition: none;
+  }
+
+  .brand-logo:hover,
+  .brand-logo:focus-visible {
+    transform: none;
+  }
+}

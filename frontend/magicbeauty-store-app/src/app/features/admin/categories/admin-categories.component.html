@@ -19,6 +19,10 @@
       <strong>{{ homeCount() }}</strong>
       <span>en el inicio</span>
     </div>
+    <div class="mb-stat">
+      <strong>{{ carouselCount() }}/{{ maxCarousels }}</strong>
+      <span>carruseles</span>
+    </div>
   </app-page-header>
 
   <div class="categories__workspace">
@@ -50,6 +54,9 @@
               }
               @if (treeNode.data.showInHome) {
                 <i class="pi pi-star-fill tree-node__flag" title="Destacada en el inicio"></i>
+              }
+              @if (treeNode.data.showAsHomeCarousel) {
+                <i class="pi pi-images tree-node__flag" title="Carrusel en el inicio"></i>
               }
               @if (treeNode.data.isActive && !treeNode.data.showInNavigation) {
                 <i class="pi pi-eye-slash tree-node__flag" title="Oculta en el menú"></i>
@@ -197,6 +204,14 @@
             <span>
               <strong>Destacar en el inicio</strong>
               <small>Aparece en "Compra por categoría".</small>
+            </span>
+          </label>
+
+          <label class="switch">
+            <p-toggleswitch formControlName="showAsHomeCarousel" />
+            <span>
+              <strong>Carrusel en el inicio</strong>
+              <small>Agrega un carrusel de sus productos debajo de las marcas. Van {{ carouselCount() }} de {{ maxCarousels }}.</small>
             </span>
           </label>
         </div>

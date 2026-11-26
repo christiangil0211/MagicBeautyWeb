@@ -18,9 +18,9 @@ export class AdminLayoutComponent {
   readonly navItems: AdminNavItem[] = [
     { label: 'Categorías', icon: 'pi pi-sitemap', path: '/admin/categories' },
     { label: 'Productos', icon: 'pi pi-shopping-bag', path: '/admin/products' },
+    { label: 'Marcas', icon: 'pi pi-tag', path: '/admin/brands' },
     { label: 'Catálogos', icon: 'pi pi-book', path: '/admin/catalogs' },
     { label: 'Administradores', icon: 'pi pi-users', path: '/admin/users' },
-    { label: 'Marcas', icon: 'pi pi-tag' },
     { label: 'Inventario', icon: 'pi pi-box' }
   ];
 

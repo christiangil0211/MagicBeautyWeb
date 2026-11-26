@@ -12,6 +12,9 @@ public interface ICategoryRepository
 
     Task<IReadOnlyList<Category>> GetFeaturedForHomeAsync(CancellationToken cancellationToken);
 
+    /// <summary>Cuántas categorías tienen el carrusel del inicio encendido (sin contar <paramref name="excludedId"/>).</summary>
+    Task<int> CountHomeCarouselsAsync(int? excludedId, CancellationToken cancellationToken);
+
     Task<Category?> GetByIdAsync(int id, CancellationToken cancellationToken);
 
     Task<bool> ExistsAsync(int id, CancellationToken cancellationToken);
