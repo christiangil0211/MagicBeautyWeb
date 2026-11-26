@@ -16,6 +16,10 @@ var builder = WebApplication.CreateBuilder(args);
 const string CorsPolicyName = "MagicBeautyCorsPolicy";
 
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<MagicBeauty.Store.Api.Sales.BestSellers>();
+builder.Services.AddSingleton<MagicBeauty.Store.Api.Sales.SalesImportQueue>();
+builder.Services.AddHostedService<MagicBeauty.Store.Api.Sales.SalesImportWorker>();
 
 // El catalogo publico pesa cientos de KB en JSON: comprimido (Brotli o gzip) baja a una fraccion.
 builder.Services.AddResponseCompression(options =>
@@ -125,6 +129,22 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.Use(async (context, next) =>
+{
+    await next(context);
+    var path = context.Request.Path;
+    if (context.Response.StatusCode is >= 200 and < 300 &&
+        !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method) &&
+        !HttpMethods.IsOptions(context.Request.Method) &&
+        (path.StartsWithSegments("/api/products") || path.StartsWithSegments("/api/categories") ||
+         path.StartsWithSegments("/api/brands") || path.StartsWithSegments("/api/price-types") ||
+         path.StartsWithSegments("/api/integrations")))
+    {
+        context.RequestServices.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()
+            .Remove(MagicBeauty.Store.Api.Sales.SalesImportWorker.RankingCacheKey);
+    }
+});
 
 app.MapControllers();
 

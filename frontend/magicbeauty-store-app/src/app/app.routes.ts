@@ -76,6 +76,12 @@ export const routes: Routes = [
         title: 'Productos · Magic Beauty'
       },
       {
+        path: 'sales',
+        loadComponent: () =>
+          import('./features/admin/sales/admin-sales.component').then(m => m.AdminSalesComponent),
+        title: 'Ventas · Magic Beauty'
+      },
+      {
         path: 'brands',
         loadComponent: () =>
           import('./features/admin/brands/admin-brands.component').then(m => m.AdminBrandsComponent),

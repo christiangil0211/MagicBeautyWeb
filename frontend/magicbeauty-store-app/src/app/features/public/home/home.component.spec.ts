@@ -39,7 +39,7 @@ async function render(
       provideRouter([]),
       { provide: AuthService, useValue: { canManageStore: signal(options.admin ?? false) } },
       { provide: CategoryService, useValue: { getHomeTiles: () => options.tiles$ ?? of(options.tiles ?? []), getHomeCarousels: () => of([]) } },
-      { provide: CatalogService, useValue: { getProducts: () => options.products$ ?? of(options.products ?? []) } },
+      { provide: CatalogService, useValue: { getBestSellers: () => of([]), getProducts: () => options.products$ ?? of(options.products ?? []) } },
       { provide: BrandService, useValue: { getPublicBrands: () => of([]) } }
     ],
     deferBlockBehavior: DeferBlockBehavior.Manual
