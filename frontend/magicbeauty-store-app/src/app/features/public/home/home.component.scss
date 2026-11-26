@@ -68,10 +68,14 @@
 }
 
 /* ===== Compra por categoría: una sola fila; en pantallas angostas se desliza ===== */
+/*
+ * Ancho fijo por casilla: con pocas categorías no se estiran a media pantalla, y
+ * las casillas de carga miden lo mismo que las reales (sin salto al llegar).
+ */
 .tiles {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(132px, 1fr);
+  grid-auto-columns: 148px;
   gap: 1rem;
   overflow-x: auto;
   padding-bottom: 0.5rem;
@@ -140,6 +144,24 @@
   background: linear-gradient(90deg, var(--mb-surface-2), var(--mb-pink-150), var(--mb-surface-2));
   background-size: 200% 100%;
   animation: skeleton 1.4s ease-in-out infinite;
+}
+
+/* Respaldo encima de las casillas invisibles: la sección conserva su alto. */
+.tiles-area {
+  display: grid;
+
+  > * {
+    grid-area: 1 / 1;
+  }
+}
+
+.tiles--reserve {
+  visibility: hidden;
+}
+
+.tiles-area__overlay {
+  align-self: stretch;
+  margin: 0 0 0.5rem;
 }
 
 @keyframes skeleton {
@@ -235,12 +257,20 @@
   border-radius: var(--mb-radius);
   background: var(--mb-surface-2);
 
-  iframe {
+  iframe,
+  .visit__map-placeholder {
     display: block;
     width: 100%;
     height: 100%;
     min-height: 320px;
     border: 0;
+  }
+
+  .visit__map-placeholder {
+    display: grid;
+    place-items: center;
+    color: var(--mb-pink-400);
+    font-size: 2rem;
   }
 }
 
@@ -351,7 +381,8 @@
   }
 
   .visit__map,
-  .visit__map iframe {
+  .visit__map iframe,
+  .visit__map .visit__map-placeholder {
     min-height: 260px;
   }
 

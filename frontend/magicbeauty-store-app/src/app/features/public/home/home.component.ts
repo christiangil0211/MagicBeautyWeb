@@ -4,6 +4,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
+import { timeout } from 'rxjs';
 
 import {
   STORE_ADDRESS,
@@ -17,7 +18,9 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { CategoryTile } from '../../../shared/models/category.model';
 import { WHOLESALE_PATH } from '../portal/portal-navigation';
+import { HomeFallbackComponent } from './home-fallback.component';
 import { HomeFavoritesComponent } from './home-favorites.component';
+import { HOME_API_TIMEOUT_MS, HomeSectionState } from './home-sections';
 
 /** "Compra por categoría" muestra como máximo una fila de 8. */
 const HOME_CATEGORIES_MAX = 8;
@@ -43,7 +46,7 @@ function formatHour(time: string): string {
  */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, ToastModule, HomeFavoritesComponent],
+  imports: [RouterLink, ToastModule, HomeFavoritesComponent, HomeFallbackComponent],
   providers: [MessageService],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
@@ -53,14 +56,14 @@ export class HomeComponent {
   readonly canManageStore = inject(AuthService).canManageStore;
 
   readonly tiles = signal<CategoryTile[]>([]);
-  readonly tilesLoaded = signal(false);
   readonly visibleTiles = computed(() => this.tiles().slice(0, HOME_CATEGORIES_MAX));
   readonly categorySkeletons = CATEGORY_SKELETONS;
 
-  /** Sin categorías destacadas, el visitante no ve una sección vacía. */
-  readonly showCategories = computed(
-    () => !this.tilesLoaded() || this.visibleTiles().length > 0 || this.canManageStore()
-  );
+  /**
+   * La sección nunca colapsa: si el API falla, tarda o no hay categorías
+   * destacadas, conserva su alto y muestra el respaldo (sin salto de página).
+   */
+  readonly categoryState = signal<HomeSectionState>('loading');
 
   readonly wholesalePath = WHOLESALE_PATH;
   readonly address = `${STORE_ADDRESS.streetAddress}, ${STORE_ADDRESS.locality}, ${STORE_ADDRESS.region}`;
@@ -88,12 +91,13 @@ export class HomeComponent {
 
     inject(CategoryService)
       .getHomeTiles()
+      .pipe(timeout({ first: HOME_API_TIMEOUT_MS }))
       .subscribe({
         next: tiles => {
           this.tiles.set(tiles);
-          this.tilesLoaded.set(true);
+          this.categoryState.set(tiles.length > 0 ? 'ready' : 'fallback');
         },
-        error: () => this.tilesLoaded.set(true)
+        error: () => this.categoryState.set('fallback')
       });
   }
 

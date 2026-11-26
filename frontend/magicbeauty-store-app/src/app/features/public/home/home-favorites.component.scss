@@ -10,9 +10,9 @@
   }
 }
 
-/* Si no hay productos listos para el inicio (o el catálogo falló), la sección no se muestra. */
-:host(.favorites--empty) {
-  display: none;
+/* El respaldo ocupa el lugar de las tarjetas: la sección conserva su alto. */
+.favorites__fallback {
+  min-height: 340px;
 }
 
 .favorites__head {
