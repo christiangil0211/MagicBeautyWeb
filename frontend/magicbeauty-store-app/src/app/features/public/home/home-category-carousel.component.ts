@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+﻿import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { timeout } from 'rxjs';
 
 import { CatalogService } from '../../../core/services/catalog.service';
@@ -19,7 +19,7 @@ const HOME_CATEGORY_PER_GROUP = HOME_FAVORITES_MAX / 2;
  * Carrusel de una categoría del inicio (se enciende en Admin › Categorías ›
  * "Carrusel en el inicio", en cualquier nivel). Muestra productos listos para
  * el inicio (foto, precio detal y existencias) de la categoría y sus
- * subcategorías, en un orden que cambia cada día. Sin productos listos, la
+ * subcategorías, con los más vendidos primero. Sin productos listos, la
  * sección no aparece; si el API falla o tarda, muestra el respaldo.
  */
 @Component({
@@ -48,7 +48,7 @@ export class HomeCategoryCarouselComponent implements OnInit {
 
   ngOnInit(): void {
     this.catalog
-      .getProducts({ categoryId: this.category().id })
+      .getProducts({ categoryId: this.category().id, homeRanking: true })
       .pipe(timeout({ first: HOME_API_TIMEOUT_MS }))
       .subscribe({
         next: products => {
@@ -68,8 +68,11 @@ export class HomeCategoryCarouselComponent implements OnInit {
 
 /** Hasta 16 productos; con varias subcategorías, ninguna pasa de la mitad. */
 export function pickCategoryProducts(products: readonly CatalogProductListItem[], seed: string): CatalogProductListItem[] {
+  const ranked = products.filter(product => product.isBestSeller && isHomeReady(product));
+  const remainder = products.filter(product => !product.isBestSeller);
   const groups = new Set(products.filter(isHomeReady).map(categoryGroup)).size;
   const perGroup = groups > 1 ? HOME_CATEGORY_PER_GROUP : HOME_FAVORITES_MAX;
 
-  return pickHomeFavorites(products, seed, HOME_FAVORITES_MAX, perGroup);
+  const fill = pickHomeFavorites(remainder, seed, HOME_FAVORITES_MAX, perGroup);
+  return [...ranked, ...fill].slice(0, HOME_FAVORITES_MAX);
 }
