@@ -1,40 +1,61 @@
-@if (banner(); as current) {
-  <!-- Carrusel de campañas: un banner a la vez, rota solo y se elige con los puntos (o deslizando en móvil). -->
+@if (banner(); as page) {
+  <!-- Carrusel de campañas: un banner a la vez, rota solo y se controla con flechas, puntos, pausa o deslizando en móvil. -->
   <div class="home-carousel" role="region" aria-roledescription="carrusel" aria-label="Novedades de Magic Beauty"
     (mouseenter)="bannerHovered.set(true)" (mouseleave)="bannerHovered.set(false)"
     (focusin)="onCarouselFocusIn($event)" (focusout)="onCarouselFocusOut($event)">
-    <!-- Un solo banner en el DOM; se recrea al cambiar para repetir la animación de entrada. -->
-    @for (slide of [slides[activeSlide()]]; track slide.id) {
-    <section class="home-slide" [attr.data-slide]="slide.id" aria-labelledby="home-slide-title" aria-roledescription="diapositiva">
-      <!-- Sin título propio de la página (inicio), el del banner activo es el h1. -->
-      @if (current.title) {
-        <p id="home-slide-title" class="home-slide__title">{{ slide.title }}</p>
-      } @else {
-        <h1 id="home-slide-title" class="home-slide__title">{{ slide.title }}</h1>
-      }
-      <div class="home-slide__media" [style.--slide-bg]="'url(' + slide.image + ')'" (pointerdown)="onSwipeStart($event)" (pointerup)="onSwipeEnd($event)">
-        <!-- El marco guarda la proporción de la imagen: las zonas de los botones se miden contra él. -->
-        <div class="home-slide__frame">
-        @if (slide.link) {
-          <a class="home-slide__link" [routerLink]="slide.link.link" [attr.aria-label]="slide.link.label">
-            <img [src]="slide.image" [width]="slide.width" [height]="slide.height" [alt]="slide.alt" [attr.fetchpriority]="activeSlide() === 0 ? 'high' : null" decoding="async" draggable="false" />
-          </a>
-        } @else {
-          <img [src]="slide.image" [width]="slide.width" [height]="slide.height" [alt]="slide.alt" [attr.fetchpriority]="activeSlide() === 0 ? 'high' : null" decoding="async" draggable="false" />
+    <div class="home-carousel__stage">
+      <!-- Mientras rota no se anuncia cada cambio; en pausa sí. -->
+      <div class="home-carousel__viewport" [attr.aria-live]="rotating() ? 'off' : 'polite'">
+        <!-- Un solo banner en el DOM; se recrea al cambiar para repetir la animación de entrada. -->
+        @for (slide of [current()]; track slide.id) {
+          <section class="home-slide" [attr.data-slide]="slide.id" aria-roledescription="diapositiva"
+            [attr.aria-label]="(activeSlide() + 1) + ' de ' + slides().length + ': ' + slide.title">
+            <!-- El título del banner es texto: el h1 de la página va fijo bajo el carrusel. -->
+            <p class="home-slide__title">{{ slide.title }}</p>
+            <div class="home-slide__media" [style.--slide-bg]="'url(' + slide.image + ')'" (pointerdown)="onSwipeStart($event)" (pointerup)="onSwipeEnd($event)">
+              <!-- El marco guarda la proporción de la imagen: las zonas de los botones se miden contra él. -->
+              <div class="home-slide__frame">
+                @if (slide.link) {
+                  <a class="home-slide__link" [routerLink]="slide.link.link" [attr.aria-label]="slide.link.label">
+                    <img [src]="slide.image" [attr.srcset]="srcset(slide)" [attr.sizes]="sizes" [width]="slide.width" [height]="slide.height" [alt]="slide.alt" [attr.fetchpriority]="activeSlide() === 0 ? 'high' : null" decoding="async" draggable="false" />
+                  </a>
+                } @else {
+                  <img [src]="slide.image" [attr.srcset]="srcset(slide)" [attr.sizes]="sizes" [width]="slide.width" [height]="slide.height" [alt]="slide.alt" [attr.fetchpriority]="activeSlide() === 0 ? 'high' : null" decoding="async" draggable="false" />
+                }
+                @for (spot of slide.hotspots ?? []; track spot.link) {
+                  <a class="home-slide__hotspot" [routerLink]="spot.link" [attr.aria-label]="spot.label"
+                    [style.left.%]="spot.left" [style.top.%]="spot.top" [style.width.%]="spot.width" [style.height.%]="spot.height"></a>
+                }
+              </div>
+            </div>
+          </section>
         }
-        @for (spot of slide.hotspots ?? []; track spot.link) {
-          <a class="home-slide__hotspot" [routerLink]="spot.link" [attr.aria-label]="spot.label"
-            [style.left.%]="spot.left" [style.top.%]="spot.top" [style.width.%]="spot.width" [style.height.%]="spot.height"></a>
-        }
-        </div>
-        <div class="home-dots" role="group" aria-label="Elegir banner">
-          @for (item of slides; track item.id; let i = $index) {
-            <button type="button" class="home-dots__dot" [attr.aria-label]="'Ir al banner de ' + item.name" [attr.aria-current]="activeSlide() === i ? 'true' : null" (click)="showSlide(i)"></button>
-          }
-        </div>
       </div>
-      @if (slide.note || slide.mobileCtas?.length) {
-        <div class="home-slide__details">
+
+      <div class="home-controls" role="group" aria-label="Controles del carrusel">
+        <button type="button" class="home-controls__button" aria-label="Banner anterior" (click)="previous()">
+          <i class="pi pi-angle-left" aria-hidden="true"></i>
+        </button>
+        @for (item of slides(); track item.id; let i = $index) {
+          <button type="button" class="home-controls__dot" [attr.aria-label]="'Ir al banner de ' + item.name" [attr.aria-current]="activeSlide() === i ? 'true' : null" (click)="showSlide(i)"></button>
+        }
+        <button type="button" class="home-controls__button" aria-label="Banner siguiente" (click)="next()">
+          <i class="pi pi-angle-right" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="home-controls__button" [attr.aria-label]="userPaused() ? 'Reanudar el carrusel' : 'Pausar el carrusel'" (click)="togglePause()">
+          <i class="pi" [class.pi-pause]="!userPaused()" [class.pi-play]="userPaused()" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <!--
+      Texto y botones bajo la imagen. Están todos apilados en la misma celda y solo
+      se ve el del banner activo: así la zona mide siempre lo del más alto y cambiar
+      de banner no desplaza el contenido de la página.
+    -->
+    <div class="home-details">
+      @for (slide of slides(); track slide.id; let i = $index) {
+        <div class="home-slide__details" [class.is-active]="activeSlide() === i" [attr.aria-hidden]="activeSlide() === i ? null : 'true'">
           @if (slide.note) {
             <p><strong>{{ slide.note.strong }}</strong> {{ slide.note.text }}</p>
           }
@@ -47,16 +68,13 @@
           }
         </div>
       }
-    </section>
-    }
+    </div>
   </div>
 
-  @if (current.title) {
-    <header class="page-heading">
-      <h1 class="page-heading__title">{{ current.title }}@if (current.highlight) {<span> {{ current.highlight }}</span>}</h1>
-      @if (current.text) {
-        <p class="page-heading__text">{{ current.text }}</p>
-      }
-    </header>
-  }
+  <header class="page-heading">
+    <h1 class="page-heading__title">{{ page.title }}@if (page.highlight) {<span> {{ page.highlight }}</span>}</h1>
+    @if (page.text) {
+      <p class="page-heading__text">{{ page.text }}</p>
+    }
+  </header>
 }

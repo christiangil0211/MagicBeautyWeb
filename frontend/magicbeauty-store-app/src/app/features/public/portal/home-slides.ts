@@ -32,6 +32,47 @@ export interface HomeSlide {
   note?: { strong: string; text: string };
   /** Botones reales que reemplazan a los dibujados en móvil, donde la imagen queda pequeña. */
   mobileCtas?: readonly HomeSlideLink[];
+  /**
+   * Temporada en la que el banner va primero y el carrusel arranca en él (fechas
+   * de Colombia, inclusive, `AAAA-MM-DD`). Fuera de ella pasa al final.
+   */
+  featured?: { from: string; until: string };
+}
+
+/**
+ * Tamaños del banner para `srcset`. Junto a cada imagen original (2172 px) hay
+ * copias WebP de 768 y 1280 px (`<nombre>-768.webp`, `<nombre>-1280.webp`): el
+ * celular descarga ~40 KB en vez de ~270 KB y la imagen principal carga antes.
+ */
+export const HOME_SLIDE_WIDTHS = [768, 1280] as const;
+
+/** Ocupa todo el ancho de la pantalla hasta su tamaño real. */
+export const HOME_SLIDE_SIZES = '(min-width: 2172px) 2172px, 100vw';
+
+export function homeSlideSrcset(slide: Pick<HomeSlide, 'image' | 'width'>): string {
+  const base = slide.image.replace(/\.(jpe?g|png|webp)$/i, '');
+
+  return [...HOME_SLIDE_WIDTHS.map(width => `${base}-${width}.webp ${width}w`), `${slide.image} ${slide.width}w`].join(', ');
+}
+
+/** Fecha de hoy en Colombia (`AAAA-MM-DD`), la que rige las temporadas. */
+export function colombiaDate(now: Date): string {
+  return now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+}
+
+/**
+ * Orden del carrusel para una fecha: primero los destacados en temporada, luego
+ * los normales y al final los destacados fuera de temporada, cada grupo en el
+ * orden del arreglo.
+ */
+export function orderHomeSlides(slides: readonly HomeSlide[], now: Date): readonly HomeSlide[] {
+  const today = colombiaDate(now);
+  const rank = (slide: HomeSlide) => {
+    if (!slide.featured) return 1;
+    return slide.featured.from <= today && today <= slide.featured.until ? 0 : 2;
+  };
+
+  return [...slides].sort((a, b) => rank(a) - rank(b));
 }
 
 export const HOME_SLIDES: readonly HomeSlide[] = [
@@ -45,7 +86,9 @@ export const HOME_SLIDES: readonly HomeSlide[] = [
     alt: 'Edición especial 2026: Calendario de Adviento Magic Beauty. Arma el tuyo con nuestros productos y sorprende en esta Navidad. 100% personalizable, se adapta a tu presupuesto, un regalo único. Cotiza el tuyo.',
     link: { label: 'Cotiza tu Calendario de Adviento Magic Beauty 2026', link: '/calendarios-de-adviento' },
     note: { strong: 'Calendario Magic Beauty:', text: 'arma el tuyo a tu medida y según tu presupuesto.' },
-    mobileCtas: [{ label: 'Cotiza el tuyo', link: '/calendarios-de-adviento' }]
+    mobileCtas: [{ label: 'Cotiza el tuyo', link: '/calendarios-de-adviento' }],
+    // Temporada de calendarios: va primero hasta Nochebuena.
+    featured: { from: '2026-11-01', until: '2026-12-24' }
   },
   {
     id: 'catalogs',

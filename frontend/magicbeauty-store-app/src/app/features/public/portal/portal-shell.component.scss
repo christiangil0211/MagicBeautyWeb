@@ -17,7 +17,9 @@
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Una columna por pestaña, siempre en una sola fila. */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   margin-top: -32px;
   overflow: hidden;
   background: var(--mb-surface);
@@ -48,14 +50,15 @@
     border-left: 1px solid var(--mb-border-soft);
   }
 
+  /* Texto pequeño: el fucsia oscuro cumple el contraste AA sobre blanco. */
   &:hover {
-    color: var(--mb-primary);
+    color: var(--mb-primary-hover);
   }
 
   &.active {
     border-bottom-color: var(--mb-primary);
     background: var(--mb-pink-50);
-    color: var(--mb-primary);
+    color: var(--mb-primary-hover);
     font-weight: 600;
   }
 }

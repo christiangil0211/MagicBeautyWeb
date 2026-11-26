@@ -1,121 +1,103 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
+import {
+  STORE_ADDRESS,
+  STORE_CONTACT,
+  STORE_GEO,
+  STORE_OPENING_HOURS,
+  whatsappDisplayPhone,
+  whatsappUrl
+} from '../../../core/constants/store-contact';
 import { AuthService } from '../../../core/services/auth.service';
 import { CategoryService } from '../../../core/services/category.service';
-import { CatalogService } from '../../../core/services/catalog.service';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { LoaderComponent } from '../../../shared/components/loader/loader.component';
-import { ProductCardComponent } from '../../../shared/components/product-card/product-card.component';
 import { CategoryTile } from '../../../shared/models/category.model';
-import { ProductCardModel, toProductCard } from '../../../shared/models/product.model';
-import { PortalBannerComponent } from '../portal/portal-banner.component';
-import { routeBanner } from '../portal/portal-banner.service';
+import { WHOLESALE_PATH } from '../portal/portal-navigation';
+import { HomeFavoritesComponent } from './home-favorites.component';
 
-/** Cuántos productos muestra la sección comercial del inicio. */
-const FAVORITES_LIMIT = 5;
+/** "Compra por categoría" muestra como máximo una fila de 8. */
+const HOME_CATEGORIES_MAX = 8;
 
+/** Casillas de carga de la sección de categorías (reservan su alto). */
+const CATEGORY_SKELETONS = Array.from({ length: 6 }, (_, index) => index);
+
+/** 20:00 → "8:00 p. m.", como se lee en Colombia. */
+function formatHour(time: string): string {
+  const [hours, minutes] = time.split(':').map(Number);
+  const suffix = hours < 12 ? 'a. m.' : 'p. m.';
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+
+  return `${hour12}:${String(minutes).padStart(2, '0')} ${suffix}`;
+}
+
+/**
+ * Inicio de la tienda (`/`), para visitantes y para quien tiene sesión. El
+ * carrusel de campañas y el h1 los pinta el portal (data.portalBanner); aquí van
+ * las secciones comerciales. Lo que depende del API se pide solo en el navegador:
+ * el HTML prerenderizado lleva lo fijo (tienda física, mayoristas, beneficios) y
+ * reserva el alto de lo que llega después para no desplazar la página.
+ */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, ProductCardComponent, LoaderComponent, EmptyStateComponent, ToastModule, PortalBannerComponent],
+  imports: [RouterLink, ToastModule, HomeFavoritesComponent],
   providers: [MessageService],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
 export class HomeComponent {
-  private readonly categoryService = inject(CategoryService);
-  private readonly catalogService = inject(CatalogService);
-  private readonly messageService = inject(MessageService);
-
   /** Las pistas de administración solo se muestran a quien puede administrar. */
   readonly canManageStore = inject(AuthService).canManageStore;
 
-  /** Banner de la ruta: el mismo carrusel de campañas del inicio público. */
-  readonly banner = routeBanner();
-
   readonly tiles = signal<CategoryTile[]>([]);
-  readonly loaded = signal(false);
+  readonly tilesLoaded = signal(false);
+  readonly visibleTiles = computed(() => this.tiles().slice(0, HOME_CATEGORIES_MAX));
+  readonly categorySkeletons = CATEGORY_SKELETONS;
 
-  readonly favoriteProducts = signal<ProductCardModel[]>([]);
-  readonly productsLoading = signal(true);
-  readonly favorites = signal<Set<number>>(new Set());
+  /** Sin categorías destacadas, el visitante no ve una sección vacía. */
+  readonly showCategories = computed(
+    () => !this.tilesLoaded() || this.visibleTiles().length > 0 || this.canManageStore()
+  );
 
-  readonly favoriteCards = computed(() =>
-    this.favoriteProducts().map(product => ({
-      ...product,
-      isFavorite: this.favorites().has(product.id)
-    }))
+  readonly wholesalePath = WHOLESALE_PATH;
+  readonly address = `${STORE_ADDRESS.streetAddress}, ${STORE_ADDRESS.locality}, ${STORE_ADDRESS.region}`;
+  readonly mapsUrl = STORE_CONTACT.mapsUrl;
+  readonly whatsappHref = whatsappUrl();
+  readonly whatsappPhone = whatsappDisplayPhone();
+  readonly hours = STORE_OPENING_HOURS.map(slot => `${formatHour(slot.opens)} a ${formatHour(slot.closes)}`);
+
+  /** "Cómo llegar": Google Maps abre la ruta hasta el pin de la tienda. */
+  readonly directionsUrl = STORE_GEO
+    ? `https://www.google.com/maps/dir/?api=1&destination=${STORE_GEO.latitude},${STORE_GEO.longitude}`
+    : STORE_CONTACT.mapsUrl;
+
+  /** Mapa embebido sin API key (no tiene costo); el iframe carga diferido. */
+  readonly mapEmbedUrl = inject(DomSanitizer).bypassSecurityTrustResourceUrl(
+    STORE_GEO
+      ? `https://maps.google.com/maps?q=${STORE_GEO.latitude},${STORE_GEO.longitude}&z=17&hl=es&output=embed`
+      : `https://maps.google.com/maps?q=${encodeURIComponent(this.address)}&z=17&hl=es&output=embed`
   );
 
   constructor() {
-    this.categoryService.getHomeTiles().subscribe({
-      next: tiles => {
-        this.tiles.set(tiles);
-        this.loaded.set(true);
-      },
-      error: () => this.loaded.set(true)
-    });
-
-    // Los productos se piden solo en el navegador: el inicio llega de inmediato
-    // con el loader en la sección, sin esperar a que el servidor consulte el catálogo.
     if (!isPlatformBrowser(inject(PLATFORM_ID))) {
       return;
     }
 
-    // Todavía no hay un campo "destacado" en el catálogo: por ahora la sección
-    // muestra los primeros productos activos disponibles.
-    this.catalogService.getProducts().subscribe({
-      next: products => {
-        this.favoriteProducts.set(products.slice(0, FAVORITES_LIMIT).map(toProductCard));
-        this.productsLoading.set(false);
-      },
-      // Si el catálogo falla, el resto del inicio sigue en pie.
-      error: () => {
-        this.favoriteProducts.set([]);
-        this.productsLoading.set(false);
-      }
-    });
-  }
-
-  /** La tarjeta no conoce rutas: la página le indica a dónde lleva el producto. */
-  detailLink(reference: string): unknown[] {
-    return ['/productos', reference];
-  }
-
-  onAddToCart(product: ProductCardModel): void {
-    // El módulo de carrito todavía no existe: por ahora solo se confirma la acción.
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Listo para el carrito',
-      detail: product.name + ' se puede agregar directo porque no tiene tonos.'
-    });
-  }
-
-  onChooseVariant(product: ProductCardModel): void {
-    // Nunca se elige un tono por el cliente: esto llevará al detalle cuando exista.
-    this.messageService.add({
-      severity: 'info',
-      summary: 'Elige un tono',
-      detail: product.name + ' tiene varios tonos, hay que seleccionar uno antes de comprar.'
-    });
-  }
-
-  onToggleFavorite(product: ProductCardModel): void {
-    this.favorites.update(current => {
-      const next = new Set(current);
-
-      if (!next.delete(product.id)) {
-        next.add(product.id);
-      }
-
-      return next;
-    });
+    inject(CategoryService)
+      .getHomeTiles()
+      .subscribe({
+        next: tiles => {
+          this.tiles.set(tiles);
+          this.tilesLoaded.set(true);
+        },
+        error: () => this.tilesLoaded.set(true)
+      });
   }
 
   categoryPath(slug: string): string {
-    return '/categoria/' + slug;
+    return '/catalogo/categoria/' + slug;
   }
 }

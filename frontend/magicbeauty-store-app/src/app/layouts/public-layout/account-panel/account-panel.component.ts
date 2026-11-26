@@ -250,7 +250,7 @@ export class AccountPanelComponent {
   }
 
   private finishLogin(): void {
-    const target = this.safeReturnUrl() ?? '/mi-tienda';
+    const target = this.safeReturnUrl() ?? '/';
 
     this.close();
 

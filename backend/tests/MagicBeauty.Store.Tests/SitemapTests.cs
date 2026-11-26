@@ -37,6 +37,7 @@ public sealed class SitemapTests
         Assert.Equal(
             [
                 Site + "/",
+                Site + "/mayoristas",
                 Site + "/catalogo",
                 Site + "/catalogos",
                 Site + "/calendarios-de-adviento",
@@ -47,6 +48,8 @@ public sealed class SitemapTests
                 Site + "/catalogo/SOM205"
             ],
             locations);
+        // /inicio ya no es una página: el hosting la redirige con 301 a la portada.
+        Assert.DoesNotContain(Site + "/inicio", locations);
     }
 
     [Fact]

@@ -9,6 +9,7 @@ import { RenderMode, ServerRoute } from '@angular/ssr';
  */
 export const serverRoutes: ServerRoute[] = [
   { path: '', renderMode: RenderMode.Prerender },
+  { path: 'mayoristas', renderMode: RenderMode.Prerender },
   { path: 'catalogo', renderMode: RenderMode.Prerender },
   { path: 'catalogos', renderMode: RenderMode.Prerender },
   { path: 'calendarios-de-adviento', renderMode: RenderMode.Prerender },
