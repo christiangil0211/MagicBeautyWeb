@@ -8,7 +8,8 @@ public sealed class ProductListItemDto
 
     public string Name { get; set; } = string.Empty;
 
-    public int BrandId { get; set; }
+    /// <summary>NULL = sin marca.</summary>
+    public int? BrandId { get; set; }
 
     public string BrandName { get; set; } = string.Empty;
 
