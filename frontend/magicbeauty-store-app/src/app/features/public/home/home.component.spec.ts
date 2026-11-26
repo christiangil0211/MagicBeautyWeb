@@ -46,8 +46,10 @@ async function render(
 
   const fixture = TestBed.createComponent(HomeComponent);
   fixture.detectChanges();
-  const [favorites] = await fixture.getDeferBlocks();
-  await favorites.render(DeferBlockState.Complete);
+  // Favoritos y mapa se cargan al entrar en pantalla: aquí se muestran ya.
+  for (const block of await fixture.getDeferBlocks()) {
+    await block.render(DeferBlockState.Complete);
+  }
   fixture.detectChanges();
 
   return { fixture, root: fixture.nativeElement as HTMLElement };
@@ -63,7 +65,9 @@ it('links the featured categories to their public catalog page, at most eight', 
   expect(links.length).toBe(8);
   expect(links[0].getAttribute('href')).toBe('/catalogo/categoria/cat-0');
   expect(links[0].querySelector('img')?.getAttribute('loading')).toBe('lazy');
-  expect(links[0].querySelector('img')?.getAttribute('alt')).toBe('Cat 0');
+  // El nombre ya está en el enlace: la imagen es decorativa (alt vacío, sin repetir).
+  expect(links[0].querySelector('img')?.getAttribute('alt')).toBe('');
+  expect(links[0].textContent).toContain('Cat 0');
 });
 
 const fallbackText = (root: HTMLElement, selector: string) => text(root.querySelector(selector + ' app-home-fallback'));

@@ -17,7 +17,8 @@
         <a class="tile" [routerLink]="categoryPath(tile.slug)">
           <div class="tile__image">
             @if (tile.imageUrl) {
-              <img [src]="tile.imageUrl" [alt]="tile.name" width="300" height="300" loading="lazy" decoding="async" />
+              <!-- alt vacío: el nombre ya está en el enlace, junto a la imagen. -->
+              <img [src]="tile.imageUrl" alt="" width="300" height="300" loading="lazy" decoding="async" />
             } @else {
               <div class="tile__placeholder"><i class="pi pi-image" aria-hidden="true"></i></div>
             }
@@ -91,13 +92,22 @@
   </div>
 
   <div class="visit__map">
-    <iframe
-      [src]="mapEmbedUrl"
-      title="Mapa de Magic Beauty Cosmetics en Calle 13 # 44A - 26, Cali"
-      width="640"
-      height="420"
-      loading="lazy"
-      referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <!--
+      El mapa (~100 KB de scripts de Google) solo se pide cuando su espacio entra en
+      pantalla: el loading="lazy" de Chrome empieza a cargar iframes desde muy lejos y
+      competía con la imagen principal en celular. El marcador ocupa el mismo alto.
+    -->
+    @defer (on viewport) {
+      <iframe
+        [src]="mapEmbedUrl"
+        title="Mapa de Magic Beauty Cosmetics en Calle 13 # 44A - 26, Cali"
+        width="640"
+        height="420"
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"></iframe>
+    } @placeholder {
+      <div class="visit__map-placeholder" aria-hidden="true"><i class="pi pi-map-marker"></i></div>
+    }
   </div>
 </section>
 

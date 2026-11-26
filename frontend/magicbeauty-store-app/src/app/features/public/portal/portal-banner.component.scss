@@ -99,6 +99,7 @@
 
 @media (max-width: 640px) {
   .page-heading { padding: 0 16px 20px; }
-  .page-heading__title { font-size: 1.65rem; }
+  /* Al menos 24 px: cuenta como texto grande y el fucsia de "en Cali" cumple AA (3,9:1). */
+  .page-heading__title { font-size: max(1.65rem, 24px); }
   .page-heading__text { font-size: 0.88rem; }
 }
