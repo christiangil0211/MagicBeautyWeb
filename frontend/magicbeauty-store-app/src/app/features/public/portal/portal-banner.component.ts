@@ -26,9 +26,7 @@ import {
   orderHomeSlides
 } from './home-slides';
 import { PortalBanner } from './portal-navigation';
-
-/** Aire entre la cabecera fija y el título al bajar hasta él. */
-const HEADING_SCROLL_GAP_PX = 16;
+import { scrollBelowHeader } from '../../../shared/utils/scroll-below-header';
 
 /** Páginas de una categoría: /categoria/:slug (tienda) y /catalogo/categoria/:slug (portal). */
 export function isCategoryPath(path: string): boolean {
@@ -186,19 +184,7 @@ export class PortalBannerComponent {
 
   /** Deja el título de la página justo bajo la cabecera fija. */
   private scrollToHeading(): void {
-    const heading = this.heading()?.nativeElement;
-    if (!heading || typeof window.scrollTo !== 'function') return;
-
-    const header = document.querySelector<HTMLElement>('.store-header');
-    // La cabecera es sticky con `top` negativo: solo queda a la vista una parte.
-    const headerOffset = header
-      ? header.getBoundingClientRect().height + (parseFloat(getComputedStyle(header).top) || 0)
-      : 0;
-    const top = Math.max(0, heading.getBoundingClientRect().top + window.scrollY - headerOffset - HEADING_SCROLL_GAP_PX);
-    if (Math.abs(window.scrollY - top) < 4) return;
-
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
+    scrollBelowHeader(this.heading()?.nativeElement);
   }
 
   showSlide(index: number): void {
