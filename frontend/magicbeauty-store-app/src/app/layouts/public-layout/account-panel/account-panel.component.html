@@ -13,6 +13,8 @@
           Verifica tu correo
         } @else if (step() === 'new-password') {
           Crea tu contraseña
+        } @else if (step() === 'register') {
+          Crear cuenta
         } @else {
           Iniciar sesión
         }
@@ -135,6 +137,65 @@
           {{ submitting() ? 'Ingresando…' : 'Ingresar' }}
         </button>
       </form>
+      <div class="account-panel__secondary">
+        <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="showRegistration()">
+          Crear cuenta
+        </button>
+      </div>
+    </div>
+  } @else if (step() === 'register') {
+    <div class="account-panel__body">
+      <form class="account-panel__form" (ngSubmit)="submitRegistration()">
+        <label for="register-name">Nombre completo</label>
+        <input id="register-name" name="fullName" required maxlength="200" autocomplete="name"
+          [ngModel]="registration().fullName" (ngModelChange)="updateRegistration('fullName', $event)" />
+        <label for="register-email">Correo electrónico</label>
+        <input id="register-email" name="email" type="email" required maxlength="254" autocomplete="email"
+          [ngModel]="registration().email" (ngModelChange)="updateRegistration('email', $event)" />
+        <label for="register-phone">Celular o WhatsApp</label>
+        <input id="register-phone" name="phone" type="tel" required maxlength="32" autocomplete="tel"
+          [ngModel]="registration().phone" (ngModelChange)="updateRegistration('phone', $event)" />
+        <label for="register-city">Ciudad</label>
+        <input id="register-city" name="city" required maxlength="120" autocomplete="address-level2"
+          [ngModel]="registration().city" (ngModelChange)="updateRegistration('city', $event)" />
+        <label for="register-password">Contraseña</label>
+        <input id="register-password" name="password" type="password" autocomplete="new-password" required maxlength="128"
+          [ngModel]="registration().password" (ngModelChange)="updateRegistration('password', $event)" />
+        <ul class="account-panel__rules">
+          @for (rule of passwordRules; track rule.label) {
+            <li [class.met]="rule.test(registration().password)">{{ rule.label }}</li>
+          }
+        </ul>
+        <label for="register-role">Solicitar condición comercial (opcional)</label>
+        <p-select inputId="register-role" name="requestedRoleCode" [options]="requestableRoles()" optionLabel="name"
+          optionValue="code" placeholder="Sin solicitud" [showClear]="true" appendTo="body"
+          [ngModel]="registration().requestedRoleCode" (ngModelChange)="updateRegistration('requestedRoleCode', $event)" />
+        <label for="register-document">Cédula o NIT {{ registration().requestedRoleCode ? '(obligatorio)' : '(opcional)' }}</label>
+        <input id="register-document" name="documentNumber" maxlength="64" [required]="!!registration().requestedRoleCode"
+          [ngModel]="registration().documentNumber" (ngModelChange)="updateRegistration('documentNumber', $event)" />
+        <div class="account-panel__consent">
+          <input id="register-privacy" name="privacyAccepted" type="checkbox" required
+            [ngModel]="registration().privacyAccepted" (ngModelChange)="updateRegistration('privacyAccepted', $event)" />
+          <label for="register-privacy">
+            Acepto la <a routerLink="/politica-de-datos" target="_blank" rel="noopener">Política de Tratamiento de Datos Personales</a>
+            y autorizo el tratamiento para las finalidades necesarias.
+          </label>
+        </div>
+        <div class="account-panel__consent">
+          <input id="register-marketing" name="marketingOptIn" type="checkbox"
+            [ngModel]="registration().marketingOptIn" (ngModelChange)="updateRegistration('marketingOptIn', $event)" />
+          <label for="register-marketing">Autorizo recibir promociones y novedades (opcional).</label>
+        </div>
+        @if (error(); as message) {
+          <p class="account-panel__error" role="alert">{{ message }}</p>
+        }
+        <button type="submit" class="account-panel__button" [disabled]="submitting()">Crear cuenta</button>
+      </form>
+      <div class="account-panel__secondary">
+        <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="backToCredentials()">
+          Volver a iniciar sesión
+        </button>
+      </div>
     </div>
   } @else if (step() === 'new-password') {
     <div class="account-panel__body">
@@ -207,7 +268,11 @@
       }
 
       <p class="account-panel__hint">
-        Es la primera vez que ingresas: confirma que el correo es tuyo con el código que te enviamos.
+        @if (afterRegistration()) {
+          Si no recibes el código, inicia sesión con el correo y la contraseña que registraste.
+        } @else {
+          Es la primera vez que ingresas: confirma que el correo es tuyo con el código que te enviamos.
+        }
       </p>
 
       <form class="account-panel__form" novalidate (ngSubmit)="submitCode()">
@@ -234,9 +299,11 @@
       </form>
 
       <div class="account-panel__secondary">
-        <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="resendCode()">
-          Reenviar código
-        </button>
+        @if (!afterRegistration()) {
+          <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="resendCode()">
+            Reenviar código
+          </button>
+        }
         <button type="button" class="account-panel__link" (click)="backToCredentials()">
           Usar otra cuenta
         </button>

@@ -16,6 +16,14 @@ public interface IUserRepository
 
     Task<Role?> GetActiveRoleByCodeAsync(string code, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<Role>> GetRequestableCommercialRolesAsync(CancellationToken cancellationToken);
+
+    Task<bool> TrySaveRegistrationAsync(
+        User user, PrivacyConsent consent, RoleRequest? request, CancellationToken cancellationToken);
+
+    /// <summary>Vincula solo con consentimiento y con una coincidencia inequívoca entre fuentes.</summary>
+    Task<long?> FindConsentedCustomerIdAsync(int userId, string documentNumber, CancellationToken cancellationToken);
+
     /// <summary>Codigos sin consumir del usuario, del mas reciente al mas antiguo.</summary>
     Task<IReadOnlyList<EmailVerificationCode>> GetPendingCodesAsync(
         int userId,

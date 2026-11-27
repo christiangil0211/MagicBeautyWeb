@@ -117,6 +117,13 @@ export const routes: Routes = [
       import('./layouts/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
     children: [
       {
+        path: 'politica-de-datos',
+        loadComponent: () =>
+          import('./features/public/privacy-policy/privacy-policy.component').then(m => m.PrivacyPolicyComponent),
+        title: 'Política de datos · Magic Beauty Cosmetics',
+        data: NO_INDEX
+      },
+      {
         path: 'marcas',
         loadComponent: () => import('./features/public/brands/brands.component').then(m => m.BrandsComponent),
         title: 'Marcas de maquillaje y cosméticos en Cali | Magic Beauty Cosmetics',

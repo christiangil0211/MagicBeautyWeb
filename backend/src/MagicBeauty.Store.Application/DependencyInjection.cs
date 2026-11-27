@@ -2,6 +2,7 @@
 using MagicBeauty.Store.Application.Features.Brands;
 using MagicBeauty.Store.Application.Features.Catalog;
 using MagicBeauty.Store.Application.Features.Categories;
+using MagicBeauty.Store.Application.Features.Customers;
 using MagicBeauty.Store.Application.Features.PriceTypes;
 using MagicBeauty.Store.Application.Features.Pricing;
 using MagicBeauty.Store.Application.Features.Products;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ICatalogService, CatalogService>();
         services.AddScoped<ISitemapService, SitemapService>();
         services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<CustomerRegistrationService>();
         services.AddScoped<ITraditionalCatalogService, TraditionalCatalogService>();
 
         return services;

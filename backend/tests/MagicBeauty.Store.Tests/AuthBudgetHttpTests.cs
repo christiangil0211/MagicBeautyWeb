@@ -9,6 +9,7 @@ using MagicBeauty.Store.Api.Middleware;
 using MagicBeauty.Store.Api.Security;
 using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Application.Features.Accounts;
+using MagicBeauty.Store.Application.Features.Customers;
 using MagicBeauty.Store.Contracts.Auth.Responses;
 using MagicBeauty.Store.Domain.Entities;
 using MagicBeauty.Store.Infrastructure.Persistence;
@@ -94,6 +95,76 @@ public sealed class AuthBudgetHttpTests
         Assert.True((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
         clock.Advance(TimeSpan.FromMinutes(1));
         Assert.False((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
+    }
+
+    [Fact]
+    public async Task RegistrationDoesNotIdentifyDuplicateAccounts()
+    {
+        var database = InMemoryDatabase();
+        await using (var seed = database())
+        {
+            seed.Roles.Add(new Role { Id = 2, Code = "CUSTOMER_RETAIL", Kind = RoleKind.Commercial });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var api = await TestApi.StartAsync(database, AuthRequestBudget.Default);
+        object Request(string email) => new
+        {
+            email, password = Password, fullName = "Cliente de prueba", phone = "3001234567",
+            city = "Cali", privacyAccepted = true, policyVersion = "1.0"
+        };
+
+        using var existing = await api.Client.PostAsJsonAsync("/api/auth/register", Request(Email));
+        using var created = await api.Client.PostAsJsonAsync("/api/auth/register", Request("new@example.invalid"));
+
+        Assert.Equal(HttpStatusCode.Accepted, existing.StatusCode);
+        Assert.Equal(existing.StatusCode, created.StatusCode);
+        Assert.Equal(await existing.Content.ReadAsStringAsync(), await created.Content.ReadAsStringAsync());
+        Assert.False(created.Headers.Contains("Set-Cookie"));
+        await using var state = database();
+        Assert.Equal(2, await state.Users.CountAsync());
+        var user = await state.Users.SingleAsync(user => user.Email == "new@example.invalid");
+        Assert.Equal(2, user.CommercialRoleId);
+        Assert.Null(user.EmailConfirmedAt);
+        var consent = await state.PrivacyConsents.SingleAsync();
+        Assert.Equal("1.0", consent.PolicyVersion);
+        Assert.False(consent.MarketingOptIn);
+    }
+
+    [Fact]
+    public async Task ConfirmationLinksOnlyTheConsentedMatchingCustomerWithoutGrantingRequestedRole()
+    {
+        var database = InMemoryDatabase();
+        await using var db = database();
+        db.Roles.AddRange(
+            new Role { Id = 2, Code = "CUSTOMER_RETAIL", Kind = RoleKind.Commercial },
+            new Role { Id = 3, Code = "CUSTOMER_WHOLESALE", Kind = RoleKind.Commercial, IsSelfRequestable = true });
+        var customer = new Customer { Source = "test", ExternalId = "one", DocumentNumber = "001234", Name = "Cliente" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var repository = new UserRepository(db);
+        var hasher = new IdentityPasswordHasher();
+        var registration = new CustomerRegistrationService(repository, hasher, TimeProvider.System);
+        var userId = await registration.RegisterAsync(new MagicBeauty.Store.Contracts.Auth.Requests.RegisterCustomerRequest
+        {
+            Email = "linked@example.invalid", FullName = "Cliente", Phone = "3001234567", City = "Cali",
+            Password = Password, DocumentNumber = "001-234", RequestedRoleCode = "CUSTOMER_WHOLESALE",
+            PrivacyAccepted = true, PolicyVersion = "1.0"
+        }, null, default);
+        var user = await db.Users.SingleAsync(candidate => candidate.Id == userId);
+        Assert.Null(user.CustomerId);
+        var sender = new Mock<IEmailSender>();
+        string? body = null;
+        sender.Setup(service => service.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), default))
+            .Callback<string, string, string, CancellationToken>((_, _, message, _) => body = message);
+        var accounts = new AccountService(repository, hasher, sender.Object);
+        await accounts.SendRegistrationCodeAsync(user.Id, default);
+        var code = System.Text.RegularExpressions.Regex.Match(body!, @"\b[0-9]{6}\b").Value;
+        var account = await accounts.VerifyEmailAsync(user.Email, code, default);
+
+        Assert.Equal(customer.Id, user.CustomerId);
+        Assert.Equal(new[] { "CUSTOMER_RETAIL" }, account.RoleCodes);
+        Assert.Equal(RoleRequestStatus.Pending, (await db.RoleRequests.SingleAsync()).Status);
     }
 
     [Fact]
@@ -323,6 +394,9 @@ public sealed class AuthBudgetHttpTests
             builder.Services.AddAuthRequestBudget(budget);
             builder.Services.AddScoped(_ => database());
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddSingleton(TimeProvider.System);
+            builder.Services.AddSingleton<RegistrationCodeQueue>();
+            builder.Services.AddScoped<CustomerRegistrationService>();
             builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
             builder.Services.AddSingleton(Mock.Of<IEmailSender>());
             builder.Services.AddScoped<AccountService>();

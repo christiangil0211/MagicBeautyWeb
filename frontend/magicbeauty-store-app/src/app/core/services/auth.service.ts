@@ -5,6 +5,7 @@ import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap,
 
 import { environment } from '../../../environments/environment';
 import { ANONYMOUS_SESSION, LoginResponse, Session } from '../../shared/models/session.model';
+import { RegisterCustomer, RequestableRole } from '../../shared/models/registration.model';
 
 /**
  * Espera máxima visible de login, verificación y cambio de contraseña, contando la
@@ -126,6 +127,15 @@ export class AuthService {
     return this.http
       .post<LoginResponse>(`${this.apiUrl}/change-temporary-password`, { email, temporaryPassword, newPassword })
       .pipe(timeout({ first: AUTH_REQUEST_TIMEOUT_MS }), switchMap(() => this.confirmSession(remaining())));
+  }
+
+  register(request: RegisterCustomer): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/register`, request).pipe(timeout({ first: AUTH_REQUEST_TIMEOUT_MS }));
+  }
+
+  requestableRoles(): Observable<RequestableRole[]> {
+    return this.http.get<RequestableRole[]>(`${this.apiUrl}/requestable-roles`, { transferCache: false })
+      .pipe(timeout({ first: AUTH_REQUEST_TIMEOUT_MS }));
   }
 
   /** Confirma el correo con el código recibido y abre la sesión. */
