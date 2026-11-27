@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<ITraditionalCatalogRepository, TraditionalCatalogRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICustomerAdministrationRepository, CustomerAdministrationRepository>();
+        services.AddScoped<ICommercialRepurchaseRepository, CommercialRepurchaseRepository>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddSingleton<ICanvaLinkInspector, CanvaLinkInspector>();

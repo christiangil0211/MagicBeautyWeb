@@ -57,6 +57,7 @@ public sealed class SalesConfiguration :
         builder.Property(x => x.Source).HasMaxLength(64).IsRequired();
         builder.Property(x => x.Error).HasMaxLength(512);
         builder.Property(x => x.Kind).HasDefaultValue(ImportKind.Sales);
+        builder.Property(x => x.CapturesCustomerEvidence).HasDefaultValue(false);
         builder.HasIndex(x => x.Active).IsUnique().HasFilter("[Active] = 1");
         builder.HasIndex(x => new { x.Source, x.Status, x.FinishedAt });
     }

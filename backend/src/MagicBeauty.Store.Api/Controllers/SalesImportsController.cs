@@ -74,6 +74,7 @@ public sealed class SalesImportsController(
                     From = backfillFrom ?? (last is null || refreshDetails
                         ? today.AddMonths(-3) : (watermark ?? last.Through).AddDays(-overlap)),
                     Through = today,
+                    CapturesCustomerEvidence = true,
                     StartedAt = clock.GetUtcNow(),
                     Status = ImportStatus.Queued,
                     Active = true

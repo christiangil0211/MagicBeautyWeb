@@ -46,31 +46,44 @@ public sealed class SalesImportWorker(
             {
                 await using var scope = scopes.CreateAsyncScope();
                 var db = scope.ServiceProvider.GetRequiredService<MagicBeautyDbContext>();
-                await using var guard = await SalesImportLock.TryAcquireAsync(db, 15_000, stoppingToken);
-                if (guard is null)
+                var repurchase = scope.ServiceProvider.GetRequiredService<CommercialRepurchaseService>();
+                string? noticeSource;
+                await using (var guard = await SalesImportLock.TryAcquireAsync(db, 15_000, stoppingToken))
                 {
-                    logger.LogWarning("Otra instancia controla la importación {RunId}.", id);
-                    continue;
+                    if (guard is null)
+                    {
+                        logger.LogWarning("Otra instancia controla la importación {RunId}.", id);
+                        continue;
+                    }
+
+                    try
+                    {
+                        await ImportAsync(id, db, scope.ServiceProvider, stoppingToken);
+                    }
+                    catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
+                    {
+                        logger.LogWarning("La importación {RunId} falló ({ErrorType}).", id, ex.GetType().Name);
+                        var message = ex is SalesSourceReadException sourceError
+                            ? sourceError.Message
+                            : "No se pudo completar el lote. Revisa la configuración y reanuda.";
+                        await db.Set<ImportRun>().Where(x => x.Id == id && x.Active == true)
+                            .ExecuteUpdateAsync(update => update
+                                .SetProperty(x => x.Status, ImportStatus.Failed)
+                                .SetProperty(x => x.Active, (bool?)null)
+                                .SetProperty(x => x.FinishedAt, clock.GetUtcNow())
+                                .SetProperty(x => x.Error, message),
+                                stoppingToken);
+                        continue;
+                    }
+
+                    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+                    var reminderDays = Math.Clamp(configuration.GetValue("CommercialStatus:ReminderDays", 5), 0, 365);
+                    noticeSource = await repurchase.EvaluateAsync(id, SalesCalendar.Today(clock), reminderDays, stoppingToken);
                 }
 
-                try
-                {
-                    await ImportAsync(id, db, scope.ServiceProvider, stoppingToken);
-                }
-                catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
-                {
-                    logger.LogWarning("La importación {RunId} falló ({ErrorType}).", id, ex.GetType().Name);
-                    var message = ex is SalesSourceReadException sourceError
-                        ? sourceError.Message
-                        : "No se pudo completar el lote. Revisa la configuración y reanuda.";
-                    await db.Set<ImportRun>().Where(x => x.Id == id && x.Active == true)
-                        .ExecuteUpdateAsync(update => update
-                            .SetProperty(x => x.Status, ImportStatus.Failed)
-                            .SetProperty(x => x.Active, (bool?)null)
-                            .SetProperty(x => x.FinishedAt, clock.GetUtcNow())
-                            .SetProperty(x => x.Error, message),
-                            stoppingToken);
-                }
+                // La espera del proveedor de correo no retiene el bloqueo SQL de importación.
+                if (noticeSource is not null)
+                    await repurchase.SendPendingAsync(noticeSource, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

@@ -62,11 +62,19 @@ public sealed class SalesBatchWriter(MagicBeautyDbContext db, TimeProvider clock
                 sale.Total = document.Total;
                 sale.TotalPaid = document.TotalPaid;
                 sale.Balance = document.Balance;
+                var externalId = document.CustomerExternalId?.Trim();
+                var number = CustomerDocument.Normalize(document.CustomerDocumentNumber);
+                var validExternalId = externalId is { Length: > 0 and <= 128 };
+                if (document.Status is SaleStatus.Open or SaleStatus.Closed && !validExternalId && number is null)
+                {
+                    // Una factura sin identidad puede esconder una recompra. El lote sigue siendo
+                    // válido para ventas, pero su ventana no sirve para degradar cuentas.
+                    run.CapturesCustomerEvidence = false;
+                }
+
                 if (document.CustomerDocumentNumber is not null || document.CustomerExternalId is not null)
                 {
-                    var externalId = document.CustomerExternalId?.Trim();
-                    var number = CustomerDocument.Normalize(document.CustomerDocumentNumber);
-                    sale.CustomerExternalId = externalId is { Length: > 0 and <= 128 } ? externalId : null;
+                    sale.CustomerExternalId = validExternalId ? externalId : null;
                     sale.CustomerDocumentNumber = number;
                     // Dos identificadores presentes deben señalar al mismo cliente de la fuente.
                     var customer = sale.CustomerExternalId is { } key

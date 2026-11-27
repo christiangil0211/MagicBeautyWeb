@@ -61,6 +61,7 @@ public sealed class ImportRun
     public DateOnly? LastSaleDate { get; set; }
     public int NextOffset { get; set; }
     public bool AllPagesRead { get; set; }
+    public bool CapturesCustomerEvidence { get; set; }
     public int Pages { get; set; }
     public int Invoices { get; set; }
     public int Contacts { get; set; }
