@@ -50,7 +50,7 @@ it('links the complete campaign banner to the calendar landing on the public hom
 });
 
 it.each([
-  ['/catalogo', 'Catálogo mayorista', 'Encuentra fácilmente'],
+  ['/catalogo', 'Busca tus favoritos', 'filtra por marca o precio'],
   ['/catalogos', 'Nuestros catálogos', 'formato tradicional'],
   ['/pedido', 'Mi pedido siempre contigo', 'envía tu pedido por WhatsApp'],
   ['/mayoristas', 'Maquillaje y cosméticos al por mayor en Cali', 'precios especiales para tu negocio']

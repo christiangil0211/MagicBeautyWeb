@@ -371,7 +371,7 @@ describe('category pages', () => {
 
     const heading = () => page.element.querySelector('h1')?.textContent?.replace(/\s+/g, ' ').trim();
 
-    await vi.waitFor(() => expect(heading()).toBe('Catálogo mayorista'));
+    await vi.waitFor(() => expect(heading()).toBe('Busca tus favoritos'));
     expect(document.title).toBe('Catálogo digital de maquillaje y cosméticos · Magic Beauty Cosmetics');
   });
 });

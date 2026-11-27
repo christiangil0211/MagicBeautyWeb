@@ -29,8 +29,8 @@ import { whatsappUrl } from '../../../core/constants/store-contact';
       z-index: 15;
       display: grid;
       place-items: center;
-      width: 64px;
-      height: 64px;
+      width: 80px;
+      height: 80px;
       background: transparent;
       color: #25d366;
       text-decoration: none;
@@ -39,7 +39,7 @@ import { whatsappUrl } from '../../../core/constants/store-contact';
         filter 0.2s ease;
 
       i {
-        font-size: 3.5rem;
+        font-size: 4.4rem;
       }
 
       &:hover {
@@ -58,11 +58,11 @@ import { whatsappUrl } from '../../../core/constants/store-contact';
         right: max(1rem, env(safe-area-inset-right));
         /* --mb-floating-offset: alto de una barra fija inferior (pestañas del portal). */
         bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--mb-floating-offset, 0px));
-        width: 60px;
-        height: 60px;
+        width: 70px;
+        height: 70px;
 
         i {
-          font-size: 3.25rem;
+          font-size: 4rem;
         }
       }
     }

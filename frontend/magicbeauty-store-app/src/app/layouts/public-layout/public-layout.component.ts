@@ -29,6 +29,13 @@ const ADMIN_LINKS: AccountAdminLink[] = [
   { label: 'Administradores', icon: 'pi pi-users', path: '/admin/users' }
 ];
 
+/**
+ * Tiempo que el puntero debe quedarse sobre una categoría antes de abrirla. Evita
+ * que cruzar filas de paso (por ejemplo, subir hacia "Ojos" pasando por "Labios")
+ * abra y cierre ramas en cadena.
+ */
+export const BRANCH_HOVER_DELAY_MS = 150;
+
 
 @Component({
   selector: 'app-public-layout',
@@ -96,7 +103,38 @@ export class PublicLayoutComponent {
   /** Lo buscado en /catalogo?q=, para que la caja muestre la búsqueda vigente. */
   readonly searchTerm = signal('');
 
+  /** Padre de cada categoría del menú, para abrir una rama con todos sus ancestros. */
+  private readonly parentIds = computed(() => {
+    const parents = new Map<number, number | null>();
+    const walk = (items: CategoryMenuItem[], parentId: number | null) =>
+      items.forEach(item => {
+        parents.set(item.id, parentId);
+        walk(item.children, item.id);
+      });
+    walk(this.menu(), null);
+    return parents;
+  });
+
+  private hoverTimer: ReturnType<typeof setTimeout> | null = null;
+  private hoverCandidateId: number | null = null;
+  private pointer: { x: number; y: number } | null = null;
+  /**
+   * Dónde estaba el puntero cuando cambió el menú. Al abrir o cerrar ramas las filas
+   * se desplazan bajo un puntero quieto y el navegador emite eventos de ratón sin que
+   * la persona se haya movido; esos se ignoran para no encadenar aperturas.
+   */
+  private switchPoint: { x: number; y: number } | null = null;
+  /** El panel cambió de tamaño y el puntero aún no se ha movido desde entonces. */
+  private resizedSinceMove = false;
+  private stopOutsideTracking: (() => void) | null = null;
+  private readonly document = inject(DOCUMENT);
+
   constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      this.cancelBranchHover();
+      this.stopTrackingOutside();
+    });
+
     const document = inject(DOCUMENT);
     effect(onCleanup => {
       if (!this.isMobileMenuOpen() && !this.isMobileSearchOpen()) return;
@@ -178,7 +216,7 @@ export class PublicLayoutComponent {
 
   openMegaMenu(id: number): void {
     if (this.openMenuId() !== id) {
-      this.expandedChildIds.set(new Set());
+      this.resetBranches();
     }
 
     this.openMenuId.set(id);
@@ -194,37 +232,121 @@ export class PublicLayoutComponent {
   closeMegaMenu(): void {
     this.openMenuId.set(null);
     this.isAdminMenuOpen.set(false);
-    this.expandedChildIds.set(new Set());
-  }
-
-  expandChild(id: number): void {
-    this.expandedChildIds.update(ids => new Set([...ids, id]));
-  }
-
-  collapseChild(id: number): void {
-    this.expandedChildIds.update(ids => {
-      const next = new Set(ids);
-      next.delete(id);
-      return next;
-    });
+    this.resetBranches();
   }
 
   isChildExpanded(id: number): boolean {
     return this.expandedChildIds().has(id);
   }
 
+  /**
+   * Deja abierta solo la rama de la categoría: ella y sus ancestros. Las hermanas
+   * (y lo que tuvieran abierto) se cierran, como un acordeón.
+   */
+  activateBranch(id: number): void {
+    const path = new Set<number>();
+    for (let current: number | null | undefined = id; current != null; current = this.parentIds().get(current)) {
+      path.add(current);
+    }
+
+    if (!sameIds(path, this.expandedChildIds())) {
+      this.expandedChildIds.set(path);
+      this.switchPoint = this.pointer;
+      this.resizedSinceMove = true;
+    }
+  }
+
+  /**
+   * El puntero salió de la barra. Si fue porque el panel se encogió bajo un puntero
+   * quieto (al cerrar una rama larga), el menú no se cierra: sigue abierto mientras
+   * la persona vuelve hacia él y se cierra en cuanto se aleja.
+   */
+  leaveMenu(event: MouseEvent): void {
+    const menu = event.currentTarget as HTMLElement | null;
+    if (!this.resizedSinceMove || !menu) {
+      this.closeMegaMenu();
+      return;
+    }
+
+    this.stopTrackingOutside();
+    let closest = distanceToMenu(menu, event.clientX, event.clientY);
+    const onMove = (move: MouseEvent) => {
+      if (menu.contains(move.target as Node)) {
+        this.stopTrackingOutside();
+        return;
+      }
+      const distance = distanceToMenu(menu, move.clientX, move.clientY);
+      closest = Math.min(closest, distance);
+      if (distance > closest + OUTSIDE_TOLERANCE_PX) {
+        this.closeMegaMenu();
+      }
+    };
+    this.document.addEventListener('mousemove', onMove);
+    this.stopOutsideTracking = () => this.document.removeEventListener('mousemove', onMove);
+  }
+
+  stopTrackingOutside(): void {
+    this.stopOutsideTracking?.();
+    this.stopOutsideTracking = null;
+  }
+
+  /** El puntero se mueve sobre una fila: si se queda en ella, se abre su rama. */
+  hoverBranch(id: number, event: MouseEvent): void {
+    this.pointer = { x: event.clientX, y: event.clientY };
+
+    // Evento emitido porque la fila se desplazó bajo un puntero quieto.
+    if (this.switchPoint && this.switchPoint.x === event.clientX && this.switchPoint.y === event.clientY) return;
+    this.resizedSinceMove = false;
+    if (this.hoverCandidateId === id) return;
+
+    this.cancelBranchHover();
+    this.hoverCandidateId = id;
+    this.hoverTimer = setTimeout(() => {
+      this.hoverTimer = null;
+      this.hoverCandidateId = null;
+      this.activateBranch(id);
+    }, BRANCH_HOVER_DELAY_MS);
+  }
+
+  /** Salir de una fila solo cancela su apertura pendiente; no cierra nada. */
+  leaveBranch(id: number): void {
+    if (this.hoverCandidateId === id) {
+      this.cancelBranchHover();
+    }
+  }
+
   /** Abre o cierra el nivel 3 sin navegar ni cerrar el panel. */
   toggleChild(id: number, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
+    this.cancelBranchHover();
 
-    const expanded = new Set(this.expandedChildIds());
-
-    if (!expanded.delete(id)) {
-      expanded.add(id);
+    if (this.isChildExpanded(id)) {
+      this.expandedChildIds.update(ids => {
+        const next = new Set(ids);
+        next.delete(id);
+        return next;
+      });
+    } else {
+      this.activateBranch(id);
     }
+  }
 
-    this.expandedChildIds.set(expanded);
+  private cancelBranchHover(): void {
+    if (this.hoverTimer !== null) {
+      clearTimeout(this.hoverTimer);
+    }
+    this.hoverTimer = null;
+    this.hoverCandidateId = null;
+  }
+
+  private resetBranches(): void {
+    this.cancelBranchHover();
+    this.stopTrackingOutside();
+    this.expandedChildIds.set(new Set());
+    this.resizedSinceMove = false;
+    this.switchPoint = null;
+    this.pointer = null;
   }
 
   isCategoryActive(item: CategoryMenuItem): boolean {
@@ -257,4 +379,21 @@ export class PublicLayoutComponent {
   closeMobileSearch(): void {
     this.isMobileSearchOpen.set(false);
   }
+}
+
+/** Margen para alejarse del menú (por ejemplo, un temblor del ratón) sin cerrarlo. */
+const OUTSIDE_TOLERANCE_PX = 24;
+
+/** Distancia del puntero al rectángulo de la barra y su desplegable abierto. */
+function distanceToMenu(menu: HTMLElement, x: number, y: number): number {
+  const rects = [menu, ...Array.from(menu.querySelectorAll<HTMLElement>('.nav-dropdown'))]
+    .map(element => element.getBoundingClientRect());
+  return Math.min(...rects.map(rect => Math.hypot(
+    Math.max(rect.left - x, 0, x - rect.right),
+    Math.max(rect.top - y, 0, y - rect.bottom)
+  )));
+}
+
+function sameIds(a: ReadonlySet<number>, b: ReadonlySet<number>): boolean {
+  return a.size === b.size && [...a].every(id => b.has(id));
 }
