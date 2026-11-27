@@ -97,3 +97,15 @@ it('accepts only PNG, SVG or WebP logos of up to 1 MB', () => {
   pick(new File(['<svg/>'], 'logo.svg', { type: 'image/svg+xml' }));
   expect(component.pendingLogo()?.name).toBe('logo.svg');
 });
+
+it('opens the AI prompt to prepare logos with the store standard', () => {
+  const { component, fixture } = setup();
+
+  component.logoPromptOpen.set(true);
+  fixture.detectChanges();
+
+  const text = document.querySelector<HTMLTextAreaElement>('#logo-prompt-text');
+  expect(text?.value).toContain('2087 × 754');
+  expect(text?.value).toContain('menos de 1 MB');
+  expect(text?.value).toContain('Sin restos del fondo original');
+});
