@@ -9,11 +9,13 @@ using MagicBeauty.Store.Api.Middleware;
 using MagicBeauty.Store.Api.Security;
 using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Application.Features.Accounts;
+using MagicBeauty.Store.Contracts.Auth.Responses;
 using MagicBeauty.Store.Domain.Entities;
 using MagicBeauty.Store.Infrastructure.Persistence;
 using MagicBeauty.Store.Infrastructure.Persistence.Repositories;
 using MagicBeauty.Store.Infrastructure.Services;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -56,6 +58,102 @@ public sealed class AuthBudgetHttpTests
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("Correo o contrasena incorrectos.", (await ReadAsync(response)).GetProperty("error").GetString());
+    }
+
+    [Theory]
+    [InlineData("ADMIN", false)]
+    [InlineData("CUSTOMER_WHOLESALE", false)]
+    [InlineData("ADMIN", true)]
+    public async Task OpenSessionIsRejectedAfterAccountChanges(string roleCode, bool deactivate)
+    {
+        var database = InMemoryDatabase(roleCode);
+        var clock = new SessionClock();
+        await using var api = await TestApi.StartAsync(database, AuthRequestBudget.Default, clock: clock);
+        using var login = await api.Client.PostAsJsonAsync("/api/auth/login", new { email = Email, password = Password });
+        login.EnsureSuccessStatusCode();
+        var session = await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session");
+        Assert.True(session!.IsAuthenticated);
+        Assert.Equal(roleCode == "ADMIN", session.CanManageStore);
+
+        await using (var update = database())
+        {
+            var user = await update.Users.Include(user => user.UserRoles).SingleAsync();
+            if (deactivate)
+            {
+                user.IsActive = false;
+            }
+            else
+            {
+                user.UserRoles.Clear();
+            }
+
+            await update.SaveChangesAsync();
+        }
+
+        clock.Advance(TimeSpan.FromMinutes(4));
+        Assert.True((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
+        clock.Advance(TimeSpan.FromMinutes(1));
+        Assert.False((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
+    }
+
+    [Fact]
+    public async Task ResetAccessRevokesExistingSession()
+    {
+        var database = InMemoryDatabase();
+        var clock = new SessionClock();
+        await using var api = await TestApi.StartAsync(database, AuthRequestBudget.Default, clock: clock);
+        using var login = await api.Client.PostAsJsonAsync("/api/auth/login", new { email = Email, password = Password });
+        login.EnsureSuccessStatusCode();
+        await using (var update = database())
+        {
+            var previous = (await update.Users.AsNoTracking().SingleAsync()).SecurityStamp;
+            var accounts = new AccountService(new UserRepository(update), new IdentityPasswordHasher(), Mock.Of<IEmailSender>());
+            await accounts.ResetAccessAsync(1, 2, new AccessLinks(null, null), default);
+            Assert.NotEqual(previous, (await update.Users.SingleAsync()).SecurityStamp);
+        }
+
+        clock.Advance(TimeSpan.FromMinutes(5));
+        Assert.False((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
+    }
+
+    [Fact]
+    public async Task AbsoluteExpirationSurvivesSlidingRenewal()
+    {
+        var clock = new SessionClock();
+        await using var api = await TestApi.StartAsync(InMemoryDatabase(), AuthRequestBudget.Default, clock: clock);
+        using var login = await api.Client.PostAsJsonAsync("/api/auth/login", new { email = Email, password = Password });
+        login.EnsureSuccessStatusCode();
+        for (var elapsed = 5; elapsed < 24; elapsed += 5)
+        {
+            clock.Advance(TimeSpan.FromHours(5));
+            using var renewed = await api.Client.GetAsync("/api/auth/session");
+            Assert.True((await renewed.Content.ReadFromJsonAsync<SessionDto>())!.IsAuthenticated);
+            Assert.Contains(renewed.Headers, header => header.Key == "Set-Cookie");
+        }
+
+        clock.Advance(TimeSpan.FromHours(4));
+        Assert.False((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
+    }
+
+    [Fact]
+    public async Task LogoutRemovesTheBrowserSession()
+    {
+        await using var api = await TestApi.StartAsync(InMemoryDatabase(), AuthRequestBudget.Default);
+        using var login = await api.Client.PostAsJsonAsync("/api/auth/login", new { email = Email, password = Password });
+        login.EnsureSuccessStatusCode();
+        Assert.True((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
+        using var logout = await api.Client.PostAsync("/api/auth/logout", null);
+        Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
+        Assert.False((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
+    }
+
+    private sealed class SessionClock : TimeProvider
+    {
+        private DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        public override DateTimeOffset GetUtcNow() => now;
+
+        public void Advance(TimeSpan elapsed) => now += elapsed;
     }
 
     [Theory]
@@ -155,14 +253,14 @@ public sealed class AuthBudgetHttpTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private static Func<MagicBeautyDbContext> InMemoryDatabase()
+    private static Func<MagicBeautyDbContext> InMemoryDatabase(string roleCode = "ADMIN")
     {
         var name = Guid.NewGuid().ToString();
         var options = new DbContextOptionsBuilder<MagicBeautyDbContext>().UseInMemoryDatabase(name).Options;
 
         using (var seed = new MagicBeautyDbContext(options))
         {
-            var role = new Role { Id = 1, Code = "ADMIN", Name = "Administrador" };
+            var role = new Role { Id = 1, Code = roleCode, Name = roleCode };
             var user = new User
             {
                 Id = 1,
@@ -200,7 +298,8 @@ public sealed class AuthBudgetHttpTests
         public static async Task<TestApi> StartAsync(
             Func<MagicBeautyDbContext> database,
             AuthRequestBudget budget,
-            Func<IAccountService, IAccountService>? decorate = null)
+            Func<IAccountService, IAccountService>? decorate = null,
+            TimeProvider? clock = null)
         {
             // Raiz vacia: no se leen los appsettings reales de la API (hosts, secretos).
             var contentRoot = Directory.CreateTempSubdirectory("magicbeauty-api-").FullName;
@@ -215,7 +314,12 @@ public sealed class AuthBudgetHttpTests
             builder.Services.AddControllers().AddApplicationPart(typeof(AuthController).Assembly);
             // El ticket se protege de verdad con claves aisladas del perfil de Windows.
             builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
-            builder.Services.AddStoreAuthentication(builder.Environment);
+            builder.Services.AddStoreAuthentication(builder.Environment, builder.Configuration);
+            if (clock is not null)
+            {
+                builder.Services.Configure<CookieAuthenticationOptions>(
+                    CookieAuthenticationDefaults.AuthenticationScheme, options => options.TimeProvider = clock);
+            }
             builder.Services.AddAuthRequestBudget(budget);
             builder.Services.AddScoped(_ => database());
             builder.Services.AddScoped<IUserRepository, UserRepository>();

@@ -14,6 +14,9 @@ public sealed class User
     /// <summary>Hash PBKDF2 de ASP.NET Core Identity. Nunca la contrasena en claro.</summary>
     public string PasswordHash { get; set; } = string.Empty;
 
+    /// <summary>Versión de acceso que permite revocar las sesiones previas de la cuenta.</summary>
+    public Guid SecurityStamp { get; private set; } = Guid.NewGuid();
+
     /// <summary>Null mientras el correo no se haya confirmado con un codigo.</summary>
     public DateTime? EmailConfirmedAt { get; set; }
 
@@ -43,4 +46,7 @@ public sealed class User
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public ICollection<EmailVerificationCode> VerificationCodes { get; set; } = new List<EmailVerificationCode>();
+
+    /// <summary>Invalida los tickets emitidos antes del cambio de credenciales o permisos.</summary>
+    public void RotateSecurityStamp() => SecurityStamp = Guid.NewGuid();
 }

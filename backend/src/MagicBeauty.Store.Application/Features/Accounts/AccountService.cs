@@ -135,6 +135,15 @@ public sealed class AccountService(
         return users.Select(MapToDto).ToList();
     }
 
+    public async Task<AuthenticatedAccount?> GetSessionAccountAsync(int userId, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken);
+
+        return user is { IsActive: true, MustChangePassword: false, EmailConfirmedAt: not null }
+            ? ToAccount(user)
+            : null;
+    }
+
     public async Task<LoginResult> ChangeTemporaryPasswordAsync(
         string email,
         string temporaryPassword,
@@ -169,6 +178,7 @@ public sealed class AccountService(
         }
 
         user.PasswordHash = passwordHasher.Hash(newPassword);
+        user.RotateSecurityStamp();
         user.MustChangePassword = false;
         user.TemporaryPasswordExpiresAt = null;
 
@@ -228,6 +238,7 @@ public sealed class AccountService(
 
         // La contrasena anterior deja de servir y se levanta cualquier bloqueo.
         user.PasswordHash = passwordHasher.Hash(temporaryPassword);
+        user.RotateSecurityStamp();
         user.MustChangePassword = true;
         user.TemporaryPasswordExpiresAt = now.Add(TemporaryPassword.Lifetime);
         user.FailedLoginCount = 0;
@@ -441,7 +452,7 @@ public sealed class AccountService(
             .Select(link => link.Role!.Code)
             .ToList();
 
-        return new AuthenticatedAccount(user.Id, user.Email, roles);
+        return new AuthenticatedAccount(user.Id, user.Email, roles, user.SecurityStamp);
     }
 
     private static UserDto MapToDto(User user)
