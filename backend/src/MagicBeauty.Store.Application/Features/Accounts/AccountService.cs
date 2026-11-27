@@ -447,9 +447,9 @@ public sealed class AccountService(
 
     private static AuthenticatedAccount ToAccount(User user)
     {
-        var roles = user.UserRoles
-            .Where(link => link.Role is not null && link.Role.IsActive)
-            .Select(link => link.Role!.Code)
+        var roles = GetRoles(user)
+            .Where(role => role.IsActive)
+            .Select(role => role.Code)
             .ToList();
 
         return new AuthenticatedAccount(user.Id, user.Email, roles, user.SecurityStamp);
@@ -467,9 +467,8 @@ public sealed class AccountService(
                 ? DateTime.SpecifyKind(expiresAt, DateTimeKind.Utc)
                 : null,
             IsActive = user.IsActive,
-            Roles = user.UserRoles
-                .Where(link => link.Role is not null)
-                .Select(link => link.Role!.Code)
+            Roles = GetRoles(user)
+                .Select(role => role.Code)
                 .OrderBy(code => code)
                 .ToList(),
             // SQL Server devuelve las fechas sin zona: se marcan como UTC para que
@@ -480,4 +479,7 @@ public sealed class AccountService(
                 : null
         };
     }
+
+    private static IEnumerable<Role> GetRoles(User user) =>
+        user.UserRoles.Select(link => link.Role).Append(user.CommercialRole).OfType<Role>();
 }

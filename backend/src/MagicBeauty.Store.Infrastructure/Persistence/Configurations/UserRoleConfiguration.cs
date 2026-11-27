@@ -8,7 +8,8 @@ public sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
 {
     public void Configure(EntityTypeBuilder<UserRole> builder)
     {
-        builder.ToTable("UserRoles");
+        builder.ToTable("UserRoles", table =>
+            table.HasCheckConstraint("CK_UserRoles_InternalRoleKind", "[InternalRoleKind] = 0"));
 
         builder.HasKey(link => new { link.UserId, link.RoleId });
 
@@ -17,9 +18,11 @@ public sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
             .HasForeignKey(link => link.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.Property<RoleKind>("InternalRoleKind").HasDefaultValue(RoleKind.Internal);
         builder.HasOne(link => link.Role)
             .WithMany(role => role.UserRoles)
-            .HasForeignKey(link => link.RoleId)
+            .HasForeignKey(nameof(UserRole.RoleId), "InternalRoleKind")
+            .HasPrincipalKey(role => new { role.Id, role.Kind })
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

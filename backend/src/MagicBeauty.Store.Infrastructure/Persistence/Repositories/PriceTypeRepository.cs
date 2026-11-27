@@ -1,4 +1,5 @@
 using MagicBeauty.Store.Application.Common.Interfaces;
+using MagicBeauty.Store.Domain.Common;
 using MagicBeauty.Store.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -58,8 +59,9 @@ public sealed class PriceTypeRepository(MagicBeautyDbContext dbContext) : IPrice
 
         return await dbContext.PriceTypes
             .AsNoTracking()
-            .Where(priceType => priceType.IsActive && priceType.RolePriceTypes.Any(link =>
-                link.Role!.IsActive && codes.Contains(link.Role.Code)))
+            .Where(priceType => priceType.IsActive &&
+                (dbContext.Roles.Any(role => role.IsActive && role.Code == RoleCodes.Admin && codes.Contains(role.Code)) ||
+                 priceType.RolePriceTypes.Any(link => link.Role!.IsActive && codes.Contains(link.Role.Code))))
             .OrderBy(priceType => priceType.DisplayOrder)
             .ThenBy(priceType => priceType.Code)
             .ToListAsync(cancellationToken);

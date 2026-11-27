@@ -23,6 +23,8 @@ public sealed class SalesConfiguration :
         builder.Property(x => x.Total).HasPrecision(19, 4);
         builder.Property(x => x.TotalPaid).HasPrecision(19, 4);
         builder.Property(x => x.Balance).HasPrecision(19, 4);
+        builder.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => new { x.CustomerId, x.SaleDate });
         builder.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.SaleId);
     }
 

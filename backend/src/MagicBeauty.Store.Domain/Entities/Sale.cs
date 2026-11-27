@@ -7,6 +7,8 @@ public sealed class Sale
     public long Id { get; set; }
     public string Source { get; set; } = "";
     public string ExternalId { get; set; } = "";
+    public long? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
     public DateOnly SaleDate { get; set; }
     public DateOnly? DueDate { get; set; }
     public string? PaymentForm { get; set; }
