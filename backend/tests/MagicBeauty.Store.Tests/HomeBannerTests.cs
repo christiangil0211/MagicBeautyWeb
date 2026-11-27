@@ -378,3 +378,22 @@ public sealed class HomeBannerServiceTests : IDisposable
         }
     }
 }
+
+public sealed class PublicHomeBannersControllerTests
+{
+    [Fact]
+    public async Task NeverLetsASharedCacheStoreTheResponse()
+    {
+        // La sesión es deslizante: la respuesta puede traer la cookie renovada.
+        var service = new Mock<IHomeBannerService>();
+        service.Setup(item => item.GetVisibleAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        var controller = new MagicBeauty.Store.Api.Controllers.PublicHomeBannersController(service.Object)
+        {
+            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() }
+        };
+
+        await controller.GetVisible(default);
+
+        Assert.Equal("private, max-age=60", controller.Response.Headers.CacheControl.ToString());
+    }
+}

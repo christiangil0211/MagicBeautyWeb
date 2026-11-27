@@ -19,8 +19,10 @@ public sealed class PublicHomeBannersController(IHomeBannerService bannerService
     {
         var banners = await bannerService.GetVisibleAsync(cancellationToken);
 
-        // Lo pide cada visita: un minuto en caché alivia la base y un cambio del administrador se ve enseguida.
-        Response.Headers.CacheControl = "public, max-age=60";
+        // Un minuto en la caché del navegador alivia la base y un cambio del administrador
+        // se ve enseguida. "private": la sesión es deslizante y esta respuesta puede traer
+        // la cookie renovada; ningún intermediario (CDN, proxy) debe guardarla.
+        Response.Headers.CacheControl = "private, max-age=60";
 
         return Ok(banners);
     }
