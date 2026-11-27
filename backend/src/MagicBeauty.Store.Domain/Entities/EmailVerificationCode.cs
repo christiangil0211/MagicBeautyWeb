@@ -1,5 +1,7 @@
 namespace MagicBeauty.Store.Domain.Entities;
 
+public enum EmailCodePurpose { EmailConfirmation, PasswordReset }
+
 /// <summary>
 /// Codigo de un solo uso enviado al correo para confirmarlo. Solo se guarda su
 /// hash; caduca y admite un numero limitado de intentos.
@@ -11,6 +13,8 @@ public sealed class EmailVerificationCode
     public int UserId { get; set; }
 
     public User? User { get; set; }
+
+    public EmailCodePurpose Purpose { get; set; }
 
     public string CodeHash { get; set; } = string.Empty;
 

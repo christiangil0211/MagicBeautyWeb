@@ -32,6 +32,7 @@ public sealed class RolePriceTypeConfiguration : IEntityTypeConfiguration<RolePr
             new RolePriceType { RoleId = 2, PriceTypeId = 1 },
             new RolePriceType { RoleId = 2, PriceTypeId = 2 },
             // CUSTOMER_WHOLESALE: solo por mayor.
-            new RolePriceType { RoleId = 3, PriceTypeId = 2 });
+            new RolePriceType { RoleId = 3, PriceTypeId = 2 },
+            new RolePriceType { RoleId = 4, PriceTypeId = 3 });
     }
 }

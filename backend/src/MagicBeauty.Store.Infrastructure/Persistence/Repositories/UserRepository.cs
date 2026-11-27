@@ -9,6 +9,7 @@ public sealed class UserRepository(MagicBeautyDbContext dbContext) : IUserReposi
     public async Task<User?> GetByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
     {
         return await dbContext.Users
+            .Include(user => user.CommercialRole)
             .Include(user => user.UserRoles)
                 .ThenInclude(link => link.Role)
             .FirstOrDefaultAsync(user => user.Email == normalizedEmail, cancellationToken);
@@ -17,6 +18,7 @@ public sealed class UserRepository(MagicBeautyDbContext dbContext) : IUserReposi
     public async Task<User?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         return await dbContext.Users
+            .Include(user => user.CommercialRole)
             .Include(user => user.UserRoles)
                 .ThenInclude(link => link.Role)
             .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
@@ -32,6 +34,7 @@ public sealed class UserRepository(MagicBeautyDbContext dbContext) : IUserReposi
     {
         return await dbContext.Users
             .AsNoTracking()
+            .Include(user => user.CommercialRole)
             .Include(user => user.UserRoles)
                 .ThenInclude(link => link.Role)
             .OrderBy(user => user.Email)
@@ -49,7 +52,7 @@ public sealed class UserRepository(MagicBeautyDbContext dbContext) : IUserReposi
         CancellationToken cancellationToken)
     {
         return await dbContext.EmailVerificationCodes
-            .Where(code => code.UserId == userId && code.ConsumedAt == null)
+            .Where(code => code.UserId == userId && code.Purpose == EmailCodePurpose.EmailConfirmation && code.ConsumedAt == null)
             .OrderByDescending(code => code.CreatedAt)
             .ThenByDescending(code => code.Id)
             .ToListAsync(cancellationToken);
