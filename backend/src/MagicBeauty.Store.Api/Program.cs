@@ -34,7 +34,9 @@ builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.Is
 // Integracion Alegra (desmontable): ver MagicBeauty.Store.Integrations.Alegra.
 builder.Services.AddAlegraIntegration(builder.Configuration);
 
-builder.Services.AddStoreAuthentication(builder.Environment);
+builder.Services.AddStoreAuthentication(builder.Environment, builder.Configuration);
+builder.Services.AddSingleton<AccountCodeQueue>();
+builder.Services.AddHostedService<AccountCodeWorker>();
 
 // Login, verificacion y cambio de contrasena terminan en 13 s como maximo.
 builder.Services.AddAuthRequestBudget();
@@ -116,6 +118,8 @@ if (app.Services.GetService<LocalFileStorageOptions>() is { } localStorage)
     });
 }
 
+app.UseRouting();
+app.UsePrivateCookieResponses();
 app.UseCors(CorsPolicyName);
 
 // Fuera de Development la cookie es SameSite=None: se exige un origen de produccion al

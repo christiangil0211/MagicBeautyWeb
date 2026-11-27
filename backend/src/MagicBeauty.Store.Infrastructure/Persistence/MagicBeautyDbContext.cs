@@ -34,6 +34,18 @@ public sealed class MagicBeautyDbContext(DbContextOptions<MagicBeautyDbContext> 
 
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
+    public DbSet<Customer> Customers => Set<Customer>();
+
+    public DbSet<RoleRequest> RoleRequests => Set<RoleRequest>();
+
+    public DbSet<CommercialRoleHistory> CommercialRoleHistory => Set<CommercialRoleHistory>();
+
+    public DbSet<CommercialNotice> CommercialNotices => Set<CommercialNotice>();
+
+    public DbSet<PrivacyConsent> PrivacyConsents => Set<PrivacyConsent>();
+
+    public DbSet<Sale> Sales => Set<Sale>();
+
     public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

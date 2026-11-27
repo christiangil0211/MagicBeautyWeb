@@ -22,6 +22,7 @@
 /* ===== Selector de cotización ===== */
 .quote-switch {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   width: 100%;
   max-width: 520px;
@@ -32,7 +33,7 @@
 }
 
 .quote-switch__tab {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -88,11 +89,6 @@
   background: var(--mb-surface);
   border: 1px solid var(--mb-border-soft);
   border-radius: var(--mb-radius);
-  transition: opacity 0.2s ease;
-}
-
-.order-table--refreshing {
-  opacity: 0.6;
 }
 
 .order-table__head,

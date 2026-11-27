@@ -23,6 +23,10 @@ public sealed class SalesConfiguration :
         builder.Property(x => x.Total).HasPrecision(19, 4);
         builder.Property(x => x.TotalPaid).HasPrecision(19, 4);
         builder.Property(x => x.Balance).HasPrecision(19, 4);
+        builder.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Property(x => x.CustomerExternalId).HasMaxLength(128);
+        builder.Property(x => x.CustomerDocumentNumber).HasMaxLength(40);
+        builder.HasIndex(x => new { x.CustomerId, x.SaleDate });
         builder.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.SaleId);
     }
 
@@ -52,6 +56,8 @@ public sealed class SalesConfiguration :
         builder.ToTable("ImportRuns", "sales");
         builder.Property(x => x.Source).HasMaxLength(64).IsRequired();
         builder.Property(x => x.Error).HasMaxLength(512);
+        builder.Property(x => x.Kind).HasDefaultValue(ImportKind.Sales);
+        builder.Property(x => x.CapturesCustomerEvidence).HasDefaultValue(false);
         builder.HasIndex(x => x.Active).IsUnique().HasFilter("[Active] = 1");
         builder.HasIndex(x => new { x.Source, x.Status, x.FinishedAt });
     }

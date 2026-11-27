@@ -4,10 +4,8 @@ using MagicBeauty.Store.Domain.Entities;
 namespace MagicBeauty.Store.Application.Features.Pricing;
 
 /// <summary>
-/// La regla vive en datos, no en codigo:
-/// - Anonimo: los tipos marcados como publicos (PriceType.IsPublic).
-/// - Autenticado: la relacion Role -> PriceType de sus roles.
-/// Un tipo nuevo no queda visible para nadie hasta que se configure.
+/// Ofrece precios públicos al visitante y aplica la matriz al cliente con roles.
+/// La administración activa ve todos los tipos activos, incluidos los que se agreguen después.
 /// </summary>
 public sealed class PriceVisibilityPolicy(IPriceTypeRepository priceTypeRepository) : IPriceVisibilityPolicy
 {

@@ -1,6 +1,8 @@
-import { Component, DestroyRef, afterNextRender, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
+import { HomeBannerStore } from './home-banner-store';
 import {
   HOME_SLIDES,
   HOME_SLIDE_INTERVAL_MS,
@@ -21,6 +23,10 @@ import { PortalBanner } from './portal-navigation';
  * Los controles viven fuera de la diapositiva para que el foco no se pierda al
  * cambiar de banner, y el texto bajo la imagen reserva el alto del más largo para
  * que cambiar de banner no mueva la página.
+ *
+ * Banners: el HTML prerenderizado lleva los de respaldo (HOME_SLIDES); en el
+ * navegador se reemplazan por los de Admin › Banners del inicio si hay alguno
+ * visible. El administrador usa `preview` para ver su borrador sin pedir nada.
  */
 @Component({
   selector: 'app-portal-banner',
@@ -31,13 +37,27 @@ import { PortalBanner } from './portal-navigation';
 export class PortalBannerComponent {
   readonly banner = input<PortalBanner | null>(null);
 
+  /** Vista previa del administrador: estos banners, sin consultar el API. */
+  readonly preview = input<readonly HomeSlide[] | null>(null);
+
+  /** Vista previa: id del banner que se está editando; el carrusel salta a él. */
+  readonly previewFocus = input<string | null>(null);
+
+  /** El administrador oculta el h1 de la página en su vista previa. */
+  readonly showHeading = input(true);
+
   /**
    * Orden del código en el primer render (igual en el HTML prerenderizado y al
-   * hidratar); en el navegador se ajusta a la temporada vigente.
+   * hidratar); en el navegador se ajusta a la temporada vigente y luego a los
+   * banners del administrador.
    */
-  readonly slides = signal<readonly HomeSlide[]>(HOME_SLIDES);
+  private readonly liveSlides = signal<readonly HomeSlide[]>(HOME_SLIDES);
+  readonly slides = computed(() => {
+    const preview = this.preview();
+    return preview?.length ? preview : this.liveSlides();
+  });
   readonly activeSlide = signal(0);
-  readonly current = computed(() => this.slides()[this.activeSlide()]);
+  readonly current = computed(() => this.slides()[Math.min(this.activeSlide(), this.slides().length - 1)]);
   readonly sizes = HOME_SLIDE_SIZES;
   readonly srcset = homeSlideSrcset;
 
@@ -54,23 +74,47 @@ export class PortalBannerComponent {
 
   constructor() {
     const destroyRef = inject(DestroyRef);
+    const store = inject(HomeBannerStore);
+
+    // Si la lista cambia (llegan los del API o se edita la vista previa), el
+    // banner a la vista se conserva si sigue en ella; si no, vuelve al primero.
+    let previousIds: string[] = [];
+    effect(() => {
+      const ids = this.slides().map(slide => slide.id);
+      untracked(() => {
+        const currentId = previousIds[this.activeSlide()];
+        const index = currentId ? ids.indexOf(currentId) : -1;
+        if (index !== this.activeSlide()) this.activeSlide.set(Math.max(index, 0));
+        previousIds = ids;
+      });
+    });
+
+    effect(() => {
+      const focus = this.previewFocus();
+      const index = focus ? this.slides().findIndex(slide => slide.id === focus) : -1;
+      if (index >= 0) untracked(() => this.showSlide(index));
+    });
+
     afterNextRender(() => {
       const ordered = orderHomeSlides(HOME_SLIDES, new Date());
-      if (ordered.some((slide, index) => slide.id !== this.slides()[index].id)) {
-        this.slides.set(ordered);
-        this.activeSlide.set(0);
+      if (ordered.some((slide, index) => slide.id !== this.liveSlides()[index].id)) {
+        this.liveSlides.set(ordered);
       }
 
       if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) this.userPaused.set(true);
 
-      // Precarga los demás banners (en el tamaño que usará esta pantalla) para que
-      // el cambio no muestre un hueco.
-      this.slides().slice(1).forEach(slide => {
-        const image = new Image();
-        image.sizes = HOME_SLIDE_SIZES;
-        image.srcset = homeSlideSrcset(slide);
-        image.src = slide.image;
-      });
+      if (!this.preview()) {
+        store
+          .slides()
+          .pipe(takeUntilDestroyed(destroyRef))
+          .subscribe(slides => {
+            if (slides.length === 0) return;
+            this.liveSlides.set(slides);
+            this.preload(slides);
+          });
+      }
+
+      this.preload(this.slides());
       const timer = window.setInterval(() => {
         if (!this.banner() || !this.rotating() || document.hidden) {
           this.lastChange = Date.now();
@@ -80,6 +124,21 @@ export class PortalBannerComponent {
       }, 500);
       destroyRef.onDestroy(() => window.clearInterval(timer));
     });
+  }
+
+  /**
+   * Precarga los demás banners (en el tamaño que usará esta pantalla) para que el
+   * cambio no muestre un hueco.
+   */
+  private preload(slides: readonly HomeSlide[]): void {
+    slides
+      .filter(slide => slide.id !== this.current()?.id && slide.image)
+      .forEach(slide => {
+        const image = new Image();
+        image.sizes = HOME_SLIDE_SIZES;
+        image.srcset = homeSlideSrcset(slide);
+        image.src = slide.image;
+      });
   }
 
   showSlide(index: number): void {

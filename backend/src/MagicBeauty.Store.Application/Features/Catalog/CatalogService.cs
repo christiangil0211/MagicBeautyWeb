@@ -296,6 +296,7 @@ public sealed class CatalogService(
             {
                 PriceTypeCode = priceType.Code,
                 PriceTypeName = priceType.Name,
+                IsDefault = priceType.IsDefault,
                 Amount = amounts[priceType.Id]
             })
             .ToList();

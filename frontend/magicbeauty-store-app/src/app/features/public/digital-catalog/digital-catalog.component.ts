@@ -32,7 +32,7 @@ import {
   matchesBrands,
   matchesCategories,
   matchesPrice,
-  retailPrice
+  catalogPrice
 } from '../../../shared/utils/catalog-filters';
 import { formatCop } from '../../../shared/utils/currency';
 import { PortalBannerService } from '../portal/portal-banner.service';
@@ -136,10 +136,10 @@ export class DigitalCatalogComponent {
 
   readonly sort = signal<ProductSort>('name');
 
-  /** Tope del rango: el mayor precio detal del listado, redondeado hacia arriba. */
+  /** Tope del rango: el mayor precio preferido del listado, redondeado hacia arriba. */
   readonly priceBounds = computed<PriceRange>(() => {
     const prices = this.items()
-      .map(retailPrice)
+      .map(catalogPrice)
       .filter((price): price is number => price !== null);
     const max = prices.length === 0 ? 0 : Math.ceil(Math.max(...prices) / PRICE_STEP) * PRICE_STEP;
 

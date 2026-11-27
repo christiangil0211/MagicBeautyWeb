@@ -1,4 +1,5 @@
 import { CatalogProductListItem } from '../../../shared/models/product.model';
+import { preferredVisiblePrice } from '../../../shared/utils/visible-price';
 
 /** Cuántos productos muestra "Productos favoritos" del inicio. */
 export const HOME_FAVORITES_MAX = 16;
@@ -7,7 +8,7 @@ export const HOME_FAVORITES_MAX = 16;
 export const HOME_FAVORITES_PER_CATEGORY = 4;
 
 /**
- * Producto que puede salir en el inicio: con foto, precio detal y existencias.
+ * Producto que puede salir en el inicio: con foto, precio visible y existencias.
  * La marca no es obligatoria (los accesorios sin marca también salen). Esto
  * solo filtra el inicio: fichas y catálogo muestran "Agotado" como siempre.
  */
@@ -15,7 +16,7 @@ export function isHomeReady(product: CatalogProductListItem): boolean {
   return (
     !!product.mainImageUrl &&
     product.availableQuantity > 0 &&
-    product.prices.some(price => price.priceTypeCode === 'RETAIL' && price.amount > 0)
+    (preferredVisiblePrice(product.prices)?.amount ?? 0) > 0
   );
 }
 

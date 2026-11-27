@@ -60,20 +60,22 @@ export class OrderDraftService {
 
   /** Suma a la línea existente (mismo producto y tono) o crea una nueva. */
   add(item: OrderDraftItem, quantity = 1): void {
-    const amount = normalizeQuantity(quantity);
-    const key = orderLineKey(item);
+    const addition = toLine({ ...item, quantity });
+    if (!addition) return;
+
+    const key = orderLineKey(addition);
 
     this.update(lines => {
       const existing = lines.find(line => orderLineKey(line) === key);
 
       if (!existing) {
-        return [...lines, { ...item, quantity: amount }];
+        return [...lines, addition];
       }
 
       // Se refrescan nombre e imagen por si cambiaron desde que se agregó.
       return lines.map(line =>
         orderLineKey(line) === key
-          ? { ...line, ...item, quantity: Math.min(line.quantity + amount, MAX_LINE_QUANTITY) }
+          ? { ...addition, quantity: Math.min(line.quantity + addition.quantity, MAX_LINE_QUANTITY) }
           : line
       );
     });

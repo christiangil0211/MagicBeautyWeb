@@ -4,6 +4,8 @@ export interface Session {
   displayName?: string | null;
   /** Resultado de la política de administración del backend, no de un rol leído aquí. */
   canManageStore: boolean;
+  commercialRoleCode?: string | null;
+  permissionsVersion?: string | null;
 }
 
 export const ANONYMOUS_SESSION: Session = {

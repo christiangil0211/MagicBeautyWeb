@@ -1,5 +1,6 @@
 using MagicBeauty.Store.Application.Features.Sales;
 using MagicBeauty.Store.Domain.Entities;
+using MagicBeauty.Store.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace MagicBeauty.Store.Infrastructure.Persistence.Repositories;
@@ -13,7 +14,7 @@ public sealed class SalesBatchWriter(MagicBeautyDbContext db, TimeProvider clock
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             await SalesImportLock.EnsureHeldAsync(db, cancellationToken);
             var run = await db.Set<ImportRun>().SingleAsync(x => x.Id == runId, cancellationToken);
-            if (run.Status != ImportStatus.Running)
+            if (run.Status != ImportStatus.Running || run.Kind != ImportKind.Sales)
                 throw new InvalidOperationException("La importación ya no está activa.");
 
             if (run.AllPagesRead || run.NextOffset >= batch.NextOffset && !batch.Complete)
@@ -28,6 +29,15 @@ public sealed class SalesBatchWriter(MagicBeautyDbContext db, TimeProvider clock
             var mappings = await db.Set<SourceItemMapping>()
                 .Where(x => x.Source == run.Source && itemIds.Contains(x.ExternalItemId))
                 .ToDictionaryAsync(x => x.ExternalItemId, x => x.ProductId, cancellationToken);
+            var customerDocuments = documents.Select(x => CustomerDocument.Normalize(x.CustomerDocumentNumber))
+                .OfType<string>().Distinct().ToArray();
+            var customerKeys = documents.Select(x => x.CustomerExternalId?.Trim()).OfType<string>().Distinct().ToArray();
+            var customers = await db.Customers.AsNoTracking()
+                .Where(x => x.Source == run.Source &&
+                            (customerDocuments.Contains(x.DocumentNumber) || customerKeys.Contains(x.ExternalId)))
+                .ToListAsync(cancellationToken);
+            var customersByKey = customers.ToDictionary(x => x.ExternalId, StringComparer.OrdinalIgnoreCase);
+            var customersByDocument = customers.ToDictionary(x => x.DocumentNumber, StringComparer.OrdinalIgnoreCase);
 
             foreach (var document in documents)
             {
@@ -52,6 +62,29 @@ public sealed class SalesBatchWriter(MagicBeautyDbContext db, TimeProvider clock
                 sale.Total = document.Total;
                 sale.TotalPaid = document.TotalPaid;
                 sale.Balance = document.Balance;
+                var externalId = document.CustomerExternalId?.Trim();
+                var number = CustomerDocument.Normalize(document.CustomerDocumentNumber);
+                var validExternalId = externalId is { Length: > 0 and <= 128 };
+                if (document.Status is SaleStatus.Open or SaleStatus.Closed && !validExternalId && number is null)
+                {
+                    // Una factura sin identidad puede esconder una recompra. El lote sigue siendo
+                    // válido para ventas, pero su ventana no sirve para degradar cuentas.
+                    run.CapturesCustomerEvidence = false;
+                }
+
+                if (document.CustomerDocumentNumber is not null || document.CustomerExternalId is not null)
+                {
+                    sale.CustomerExternalId = validExternalId ? externalId : null;
+                    sale.CustomerDocumentNumber = number;
+                    // Dos identificadores presentes deben señalar al mismo cliente de la fuente.
+                    var customer = sale.CustomerExternalId is { } key
+                        ? customersByKey.GetValueOrDefault(key)
+                        : document.CustomerExternalId is null && number is not null
+                            ? customersByDocument.GetValueOrDefault(number) : null;
+                    sale.CustomerId = customer is not null &&
+                                      (document.CustomerDocumentNumber is null || customer.DocumentNumber == number)
+                        ? customer.Id : null;
+                }
                 sale.ImportedAt = clock.GetUtcNow();
                 db.RemoveRange(sale.Lines);
                 sale.Lines.Clear();

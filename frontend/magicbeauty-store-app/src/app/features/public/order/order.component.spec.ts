@@ -1,7 +1,7 @@
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { OrderAvailabilityService } from '../../../core/services/order-availability.service';
@@ -19,20 +19,23 @@ const availability = new Map<string, OrderLineAvailability>([
     status: 'available',
     prices: [
       { priceTypeCode: 'WHOLESALE', priceTypeName: 'Por mayor', amount: 18000 },
-      { priceTypeCode: 'RETAIL', priceTypeName: 'Detal', amount: 25000 }
+      { priceTypeCode: 'RETAIL', priceTypeName: 'Detal', amount: 25000, isDefault: true }
     ]
   }],
   ['2:0', { status: 'available', prices: [{ priceTypeCode: 'RETAIL', priceTypeName: 'Detal', amount: 9000 }] }]
 ]);
 
-async function setup(load: () => Observable<Map<string, OrderLineAvailability>> = () => of(availability)) {
+async function setup(
+  load: () => Observable<Map<string, OrderLineAvailability>> = () => of(availability),
+  priceAudienceKey = signal('anonymous')
+) {
   localStorage.clear();
   TestBed.configureTestingModule({
     imports: [OrderComponent],
     providers: [
       provideRouter([]),
       { provide: OrderAvailabilityService, useValue: { load } },
-      { provide: AuthService, useValue: { session: signal({ isAuthenticated: false, canManageStore: false }) } }
+      { provide: AuthService, useValue: { session: signal({ isAuthenticated: false, canManageStore: false }), priceAudienceKey } }
     ]
   });
 
@@ -56,7 +59,7 @@ it('shows the retail quote and switches to the wholesale quote over the same ord
   expect(text()).toContain('$ 59.000');
   expect(fixture.componentInstance.quote()?.total).toBe(59000);
 
-  fixture.componentInstance.selectQuote('wholesale');
+  fixture.componentInstance.selectQuote('WHOLESALE');
   await fixture.whenStable();
 
   expect(fixture.componentInstance.quote()?.total).toBe(36000);
@@ -70,13 +73,14 @@ it('updates both quotes when a quantity changes', async () => {
   order.setQuantity('1:0', 3);
   await fixture.whenStable();
 
-  expect(fixture.componentInstance.quotes()?.retail.total).toBe(84000);
-  expect(fixture.componentInstance.quotes()?.wholesale.total).toBe(54000);
+  const quotes = fixture.componentInstance.quotes();
+  expect(quotes.find(quote => quote.priceTypeCode === 'RETAIL')?.total).toBe(84000);
+  expect(quotes.find(quote => quote.priceTypeCode === 'WHOLESALE')?.total).toBe(54000);
 });
 
 it('sends the selected quote to the official WhatsApp number', async () => {
   const { fixture } = await setup();
-  fixture.componentInstance.selectQuote('wholesale');
+  fixture.componentInstance.selectQuote('WHOLESALE');
   await fixture.whenStable();
 
   const link = fixture.nativeElement.querySelector('a.send') as HTMLAnchorElement;
@@ -99,6 +103,49 @@ it('does not offer to send when current prices cannot be loaded', async () => {
   expect(text()).toContain('No pudimos consultar los precios vigentes');
 });
 
+it('offers all visible price types and sends the chosen distributor quotation', async () => {
+  const distributor = { priceTypeCode: 'DISTRIBUTOR', priceTypeName: 'Distribuidor', amount: 12000 };
+  const data = new Map(availability);
+  data.set('1:0', { status: 'available', prices: [...availability.get('1:0')!.prices, distributor] });
+  const { fixture } = await setup(() => of(data));
+
+  const tabs = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('[role=tab]'));
+  expect(tabs).toHaveLength(3);
+  tabs.find(tab => tab.textContent?.includes('Distribuidor'))!.click();
+  await fixture.whenStable();
+
+  const message = new URL(fixture.componentInstance.whatsappHref()!).searchParams.get('text')!;
+  expect(fixture.componentInstance.quote()?.total).toBe(24000);
+  expect(message).toContain('*Cotización Distribuidor*');
+});
+
+it('clears prices immediately when permissions change and applies the single wholesale rate after reloading', async () => {
+  const priceAudienceKey = signal('activa:distribuidor:1');
+  const distributorData = new Map<string, OrderLineAvailability>([
+    ['1:0', { status: 'available', prices: [{ priceTypeCode: 'DISTRIBUTOR', priceTypeName: 'Distribuidor', amount: 12000 }] }]
+  ]);
+  const pending = new Subject<Map<string, OrderLineAvailability>>();
+  const load = vi.fn()
+    .mockReturnValueOnce(of(distributorData))
+    .mockReturnValue(pending);
+  const { fixture } = await setup(load, priceAudienceKey);
+  const component = fixture.componentInstance;
+  expect(component.quote()?.total).toBe(24000);
+
+  priceAudienceKey.set('activa:mayorista:2');
+  expect(component.quote()).toBeNull();
+  expect(component.whatsappHref()).toBeNull();
+  await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  pending.next(new Map([
+    ['1:0', { status: 'available', prices: [{ priceTypeCode: 'WHOLESALE', priceTypeName: 'Por mayor', amount: 18000 }] }]
+  ]));
+  await fixture.whenStable();
+
+  expect(component.quote()?.total).toBe(36000);
+  expect(component.quote()?.label).toBe('Cotización mayorista');
+  expect((fixture.nativeElement as HTMLElement).querySelector('[role=tablist]')).toBeNull();
+});
+
 it('waits for the session before pricing so no request is cancelled when it arrives', async () => {
   localStorage.clear();
   const session = signal<{ isAuthenticated: boolean; canManageStore: boolean } | null>(null);
@@ -108,7 +155,7 @@ it('waits for the session before pricing so no request is cancelled when it arri
     imports: [OrderComponent],
     providers: [
       provideRouter([]),
-      { provide: AuthService, useValue: { session } },
+      { provide: AuthService, useValue: { session, priceAudienceKey: computed(() => JSON.stringify(session())) } },
       { provide: OrderAvailabilityService, useValue: { load: () => new Observable<Map<string, OrderLineAvailability>>(subscriber => {
         log.push('request');
         const timer = setTimeout(() => { subscriber.next(availability); subscriber.complete(); }, 100);

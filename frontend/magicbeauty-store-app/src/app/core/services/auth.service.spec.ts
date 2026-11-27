@@ -45,6 +45,25 @@ describe('AuthService', () => {
     expect(auth.canManageStore()).toBe(true);
   });
 
+  it('refreshes an active session and changes the price key when permissions change', () => {
+    const visibility = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+    const retail = { ...ADMIN, canManageStore: false, commercialRoleCode: 'CUSTOMER_RETAIL', permissionsVersion: 'v1' };
+    auth.ensureSession().subscribe();
+    const initial = http.expectOne(request => SESSION(request.url));
+    expect(initial.request.transferCache).toBe(false);
+    initial.flush(retail);
+    const previous = auth.priceAudienceKey();
+
+    window.dispatchEvent(new Event('focus'));
+    http.expectOne(request => SESSION(request.url)).flush({ ...retail, permissionsVersion: 'v2' });
+    expect(auth.priceAudienceKey()).not.toBe(previous);
+
+    vi.advanceTimersByTime(300_000);
+    http.expectOne(request => SESSION(request.url)).flush(ANONYMOUS);
+    expect(auth.priceAudienceKey()).toBe('anonymous');
+    visibility.mockRestore();
+  });
+
   it('waits for a slow session check within the same 15 s', () => {
     const next = vi.fn();
 

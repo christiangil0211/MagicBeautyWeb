@@ -4,6 +4,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { TagModule } from 'primeng/tag';
@@ -17,6 +18,7 @@ import { LoaderComponent } from '../../../shared/components/loader/loader.compon
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { Brand } from '../../../shared/models/brand.model';
 import { BrandProductsComponent } from './brand-products/brand-products.component';
+import { BRAND_LOGO_HEIGHT, BRAND_LOGO_PROMPT, BRAND_LOGO_WIDTH } from './brand-logo-prompt';
 
 /** Formatos y tamaño del logo; el API valida lo mismo por el contenido del archivo. */
 export const LOGO_ACCEPT = 'image/png,image/svg+xml,image/webp';
@@ -53,6 +55,7 @@ export function brandSlug(name: string): string {
     TagModule,
     ToastModule,
     ConfirmDialogModule,
+    DialogModule,
     PageHeaderComponent,
     LoaderComponent,
     BrandProductsComponent
@@ -68,6 +71,11 @@ export class AdminBrandsComponent {
   private readonly confirmationService = inject(ConfirmationService);
 
   readonly logoAccept = LOGO_ACCEPT;
+
+  /** Ayuda para preparar el logo con IA (prompt para copiar). */
+  readonly logoPromptOpen = signal(false);
+  readonly logoPrompt = BRAND_LOGO_PROMPT;
+  readonly logoSize = `${BRAND_LOGO_WIDTH} × ${BRAND_LOGO_HEIGHT} px`;
 
   readonly brands = signal<Brand[]>([]);
   readonly loading = signal(false);
@@ -278,6 +286,15 @@ export class AdminBrandsComponent {
   /** Al asignar o quitar productos cambian los conteos de las marcas. */
   productsChanged(): void {
     this.load();
+  }
+
+  async copyLogoPrompt(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.logoPrompt);
+      this.messageService.add({ severity: 'success', summary: 'Prompt copiado', detail: 'Pégalo en tu IA junto con la imagen del logo.' });
+    } catch {
+      this.warn('No se pudo copiar', 'Selecciona el texto y cópialo con Ctrl + C.');
+    }
   }
 
   private clearPendingLogo(): void {

@@ -1,3 +1,4 @@
+using MagicBeauty.Store.Domain.Common;
 using MagicBeauty.Store.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,9 +9,16 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
 {
     public void Configure(EntityTypeBuilder<Role> builder)
     {
-        builder.ToTable("Roles");
+        builder.ToTable("Roles", table =>
+        {
+            table.HasCheckConstraint("CK_Roles_Kind", "[Kind] IN (0, 1)");
+            table.HasCheckConstraint("CK_Roles_CommercialSettings",
+                "([RepurchaseDays] IS NULL OR [RepurchaseDays] > 0) AND " +
+                "([Kind] = 1 OR ([IsSelfRequestable] = 0 AND [RepurchaseDays] IS NULL))");
+        });
 
         builder.HasKey(role => role.Id);
+        builder.HasAlternateKey(role => new { role.Id, role.Kind });
 
         // El codigo es el que viaja en el claim de rol del usuario autenticado.
         builder.Property(role => role.Code)
@@ -25,8 +33,17 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
             .IsRequired();
 
         builder.HasData(
-            new Role { Id = 1, Code = "ADMIN", Name = "Administrador", IsActive = true },
-            new Role { Id = 2, Code = "CUSTOMER_RETAIL", Name = "Cliente detal", IsActive = true },
-            new Role { Id = 3, Code = "CUSTOMER_WHOLESALE", Name = "Cliente mayorista", IsActive = true });
+            new Role { Id = 1, Code = RoleCodes.Admin, Name = "Administrador" },
+            new Role { Id = 2, Code = RoleCodes.Retail, Name = "Cliente detal", Kind = RoleKind.Commercial },
+            new Role
+            {
+                Id = 3, Code = RoleCodes.Wholesale, Name = "Cliente mayorista",
+                Kind = RoleKind.Commercial, IsSelfRequestable = true, RepurchaseDays = 30
+            },
+            new Role
+            {
+                Id = 4, Code = RoleCodes.Distributor, Name = "Cliente distribuidor",
+                Kind = RoleKind.Commercial, IsSelfRequestable = true
+            });
     }
 }

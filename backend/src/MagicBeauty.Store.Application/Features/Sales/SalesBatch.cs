@@ -4,6 +4,8 @@ namespace MagicBeauty.Store.Application.Features.Sales;
 
 public sealed record ImportedSale(string ExternalId, DateOnly SaleDate, SaleStatus Status, IReadOnlyList<ImportedSaleLine> Lines)
 {
+    public string? CustomerExternalId { get; init; }
+    public string? CustomerDocumentNumber { get; init; }
     public DateOnly? DueDate { get; init; }
     public string? PaymentForm { get; init; }
     public string? PaymentMethod { get; init; }

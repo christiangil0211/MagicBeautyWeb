@@ -47,6 +47,15 @@ public interface IProductRepository
 
     Task AddCategoryLinksAsync(IEnumerable<ProductCategory> links, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Vinculos directos (con seguimiento) de los productos indicados con la categoria,
+    /// para quitarlos. No incluye los de sus subcategorias.
+    /// </summary>
+    Task<IReadOnlyList<ProductCategory>> GetLinksInCategoryAsync(
+        int categoryId,
+        IEnumerable<int> productIds,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<ProductPrice>> GetPricesAsync(int productId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ProductVariant>> GetVariantsAsync(int productId, CancellationToken cancellationToken);

@@ -1,0 +1,190 @@
+<section class="customers">
+  <app-page-header eyebrow="Administración" title="Clientes"
+    subtitle="Consulta las cuentas de clientes y decide sus solicitudes comerciales." />
+
+  <div class="views" role="group" aria-label="Vista de clientes">
+    <p-button label="Cuentas" icon="pi pi-users" [outlined]="view() !== 'customers'"
+      [disabled]="saving()" (onClick)="show('customers')" />
+    <p-button label="Solicitudes pendientes" icon="pi pi-inbox" [outlined]="view() !== 'requests'"
+      [disabled]="saving()" (onClick)="show('requests')" />
+  </div>
+
+  @if (notice()) {
+    <p class="notice" role="status">{{ notice() }}</p>
+  }
+
+  @if (view() === 'customers') {
+    <section class="panel" aria-label="Cuentas de clientes">
+      <form class="filters" (ngSubmit)="applyFilters()">
+        <div>
+          <label for="customer-role-filter">Rol comercial</label>
+          <p-select inputId="customer-role-filter" name="roleCode" [options]="roles()" optionLabel="name"
+            optionValue="code" [(ngModel)]="filters.roleCode" [showClear]="true" placeholder="Todos" appendTo="body" />
+        </div>
+        <div>
+          <label for="customer-status-filter">Estado</label>
+          <p-select inputId="customer-status-filter" name="isActive" [options]="statusOptions" optionLabel="label"
+            optionValue="value" [(ngModel)]="filters.isActive" [showClear]="true" placeholder="Todas" appendTo="body" />
+        </div>
+        <div>
+          <label for="customer-city-filter">Ciudad</label>
+          <input pInputText id="customer-city-filter" name="city" [(ngModel)]="filters.city" maxlength="120" />
+        </div>
+        <div class="filters__search">
+          <label for="customer-search-filter">Buscar</label>
+          <input pInputText id="customer-search-filter" type="search" name="search" [(ngModel)]="filters.search"
+            maxlength="254" placeholder="Nombre, correo o documento" />
+        </div>
+        <p-button type="submit" label="Filtrar" icon="pi pi-filter" size="small" />
+        <p-button type="button" label="Limpiar" severity="secondary" [text]="true" size="small" (onClick)="clearFilters()" />
+      </form>
+
+      @if (rolesError()) {
+        <p class="error" role="alert">{{ rolesError() }}</p>
+        <p-button label="Volver a consultar roles" severity="secondary" [text]="true" (onClick)="loadRoles()" />
+      }
+      @if (customerError()) {
+        <p class="error" role="alert">{{ customerError() }}</p>
+        <p-button label="Volver a consultar" severity="secondary" [text]="true" (onClick)="reload()" />
+      }
+
+      <div class="mb-table-wrap" [class.is-loading]="customersLoading()" [attr.aria-busy]="customersLoading()">
+        @if (customersLoading()) {
+          <app-loader mode="overlay" message="Cargando clientes…" [compact]="true" />
+        }
+        <p-table [value]="customers()?.items ?? []" styleClass="mb-table" dataKey="id" [rowHover]="true">
+          <ng-template #header>
+            <tr><th>Cliente</th><th>Ciudad y celular</th><th>Rol comercial</th><th>Estado</th><th>Acciones</th></tr>
+          </ng-template>
+          <ng-template #body let-customer>
+            <tr>
+              <td>
+                <strong>{{ customer.fullName || customer.email }}</strong>
+                @if (customer.fullName) { <small>{{ customer.email }}</small> }
+                @if (!customer.emailConfirmed) { <small>Correo sin confirmar</small> }
+              </td>
+              <td>{{ customer.city || '—' }} @if (customer.phone) { <small>{{ customer.phone }}</small> }</td>
+              <td>{{ customer.roleName }}</td>
+              <td>
+                <p-tag [value]="customer.isActive ? 'Activa' : 'Inactiva'"
+                  [severity]="customer.isActive ? 'success' : 'secondary'" />
+              </td>
+              <td>
+                <div class="actions">
+                  <p-button label="Cambiar rol" severity="secondary" [text]="true" size="small"
+                    [disabled]="customersLoading() || !roles().length" (onClick)="changeRole(customer)" />
+                  <p-button [label]="customer.isActive ? 'Inactivar' : 'Activar'" severity="secondary" [text]="true"
+                    size="small" [disabled]="customersLoading()" (onClick)="changeActive(customer)" />
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr><td colspan="5" class="empty">@if (!customersLoading() && !customerError()) { No hay cuentas para estos filtros. }</td></tr>
+          </ng-template>
+        </p-table>
+      </div>
+      @if (customers(); as page) {
+        @if (page.total > pageSize) {
+          <p-paginator [first]="(page.page - 1) * pageSize" [rows]="pageSize" [totalRecords]="page.total"
+            [showCurrentPageReport]="true" currentPageReportTemplate="{first}–{last} de {totalRecords}"
+            (onPageChange)="changeCustomerPage($event)" />
+        }
+      }
+    </section>
+  } @else {
+    <section class="panel" aria-label="Solicitudes pendientes">
+      <p class="hint">Las compras se vinculan por el documento declarado en la solicitud.</p>
+      @if (requestError()) {
+        <p class="error" role="alert">{{ requestError() }}</p>
+        <p-button label="Volver a consultar" severity="secondary" [text]="true" (onClick)="reload()" />
+      }
+      <div class="mb-table-wrap" [class.is-loading]="requestsLoading()" [attr.aria-busy]="requestsLoading()">
+        @if (requestsLoading()) {
+          <app-loader mode="overlay" message="Cargando solicitudes…" [compact]="true" />
+        }
+        <p-table [value]="requests()?.items ?? []" styleClass="mb-table" dataKey="id" [rowHover]="true">
+          <ng-template #header>
+            <tr><th>Cliente y documento</th><th>Rol solicitado</th><th>Compras</th><th>Decisión</th></tr>
+          </ng-template>
+          <ng-template #body let-request>
+            <tr>
+              <td>
+                <strong>{{ request.fullName || request.email }}</strong>
+                @if (request.fullName) { <small>{{ request.email }}</small> }
+                <small>{{ request.documentNumber }}</small>
+              </td>
+              <td>{{ request.requestedRoleName }} <small>{{ request.createdAt | date: 'dd/MM/yyyy' }}</small></td>
+              <td>
+                @if (request.invoiceCount > 0) {
+                  <strong>{{ formatAmount(request.total) }}</strong>
+                  <small>{{ request.invoiceCount }} {{ request.invoiceCount === 1 ? 'factura' : 'facturas' }}</small>
+                  @if (request.lastPurchaseAt) {
+                    <small>Última compra {{ request.lastPurchaseAt | date: 'dd/MM/yyyy' }}</small>
+                  }
+                } @else {
+                  <p-tag value="Sin compras registradas" severity="warn" />
+                }
+              </td>
+              <td>
+                <div class="actions">
+                  <p-button label="Aprobar" severity="secondary" [text]="true" size="small"
+                    [disabled]="requestsLoading()" (onClick)="review(request, true)" />
+                  <p-button label="Rechazar" severity="danger" [text]="true" size="small"
+                    [disabled]="requestsLoading()" (onClick)="review(request, false)" />
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr><td colspan="4" class="empty">@if (!requestsLoading() && !requestError()) { No hay solicitudes pendientes. }</td></tr>
+          </ng-template>
+        </p-table>
+      </div>
+      @if (requests(); as page) {
+        @if (page.total > pageSize) {
+          <p-paginator [first]="(page.page - 1) * pageSize" [rows]="pageSize" [totalRecords]="page.total"
+            [showCurrentPageReport]="true" currentPageReportTemplate="{first}–{last} de {totalRecords}"
+            (onPageChange)="changeRequestPage($event)" />
+        }
+      }
+    </section>
+  }
+</section>
+
+<p-dialog [header]="editHeading()" [visible]="!!edit()" (visibleChange)="!$event && close()"
+  [modal]="true" [closable]="!saving()" [closeOnEscape]="!saving()" [draggable]="false" [resizable]="false"
+  [style]="{ width: 'min(92vw, 30rem)' }" appendTo="body">
+  @if (edit(); as current) {
+    <form id="admin-customer-edit" class="edit" (ngSubmit)="save()">
+      @if (current.kind === 'decision') {
+        <p>{{ current.request.requestedRoleName }} · {{ current.request.fullName || current.request.email }}</p>
+        <label for="customer-decision-note">Nota de la decisión</label>
+        <textarea pTextarea id="customer-decision-note" name="note" rows="4" [maxlength]="noteMaxLength"
+          [ngModel]="note()" (ngModelChange)="note.set($event)" [disabled]="saving()" required></textarea>
+      } @else if (current.kind === 'role') {
+        <p>{{ current.customer.fullName || current.customer.email }}</p>
+        <label for="customer-new-role">Nuevo rol comercial</label>
+        <p-select inputId="customer-new-role" name="newRole" [options]="roles()" optionLabel="name"
+          optionValue="code" [ngModel]="roleCode()" (ngModelChange)="roleCode.set($event)"
+          [disabled]="saving()" appendTo="body" />
+      } @else {
+        <p>{{ current.customer.fullName || current.customer.email }}</p>
+        <p>{{ current.customer.isActive
+          ? 'La cuenta perderá el acceso al actualizarse su sesión.'
+          : 'El cliente podrá volver a iniciar sesión.' }}</p>
+      }
+      @if (mutationError()) {
+        <p class="error" role="alert">{{ mutationError() }}</p>
+      }
+      <div class="actions actions--end">
+        @if (mutationError()) {
+          <p-button type="button" label="Actualizar datos" severity="secondary" [text]="true"
+            [disabled]="saving()" (onClick)="refreshAfterError()" />
+        }
+        <p-button type="button" label="Cancelar" severity="secondary" [text]="true" [disabled]="saving()" (onClick)="close()" />
+        <p-button type="submit" label="Confirmar" [loading]="saving()" />
+      </div>
+    </form>
+  }
+</p-dialog>

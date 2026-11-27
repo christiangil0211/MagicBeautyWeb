@@ -71,10 +71,12 @@
     </div>
   </div>
 
-  <header class="page-heading">
-    <h1 class="page-heading__title">{{ page.title }}@if (page.highlight) {<span> {{ page.highlight }}</span>}</h1>
-    @if (page.text) {
-      <p class="page-heading__text">{{ page.text }}</p>
-    }
-  </header>
+  @if (showHeading()) {
+    <header class="page-heading">
+      <h1 class="page-heading__title">{{ page.title }}@if (page.highlight) {<span> {{ page.highlight }}</span>}</h1>
+      @if (page.text) {
+        <p class="page-heading__text">{{ page.text }}</p>
+      }
+    </header>
+  }
 }

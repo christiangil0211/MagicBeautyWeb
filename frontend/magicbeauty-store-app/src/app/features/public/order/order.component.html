@@ -10,24 +10,24 @@
       <a class="mb-btn" routerLink="/catalogo">Ir al catálogo digital</a>
     </app-empty-state>
   } @else {
-    <div class="quote-switch" role="tablist" aria-label="Tipo de cotización">
-      @for (option of quoteKinds; track option.kind) {
-        <button
-          type="button"
-          role="tab"
-          class="quote-switch__tab"
-          [class.active]="quoteKind() === option.kind"
-          [attr.aria-selected]="quoteKind() === option.kind"
-          (click)="selectQuote(option.kind)">
-          <span>{{ option.label }}</span>
-          @if (pricingState() === 'ready' && quotes(); as all) {
-            <strong>{{ money(all[option.kind].total) }}</strong>
-          }
-        </button>
-      }
-    </div>
+    @if (quotes().length > 1) {
+      <div class="quote-switch" role="tablist" aria-label="Tipo de cotización">
+        @for (option of quotes(); track option.priceTypeCode) {
+          <button
+            type="button"
+            role="tab"
+            class="quote-switch__tab"
+            [class.active]="quote()?.priceTypeCode === option.priceTypeCode"
+            [attr.aria-selected]="quote()?.priceTypeCode === option.priceTypeCode"
+            (click)="selectQuote(option.priceTypeCode)">
+            <span>{{ option.label }}</span>
+            <strong>{{ money(option.total) }}</strong>
+          </button>
+        }
+      </div>
+    }
 
-    @if (pricingState() === 'loading' && !quote()) {
+    @if (pricingState() === 'loading') {
       <app-loader message="Consultando precios vigentes…" />
     } @else if (pricingState() === 'error') {
       <div class="order__error" role="alert">
@@ -36,10 +36,10 @@
         <button type="button" class="mb-btn mb-btn--outline mb-btn--sm" (click)="retry()">Reintentar</button>
       </div>
     } @else if (quote(); as current) {
-      <div class="order-table" [class.order-table--refreshing]="pricingState() === 'loading'" role="table" [attr.aria-label]="current.label">
+      <div class="order-table" role="table" [attr.aria-label]="current.label">
         <div class="order-table__head" role="row">
           <span role="columnheader">Producto</span>
-          <span role="columnheader">{{ priceColumnLabel() }}</span>
+          <span role="columnheader">{{ current.priceColumnLabel }}</span>
           <span role="columnheader">Cantidad</span>
           <span role="columnheader">Total</span>
           <span role="columnheader"><span class="sr-only">Quitar</span></span>
@@ -185,7 +185,7 @@
       } @else {
         <button type="button" class="send" disabled>
           <i class="pi pi-whatsapp"></i>
-          {{ pricingState() === 'loading' ? 'Actualizando precios…' : 'No hay productos para cotizar' }}
+          No hay productos para cotizar
         </button>
       }
 

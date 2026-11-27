@@ -216,6 +216,18 @@ public sealed class ProductRepository(MagicBeautyDbContext dbContext) : IProduct
         await dbContext.ProductCategories.AddRangeAsync(links, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ProductCategory>> GetLinksInCategoryAsync(
+        int categoryId,
+        IEnumerable<int> productIds,
+        CancellationToken cancellationToken)
+    {
+        var requested = productIds.Distinct().ToList();
+
+        return await dbContext.ProductCategories
+            .Where(link => link.CategoryId == categoryId && requested.Contains(link.ProductId))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<ProductPrice>> GetPricesAsync(
         int productId,
         CancellationToken cancellationToken)

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace MagicBeauty.Store.Integrations.Alegra.Client;
 
@@ -25,6 +26,7 @@ internal sealed class AlegraInvoice
     [JsonConverter(typeof(FlexibleDecimalConverter))]
     public decimal? Balance { get; init; }
     public string? Status { get; init; }
+    public JsonElement Client { get; init; }
     public List<AlegraInvoiceLine>? Items { get; init; }
 }
 

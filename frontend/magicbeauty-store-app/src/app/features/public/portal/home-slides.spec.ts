@@ -1,7 +1,43 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { HOME_SLIDES, HomeSlide, colombiaDate, homeSlideSrcset, orderHomeSlides } from './home-slides';
+import { PublicHomeBanner } from '../../../shared/models/home-banner.model';
+import { HOME_SLIDES, HomeSlide, colombiaDate, homeSlideSrcset, orderHomeSlides, slideFromBanner } from './home-slides';
+
+describe('slideFromBanner', () => {
+  const banner: PublicHomeBanner = {
+    id: 7,
+    name: 'navidad',
+    title: 'Regala belleza',
+    altText: 'Regala belleza esta Navidad',
+    imageUrl: 'https://blob/home-banners/7/a.jpg',
+    imageWidth: 2172,
+    imageHeight: 724,
+    imageUrl768: 'https://blob/home-banners/7/a-768.webp',
+    imageUrl1280: null,
+    link: null,
+    hotspots: [{ label: 'Ver', link: '/catalogo', left: 2, top: 80, width: 15, height: 12 }],
+    mobileCtas: [],
+    noteHighlight: 'Navidad:',
+    noteText: null
+  };
+
+  it('maps an admin banner to a carousel slide', () => {
+    const slide = slideFromBanner(banner);
+
+    expect(slide).toMatchObject({ id: 'banner-7', name: 'navidad', alt: 'Regala belleza esta Navidad', width: 2172, height: 724 });
+    expect(slide.hotspots?.length).toBe(1);
+    expect(slide.mobileCtas).toBeUndefined();
+    expect(slide.note).toEqual({ strong: 'Navidad:', text: '' });
+  });
+
+  it('only offers the light copies that exist', () => {
+    expect(homeSlideSrcset(slideFromBanner(banner))).toBe(
+      'https://blob/home-banners/7/a-768.webp 768w, https://blob/home-banners/7/a.jpg 2172w'
+    );
+    expect(homeSlideSrcset(slideFromBanner({ ...banner, imageUrl768: null }))).toBe('https://blob/home-banners/7/a.jpg 2172w');
+  });
+});
 
 describe('homeSlideSrcset', () => {
   it('offers light WebP copies for phones and the original for wide screens', () => {

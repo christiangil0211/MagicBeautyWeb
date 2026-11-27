@@ -1,5 +1,6 @@
 using MagicBeauty.Store.Application.Features.Catalog;
 using MagicBeauty.Store.Contracts.Brands.Responses;
+using MagicBeauty.Store.Api.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,6 +21,7 @@ public sealed class PublicBrandsController(ICatalogService catalogService) : Con
 
     /// <summary>404 si la marca no existe o está inactiva.</summary>
     [HttpGet("{slug}")]
+    [PrivateCookieResponse]
     public async Task<ActionResult<PublicBrandPageDto>> GetBySlug(
         string slug,
         CancellationToken cancellationToken,

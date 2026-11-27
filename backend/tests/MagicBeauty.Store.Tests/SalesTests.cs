@@ -4,6 +4,7 @@ using System.Text;
 using MagicBeauty.Store.Api.Controllers;
 using MagicBeauty.Store.Api.Sales;
 using MagicBeauty.Store.Application.Features.Catalog;
+using MagicBeauty.Store.Application.Features.Customers;
 using MagicBeauty.Store.Application.Features.Sales;
 using MagicBeauty.Store.Contracts.Catalog.Responses;
 using MagicBeauty.Store.Domain.Entities;
@@ -50,6 +51,71 @@ public sealed class SalesTests
         Assert.Equal(SaleStatus.Voided, updated.Status);
         Assert.Equal(2, updated.Lines.Count);
         Assert.Equal(2, await db.Set<SaleLine>().CountAsync());
+    }
+
+    [Fact]
+    public async Task ReimportLinksInvoicesOnlyToMatchingCustomersFromTheirSource()
+    {
+        await using var db = CreateDatabase();
+        var customer = new Customer { Source = "test", ExternalId = "contact", DocumentNumber = "1234567", Name = "Local" };
+        db.Customers.AddRange(customer, new Customer
+        {
+            Source = "other", ExternalId = "contact", DocumentNumber = "1234567", Name = "Otra fuente"
+        });
+        await db.SaveChangesAsync();
+        var writer = new SalesBatchWriter(db, Clock);
+        var run = await AddRunAsync(db);
+        await writer.WriteAsync(run, Batch(
+            Document("matching", SaleStatus.Open, 1) with { CustomerExternalId = "contact", CustomerDocumentNumber = "1.234.567" },
+            Document("conflicting", SaleStatus.Open, 1) with { CustomerExternalId = "contact", CustomerDocumentNumber = "998877" }),
+            default);
+
+        var sales = await db.Sales.ToDictionaryAsync(sale => sale.ExternalId);
+        Assert.Equal(customer.Id, sales["matching"].CustomerId);
+        Assert.Null(sales["conflicting"].CustomerId);
+        Assert.Equal("1234567", sales["matching"].CustomerDocumentNumber);
+        Assert.Empty(db.Users);
+    }
+
+    [Fact]
+    public async Task AValidInvoiceWithoutCustomerIdentityCannotSupportCommercialExpiration()
+    {
+        await using var db = CreateDatabase();
+        var id = await AddRunAsync(db);
+        (await db.Set<ImportRun>().SingleAsync()).CapturesCustomerEvidence = true;
+        await db.SaveChangesAsync();
+
+        await new SalesBatchWriter(db, Clock).WriteAsync(id, Batch(Document("anonymous", SaleStatus.Closed, 1)), default);
+
+        Assert.Single(db.Sales);
+        var run = await db.Set<ImportRun>().SingleAsync();
+        Assert.True(run.AllPagesRead);
+        Assert.False(run.CapturesCustomerEvidence);
+    }
+
+    [Fact]
+    public async Task ContactImportIsIdempotentAndDoesNotCreateWebAccounts()
+    {
+        await using var db = CreateDatabase();
+        var runId = await AddRunAsync(db);
+        var run = await db.Set<ImportRun>().SingleAsync();
+        run.Kind = ImportKind.Customers;
+        await db.SaveChangesAsync();
+        var writer = new CustomerBatchWriter(db);
+        var page = new CustomerBatch(
+            [new("contact", "001.234", "Contacto", null, null, null, null),
+             new("collision", "001234", "Otro", null, null, null, null)], 2, true);
+        await writer.WriteAsync(runId, page, default);
+        await writer.WriteAsync(runId, page, default);
+
+        var customer = await db.Customers.SingleAsync();
+        Assert.Equal("001234", customer.DocumentNumber);
+        Assert.Equal("contact", customer.ExternalId);
+        Assert.Empty(db.Users);
+        var completed = await db.Set<ImportRun>().SingleAsync();
+        Assert.Equal(1, completed.Pages);
+        Assert.Equal(1, completed.Contacts);
+        Assert.Equal(1, completed.SkippedContacts);
     }
 
     [Fact]
@@ -159,6 +225,33 @@ public sealed class SalesTests
         Assert.IsType<AcceptedAtActionResult>(await controller.Start(null, default));
         var run = await db.Set<ImportRun>().SingleAsync(x => x.Active == true);
         Assert.Equal(Day.AddDays(-17), run.From);
+    }
+
+    [Fact]
+    public async Task RankingChoosesTheDefaultOrTheFirstVisiblePriceAcrossAnyType()
+    {
+        CatalogProductListItemDto Item(int id, params CatalogPriceDto[] prices) => new()
+        {
+            Id = id, MainImageUrl = "https://example.invalid/photo", AvailableQuantity = 1, Prices = prices.ToList()
+        };
+        var wholesale = Item(1, new CatalogPriceDto { PriceTypeCode = "WHOLESALE", Amount = 10 });
+        var distributor = Item(2, new CatalogPriceDto { PriceTypeCode = "DISTRIBUTOR", Amount = 8 });
+        var missing = Item(3);
+        var noDefaultAmount = Item(4,
+            new CatalogPriceDto { PriceTypeCode = "WHOLESALE", Amount = 10 },
+            new CatalogPriceDto { PriceTypeCode = "RETAIL", IsDefault = true, Amount = 0 });
+        var catalog = new Mock<ICatalogService>();
+        catalog.Setup(service => service.GetProductsAsync(null, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([wholesale, distributor, missing, noDefaultAmount]);
+        var sales = new Mock<ISalesRankingReader>();
+        sales.Setup(reader => reader.GetUnitsByProductAsync(
+                It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, decimal> { [1] = 2, [2] = 4, [3] = 8, [4] = 10 });
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var ranked = await new BestSellers(sales.Object, catalog.Object, cache, Clock, Configuration())
+            .GetAsync(null, 30, 10, default);
+
+        Assert.Equal(new[] { 2, 1 }, ranked.Select(product => product.Id));
     }
 
     [Fact]

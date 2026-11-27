@@ -104,6 +104,17 @@ public sealed class ProductsController(IProductService productService) : Control
         return Ok(result);
     }
 
+    /// <summary>Desasociacion masiva: quita una categoria de varios productos a la vez.</summary>
+    [HttpPost("categories/unassign")]
+    public async Task<ActionResult<UnassignCategoryFromProductsResultDto>> UnassignCategory(
+        UnassignCategoryFromProductsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await productService.UnassignCategoryAsync(request, cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpPut("{id:int}/prices")]
     public async Task<IActionResult> SetPrices(
         int id,

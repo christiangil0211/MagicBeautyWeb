@@ -1,11 +1,13 @@
 ﻿using MagicBeauty.Store.Api.Sales;
 using Microsoft.AspNetCore.Authorization;
+using MagicBeauty.Store.Api.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MagicBeauty.Store.Api.Controllers;
 
 [ApiController]
 [AllowAnonymous]
+[PrivateCookieResponse]
 [Route("api/catalog/best-sellers")]
 public sealed class BestSellersController(BestSellers ranking) : ControllerBase
 {

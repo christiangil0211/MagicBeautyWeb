@@ -1,0 +1,410 @@
+<p-toast position="top-right" />
+<p-confirmdialog />
+
+<datalist id="banner-store-paths">
+  @for (path of storePaths; track path) {
+    <option [value]="path"></option>
+  }
+</datalist>
+
+<section class="banners">
+  <app-page-header eyebrow="Tienda" title="Banners del inicio" subtitle="Imágenes 3:1 del carrusel principal. Arrástralas para cambiar el orden.">
+    <div class="mb-stat">
+      <strong>{{ banners().length }}</strong>
+      <span>en total</span>
+    </div>
+    <div class="mb-stat">
+      <strong>{{ visibleCount() }}</strong>
+      <span>se ven hoy</span>
+    </div>
+    <div class="mb-stat">
+      <strong>{{ scheduledCount() }}</strong>
+      <span>programados</span>
+    </div>
+    <div class="mb-stat">
+      <strong>{{ hiddenCount() }}</strong>
+      <span>ocultos hoy</span>
+    </div>
+  </app-page-header>
+
+  <!-- Vista previa: el mismo componente que pinta la tienda. -->
+  <div class="panel panel--preview">
+    <div class="panel__head">
+      <div>
+        <h2>Vista previa del inicio</h2>
+        <small class="hint">
+          @if (usingFallback()) {
+            Ningún banner se ve hoy: la tienda muestra los banners de respaldo del código.
+          } @else if (draftHiddenToday()) {
+            Incluye el banner que estás editando para que lo revises, aunque hoy no se vea en la tienda.
+          } @else if (pendingImage() || form.dirty) {
+            Incluye tus cambios sin guardar.
+          } @else {
+            Así se ve hoy en la tienda (fecha de Colombia).
+          }
+        </small>
+      </div>
+      <p-button label="Generar imagen con IA" icon="pi pi-sparkles" severity="secondary" [outlined]="true" size="small" (onClick)="openPrompt()" />
+    </div>
+
+    <div class="preview-frame">
+      <app-portal-banner [banner]="previewPage" [preview]="previewSlides()" [previewFocus]="draftSlide() ? draftId() : null" [showHeading]="false" />
+    </div>
+  </div>
+
+  <div class="banners__workspace">
+    <!-- Lista ordenable -->
+    <aside class="panel panel--list">
+      <div class="panel__head">
+        <h2>Carrusel</h2>
+        <p-button label="Nuevo" icon="pi pi-plus" size="small" (onClick)="newBanner()" />
+      </div>
+      <small class="hint">El primero es el que se ve al entrar. Los ocultos hoy no ocupan lugar en la tienda.</small>
+
+      @if (loading() && banners().length === 0) {
+        <app-loader message="Cargando banners…" [compact]="true" />
+      } @else if (banners().length === 0) {
+        <div class="panel__empty">
+          <i class="pi pi-images"></i>
+          <strong>Aún no hay banners</strong>
+          <span>Crea el primero con «Nuevo». Mientras tanto, la tienda usa los de respaldo.</span>
+        </div>
+      } @else {
+        <ol class="banner-list" cdkDropList [cdkDropListData]="banners()" [cdkDropListDisabled]="reordering()" (cdkDropListDropped)="drop($event)" aria-label="Banners en orden del carrusel">
+          @for (banner of banners(); track banner.id; let i = $index; let first = $first; let last = $last) {
+            <li class="banner-row" cdkDrag [cdkDragData]="banner" [class.banner-row--selected]="banner.id === selectedId()" [class.banner-row--hidden]="!banner.isVisibleToday">
+              <span class="banner-row__handle" cdkDragHandle title="Arrastra para cambiar el orden" aria-hidden="true"><i class="pi pi-bars"></i></span>
+
+              <button type="button" class="banner-row__main" [attr.aria-pressed]="banner.id === selectedId()" (click)="select(banner)">
+                <span class="banner-row__thumb">
+                  @if (banner.imageUrl) {
+                    <img [src]="banner.imageUrl768 ?? banner.imageUrl" alt="" width="120" height="40" loading="lazy" />
+                  } @else {
+                    <i class="pi pi-image" aria-hidden="true"></i>
+                  }
+                </span>
+                <span class="banner-row__text">
+                  <strong>{{ i + 1 }}. {{ banner.name }}</strong>
+                  <p-tag [value]="status(banner).label" [severity]="status(banner).severity" />
+                </span>
+              </button>
+
+              <span class="banner-row__move">
+                <button type="button" class="icon-button" [disabled]="first || reordering()" [attr.aria-label]="'Subir ' + banner.name" (click)="move(i, i - 1)">
+                  <i class="pi pi-angle-up" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="icon-button" [disabled]="last || reordering()" [attr.aria-label]="'Bajar ' + banner.name" (click)="move(i, i + 1)">
+                  <i class="pi pi-angle-down" aria-hidden="true"></i>
+                </button>
+              </span>
+            </li>
+          }
+        </ol>
+      }
+    </aside>
+
+    <!-- Formulario -->
+    @if (editing()) {
+      <form class="panel panel--form" [formGroup]="form" (ngSubmit)="save()">
+        <div class="panel__head">
+          <h2>{{ selectedBanner() ? selectedBanner()!.name : 'Nuevo banner' }}</h2>
+
+          <div class="panel__actions">
+            @if (selectedBanner()) {
+              <p-button label="Eliminar" icon="pi pi-trash" severity="danger" [text]="true" size="small" [disabled]="saving()" (onClick)="confirmDelete()" />
+            }
+            <p-button label="Cerrar" severity="secondary" [text]="true" size="small" [disabled]="saving()" (onClick)="closeEditor()" />
+            <p-button type="submit" label="Guardar" icon="pi pi-check" size="small" [loading]="saving()" [disabled]="preparingImage()" />
+          </div>
+        </div>
+
+        <!-- Imagen -->
+        <div class="section">
+          <h3>Imagen</h3>
+          <div class="image-field">
+            @if (editorImage(); as image) {
+              <div class="editor" [class.editor--drawing]="drawing()">
+                <div
+                  #editorFrame
+                  class="editor__frame"
+                  (pointerdown)="onDrawStart($event)"
+                  (pointermove)="onDrawMove($event)"
+                  (pointerup)="onDrawEnd()"
+                  (pointercancel)="stopDrawing()">
+                  <img [src]="image.url" [width]="image.width" [height]="image.height" alt="" draggable="false" />
+                  @if (form.controls.linkMode.value === 'zones') {
+                    @for (spot of hotspots.controls; track spot; let z = $index) {
+                      <span
+                        class="editor__zone"
+                        [style.left.%]="spot.controls.left.value"
+                        [style.top.%]="spot.controls.top.value"
+                        [style.width.%]="spot.controls.width.value"
+                        [style.height.%]="spot.controls.height.value">
+                        <b>{{ z + 1 }}</b>
+                      </span>
+                    }
+                  }
+                  @if (drawRect(); as rect) {
+                    <span class="editor__zone editor__zone--new" [style.left.%]="rect.left" [style.top.%]="rect.top" [style.width.%]="rect.width" [style.height.%]="rect.height"></span>
+                  }
+                </div>
+                <small class="hint">{{ image.width }} × {{ image.height }} px@if (pendingImage(); as pending) { · {{ pending.file.name }} · se sube al guardar@if (pending.image768) { (con copias livianas para celular)} }</small>
+              </div>
+            } @else {
+              <div class="image-field__empty">
+                <i class="pi pi-image" aria-hidden="true"></i>
+                <span>Sin imagen. El banner no se muestra hasta que tenga una.</span>
+              </div>
+            }
+
+            <div class="image-field__actions">
+              <label class="upload-button" for="banner-image" [class.upload-button--busy]="preparingImage()">
+                <i class="pi" [class.pi-upload]="!preparingImage()" [class.pi-spin]="preparingImage()" [class.pi-spinner]="preparingImage()" aria-hidden="true"></i>
+                {{ editorImage() ? 'Reemplazar imagen' : 'Subir imagen' }}
+              </label>
+              <input id="banner-image" class="visually-hidden" type="file" [accept]="imageAccept" [disabled]="saving() || preparingImage()" (change)="selectImage($event)" />
+              <p-button label="Generar con IA" icon="pi pi-sparkles" severity="secondary" [text]="true" size="small" (onClick)="openPrompt()" />
+              <small class="hint">
+                JPG, PNG o WebP, 3 veces más ancha que alta: ideal <strong>2172 × 724 px</strong>, máximo 3 MB. El texto va dibujado en la imagen,
+                a la izquierda, grande (se verá en celulares). Deja libre la franja inferior central: allí van los controles.
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Textos -->
+        <div class="grid">
+          <div class="field">
+            <label for="banner-name">Nombre corto</label>
+            <input pInputText id="banner-name" formControlName="name" maxlength="60" placeholder="Ej: promo navidad" />
+            <small class="hint">Para esta lista y para el punto del carrusel («Ir al banner de …»).</small>
+          </div>
+
+          <div class="field">
+            <label for="banner-title">Título</label>
+            <input pInputText id="banner-title" formControlName="title" maxlength="150" placeholder="Ej: Regala belleza esta Navidad" />
+            <small class="hint">El titular de la imagen, en texto (para lectores de pantalla y buscadores).</small>
+          </div>
+
+          <div class="field field--full">
+            <label for="banner-alt">Texto alternativo</label>
+            <textarea pTextarea id="banner-alt" formControlName="altText" rows="3" maxlength="500" placeholder="Todo lo que dice la imagen, en el mismo orden"></textarea>
+            <small class="hint">Escribe todo lo que dice la imagen: lo leen quienes no pueden verla. {{ form.controls.altText.value.length }}/500</small>
+          </div>
+        </div>
+
+        <!-- Enlaces -->
+        <div class="section">
+          <h3>Al hacer clic</h3>
+          <p-selectbutton [options]="linkModes" formControlName="linkMode" optionLabel="label" optionValue="value" [allowEmpty]="false" aria-label="Qué pasa al hacer clic" />
+
+          @switch (form.controls.linkMode.value) {
+            @case ('none') {
+              <small class="hint">El banner solo informa (por ejemplo, medios de pago).</small>
+            }
+            @case ('whole') {
+              <div class="grid">
+                <div class="field">
+                  <label for="banner-link">Página</label>
+                  <input pInputText id="banner-link" formControlName="linkUrl" list="banner-store-paths" placeholder="/catalogo" />
+                  @if (form.controls.linkUrl.invalid) {
+                    <small class="error">Una página de la tienda que empiece por «/».</small>
+                  }
+                </div>
+                <div class="field">
+                  <label for="banner-link-label">Descripción del enlace</label>
+                  <input pInputText id="banner-link-label" formControlName="linkLabel" maxlength="80" placeholder="Ej: Ver los productos de Navidad" />
+                </div>
+              </div>
+            }
+            @case ('zones') {
+              <small class="hint">
+                Cubre cada botón dibujado en la imagen con una zona clicable.
+                @if (editorImage()) { Pulsa «Dibujar zona» y arrastra sobre el botón en la imagen de arriba. }
+              </small>
+              <div class="zone-actions">
+                <p-button
+                  [label]="drawing() ? 'Arrastra sobre la imagen…' : 'Dibujar zona'"
+                  icon="pi pi-pencil"
+                  size="small"
+                  [outlined]="!drawing()"
+                  [disabled]="!editorImage() || hotspots.length >= maxHotspots"
+                  (onClick)="drawing() ? stopDrawing() : startDrawing()" />
+                <p-button label="Agregar a mano" icon="pi pi-plus" severity="secondary" [text]="true" size="small" [disabled]="hotspots.length >= maxHotspots" (onClick)="addHotspot()" />
+              </div>
+
+              <div class="rows" formArrayName="hotspots">
+                @for (spot of hotspots.controls; track spot; let z = $index) {
+                  <fieldset class="row-card" [formGroupName]="z">
+                    <legend>Zona {{ z + 1 }}</legend>
+                    <div class="row-card__fields">
+                      <input pInputText formControlName="label" maxlength="80" placeholder="Texto del botón" [attr.aria-label]="'Texto de la zona ' + (z + 1)" />
+                      <input pInputText formControlName="link" list="banner-store-paths" placeholder="/catalogo" [attr.aria-label]="'Página de la zona ' + (z + 1)" />
+                    </div>
+                    <div class="row-card__numbers">
+                      <label>Izq. % <p-input-number formControlName="left" [min]="0" [max]="99" [maxFractionDigits]="1" [useGrouping]="false" /></label>
+                      <label>Arriba % <p-input-number formControlName="top" [min]="0" [max]="99" [maxFractionDigits]="1" [useGrouping]="false" /></label>
+                      <label>Ancho % <p-input-number formControlName="width" [min]="1" [max]="100" [maxFractionDigits]="1" [useGrouping]="false" /></label>
+                      <label>Alto % <p-input-number formControlName="height" [min]="1" [max]="100" [maxFractionDigits]="1" [useGrouping]="false" /></label>
+                      <p-button icon="pi pi-trash" severity="danger" [text]="true" size="small" [attr.aria-label]="'Quitar la zona ' + (z + 1)" (onClick)="removeHotspot(z)" />
+                    </div>
+                  </fieldset>
+                }
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Celular -->
+        <div class="section">
+          <h3>En celular</h3>
+          <small class="hint">En el celular la imagen queda pequeña: debajo se muestran botones reales (máximo 2) y el aviso.</small>
+
+          <div class="rows" formArrayName="mobileCtas">
+            @for (cta of mobileCtas.controls; track cta; let c = $index) {
+              <div class="row-inline" [formGroupName]="c">
+                <input pInputText formControlName="label" maxlength="80" placeholder="Texto del botón" [attr.aria-label]="'Texto del botón ' + (c + 1)" />
+                <input pInputText formControlName="link" list="banner-store-paths" placeholder="/catalogo" [attr.aria-label]="'Página del botón ' + (c + 1)" />
+                <p-button icon="pi pi-trash" severity="danger" [text]="true" size="small" [attr.aria-label]="'Quitar el botón ' + (c + 1)" (onClick)="removeMobileCta(c)" />
+              </div>
+            }
+          </div>
+          <div class="zone-actions">
+            <p-button label="Agregar botón" icon="pi pi-plus" severity="secondary" [text]="true" size="small" [disabled]="mobileCtas.length >= maxMobileCtas" (onClick)="addMobileCta()" />
+            @if (form.controls.linkMode.value !== 'none') {
+              <p-button label="Copiar de los enlaces" icon="pi pi-copy" severity="secondary" [text]="true" size="small" (onClick)="copyLinksToMobile()" />
+            }
+          </div>
+
+          <div class="grid">
+            <div class="field">
+              <label for="banner-note-strong">Aviso: parte destacada (opcional)</label>
+              <input pInputText id="banner-note-strong" formControlName="noteHighlight" maxlength="60" placeholder="Ej: Calendario Magic Beauty:" />
+            </div>
+            <div class="field">
+              <label for="banner-note">Aviso: resto del texto (opcional)</label>
+              <input pInputText id="banner-note" formControlName="noteText" maxlength="200" placeholder="Ej: arma el tuyo a tu medida." />
+            </div>
+          </div>
+
+          @if (draftSlide(); as slide) {
+            <div class="phone" aria-label="Así se ve en un celular">
+              <img [src]="slide.image" alt="" />
+              <div class="phone__details">
+                @if (slide.note) {
+                  <p><strong>{{ slide.note.strong }}</strong> {{ slide.note.text }}</p>
+                }
+                @for (cta of slide.mobileCtas ?? []; track $index; let firstCta = $first) {
+                  <span class="phone__cta" [class.phone__cta--outline]="!firstCta">{{ cta.label }} <i class="pi pi-angle-right" aria-hidden="true"></i></span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Visibilidad -->
+        <div class="section">
+          <h3>Visibilidad</h3>
+          <label class="switch">
+            <p-toggleswitch formControlName="isActive" />
+            <span>
+              <strong>Activo</strong>
+              <small>Apagado, no se muestra aunque esté en sus fechas.</small>
+            </span>
+          </label>
+
+          <div class="grid">
+            <div class="field">
+              <label for="banner-starts">Desde (opcional)</label>
+              <input pInputText id="banner-starts" type="date" formControlName="startsOn" />
+            </div>
+            <div class="field">
+              <label for="banner-ends">Hasta (opcional, inclusive)</label>
+              <input pInputText id="banner-ends" type="date" formControlName="endsOn" [min]="form.controls.startsOn.value" />
+            </div>
+          </div>
+          <small class="hint">Fechas de Colombia. Sin fechas, se muestra siempre que esté activo. Útil para campañas: se enciende y se apaga solo.</small>
+        </div>
+      </form>
+    } @else {
+      <div class="panel panel--placeholder">
+        <i class="pi pi-images" aria-hidden="true"></i>
+        <strong>Elige un banner de la lista o crea uno nuevo</strong>
+        <span>¿No tienes la imagen? Usa «Generar imagen con IA»: arma un prompt con las medidas y colores de la tienda.</span>
+        <div class="zone-actions">
+          <p-button label="Nuevo banner" icon="pi pi-plus" size="small" (onClick)="newBanner()" />
+          <p-button label="Generar imagen con IA" icon="pi pi-sparkles" severity="secondary" [outlined]="true" size="small" (onClick)="openPrompt()" />
+        </div>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- Prompt para crear la imagen con IA -->
+<p-dialog [visible]="promptOpen()" (visibleChange)="promptOpen.set($event)" [modal]="true" [dismissableMask]="true" [style]="{ width: 'min(64rem, 96vw)' }" header="Generar la imagen con IA">
+  <div class="prompt">
+    <form class="prompt__form" [formGroup]="promptForm">
+      <p-selectbutton [options]="promptModes" formControlName="mode" optionLabel="label" optionValue="value" [allowEmpty]="false" aria-label="Qué debe generar la IA" />
+      <small class="hint">
+        @if (promptForm.controls.mode.value === 'full') {
+          La IA dibuja también los textos. Revisa cada palabra: a veces se equivoca con las tildes.
+        } @else {
+          La IA crea solo el fondo y los productos; los textos y botones los agregas en Canva con la plantilla.
+        }
+      </small>
+
+      <div class="field">
+        <label for="prompt-theme">Campaña o tema</label>
+        <input pInputText id="prompt-theme" formControlName="theme" placeholder="Ej: regalos de Navidad, 20 % en labiales" />
+      </div>
+      <div class="field">
+        <label for="prompt-style">Estilo</label>
+        <p-select inputId="prompt-style" formControlName="style" [options]="promptStyles" optionLabel="label" optionValue="value" appendTo="body" />
+      </div>
+      <div class="field">
+        <label for="prompt-products">Productos o elementos que deben verse</label>
+        <input pInputText id="prompt-products" formControlName="products" placeholder="Ej: labiales, paletas de sombras y cajas de regalo" />
+      </div>
+
+      @if (promptForm.controls.mode.value === 'full') {
+        <div class="field">
+          <label for="prompt-headline">Titular</label>
+          <input pInputText id="prompt-headline" formControlName="headline" placeholder="Ej: Regala belleza esta Navidad" />
+        </div>
+        <div class="field">
+          <label for="prompt-subtitle">Texto secundario (opcional)</label>
+          <input pInputText id="prompt-subtitle" formControlName="subtitle" placeholder="Ej: Kits listos para sorprender" />
+        </div>
+        <div class="grid grid--tight">
+          <div class="field">
+            <label for="prompt-button1">Botón 1 (opcional)</label>
+            <input pInputText id="prompt-button1" formControlName="button1" placeholder="Ej: Ver regalos" />
+          </div>
+          <div class="field">
+            <label for="prompt-button2">Botón 2 (opcional)</label>
+            <input pInputText id="prompt-button2" formControlName="button2" placeholder="Ej: Cotiza el tuyo" />
+          </div>
+        </div>
+      }
+
+      <div class="field">
+        <label for="prompt-extra">Indicaciones adicionales (opcional)</label>
+        <textarea pTextarea id="prompt-extra" formControlName="extra" rows="2" placeholder="Ej: que se vea una mano sosteniendo un labial"></textarea>
+      </div>
+    </form>
+
+    <div class="prompt__output">
+      <label for="prompt-text">Prompt para copiar</label>
+      <textarea id="prompt-text" class="prompt__text" readonly [value]="prompt()"></textarea>
+      <div class="zone-actions">
+        <p-button label="Copiar prompt" icon="pi pi-copy" size="small" (onClick)="copyPrompt()" />
+        <p-button label="Descargar plantilla 2172 × 724" icon="pi pi-download" severity="secondary" [outlined]="true" size="small" (onClick)="downloadGuide()" />
+      </div>
+      <ol class="prompt__steps">
+        <li>Pega el prompt en tu IA de imágenes (ChatGPT, Gemini, Copilot, Canva IA…). Si acepta imágenes, adjunta también la plantilla.</li>
+        <li>Si la imagen no sale en 3:1, recórtala o ajústala a <strong>2172 × 724 px</strong> (en Canva: «Tamaño personalizado»).</li>
+        <li>Súbela aquí, marca las zonas sobre sus botones y escribe el texto alternativo con todo lo que dice.</li>
+      </ol>
+    </div>
+  </div>
+</p-dialog>

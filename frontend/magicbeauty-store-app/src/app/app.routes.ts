@@ -94,10 +94,22 @@ export const routes: Routes = [
         title: 'Catálogos tradicionales · Magic Beauty'
       },
       {
+        path: 'home-banners',
+        loadComponent: () =>
+          import('./features/admin/home-banners/admin-home-banners.component').then(m => m.AdminHomeBannersComponent),
+        title: 'Banners del inicio · Magic Beauty'
+      },
+      {
         path: 'users',
         loadComponent: () =>
           import('./features/admin/users/admin-users.component').then(m => m.AdminUsersComponent),
         title: 'Administradores · Magic Beauty'
+      },
+      {
+        path: 'customers',
+        loadComponent: () =>
+          import('./features/admin/customers/admin-customers.component').then(m => m.AdminCustomersComponent),
+        title: 'Clientes · Magic Beauty'
       },
       {
         path: '',
@@ -116,6 +128,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./layouts/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
     children: [
+      {
+        path: 'politica-de-datos',
+        loadComponent: () =>
+          import('./features/public/privacy-policy/privacy-policy.component').then(m => m.PrivacyPolicyComponent),
+        title: 'Política de datos · Magic Beauty Cosmetics',
+        data: NO_INDEX
+      },
       {
         path: 'marcas',
         loadComponent: () => import('./features/public/brands/brands.component').then(m => m.BrandsComponent),

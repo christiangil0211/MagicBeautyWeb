@@ -22,8 +22,10 @@ const ADMIN_LINKS: AccountAdminLink[] = [
   { label: 'Categorías de productos', icon: 'pi pi-sitemap', path: '/admin/categories' },
   { label: 'Productos', icon: 'pi pi-shopping-bag', path: '/admin/products' },
   { label: 'Ventas', icon: 'pi pi-chart-bar', path: '/admin/sales' },
+  { label: 'Clientes', icon: 'pi pi-id-card', path: '/admin/customers' },
   { label: 'Marcas', icon: 'pi pi-tag', path: '/admin/brands' },
   { label: 'Catálogos tradicionales', icon: 'pi pi-book', path: '/admin/catalogs' },
+  { label: 'Banners del inicio', icon: 'pi pi-images', path: '/admin/home-banners' },
   { label: 'Administradores', icon: 'pi pi-users', path: '/admin/users' }
 ];
 

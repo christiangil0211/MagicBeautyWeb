@@ -2,11 +2,13 @@
 using MagicBeauty.Store.Application.Features.Brands;
 using MagicBeauty.Store.Application.Features.Catalog;
 using MagicBeauty.Store.Application.Features.Categories;
+using MagicBeauty.Store.Application.Features.Customers;
 using MagicBeauty.Store.Application.Features.PriceTypes;
 using MagicBeauty.Store.Application.Features.Pricing;
 using MagicBeauty.Store.Application.Features.Products;
 using MagicBeauty.Store.Application.Features.Sitemap;
 using MagicBeauty.Store.Application.Features.TraditionalCatalogs;
+using MagicBeauty.Store.Application.Features.HomeBanners;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MagicBeauty.Store.Application;
@@ -16,6 +18,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<IBrandService, BrandService>();
+        services.AddScoped<IHomeBannerService, HomeBannerService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IPriceTypeService, PriceTypeService>();
         services.AddScoped<IProductService, ProductService>();
@@ -23,6 +26,9 @@ public static class DependencyInjection
         services.AddScoped<ICatalogService, CatalogService>();
         services.AddScoped<ISitemapService, SitemapService>();
         services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<CustomerRegistrationService>();
+        services.AddScoped<CustomerAdministration>();
+        services.AddScoped<CommercialRepurchaseService>();
         services.AddScoped<ITraditionalCatalogService, TraditionalCatalogService>();
 
         return services;

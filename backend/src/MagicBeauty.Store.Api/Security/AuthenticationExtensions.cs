@@ -5,14 +5,20 @@ namespace MagicBeauty.Store.Api.Security;
 public static class AuthenticationExtensions
 {
     /// <summary>
-    /// Sesion por cookie HttpOnly. Es independiente de como se inicia la sesion: hoy
-    /// solo existe el acceso local de Development; el login definitivo emitira la
-    /// misma identidad (claims de rol) sin cambiar la autorizacion.
+    /// Configura el ticket de sesión de la tienda y valida periódicamente su identidad.
     /// </summary>
     public static IServiceCollection AddStoreAuthentication(
         this IServiceCollection services,
-        IHostEnvironment environment)
+        IHostEnvironment environment,
+        IConfiguration configuration)
     {
+        services.AddOptions<StoreSessionOptions>()
+            .Bind(configuration.GetSection("Auth:Session"))
+            .Validate(options => options.ValidationIntervalMinutes is > 0 and <= 480 &&
+                                 options.AbsoluteLifetimeHours is > 0 and <= 8760,
+                "Auth:Session requiere un intervalo de 1 a 480 minutos y un máximo de 1 a 8760 horas.")
+            .ValidateOnStart();
+
         services
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(options =>
@@ -37,6 +43,8 @@ public static class AuthenticationExtensions
                 }
                 options.ExpireTimeSpan = TimeSpan.FromHours(8);
                 options.SlidingExpiration = true;
+                options.Events.OnSigningIn = StoreSessionValidation.InitializeAsync;
+                options.Events.OnValidatePrincipal = StoreSessionValidation.ValidateAsync;
 
                 // Es un API: sin redirecciones a paginas de login, solo codigos HTTP.
                 options.Events.OnRedirectToLogin = context =>

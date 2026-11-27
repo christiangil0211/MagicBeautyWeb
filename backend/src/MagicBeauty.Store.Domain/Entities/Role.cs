@@ -1,8 +1,9 @@
 namespace MagicBeauty.Store.Domain.Entities;
 
+public enum RoleKind { Internal, Commercial }
+
 /// <summary>
-/// Rol comercial de un usuario autenticado. Los tipos de precio que ve se
-/// configuran en <see cref="RolePriceTypes"/>, nunca en el codigo.
+/// Rol interno o comercial. La matriz define qué precios habilitan los roles comerciales.
 /// </summary>
 public sealed class Role
 {
@@ -13,6 +14,12 @@ public sealed class Role
     public string Name { get; set; } = string.Empty;
 
     public bool IsActive { get; set; } = true;
+
+    public RoleKind Kind { get; set; }
+
+    public bool IsSelfRequestable { get; set; }
+
+    public int? RepurchaseDays { get; set; }
 
     public ICollection<RolePriceType> RolePriceTypes { get; set; } = new List<RolePriceType>();
 
