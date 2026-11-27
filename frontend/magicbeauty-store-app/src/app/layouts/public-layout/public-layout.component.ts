@@ -78,8 +78,8 @@ export class PublicLayoutComponent {
   /**
    * Barra de menú: los visitantes no la ven mientras el portal es la única
    * experiencia; un administrador sí, con el portal como una opción más.
+   * El buscador, en cambio, se muestra siempre y a todos.
    */
-  readonly showHeaderSearch = computed(() => this.ecommerceNavigation() || this.isAuthenticated());
   readonly showMenu = computed(() => this.ecommerceNavigation() || this.isAuthenticated());
 
   readonly activeCategorySlug = signal<string | null>(null);
@@ -250,7 +250,6 @@ export class PublicLayoutComponent {
   }
 
   openMobileSearch(): void {
-    if (!this.showHeaderSearch()) return;
     this.isMobileMenuOpen.set(false);
     this.isMobileSearchOpen.set(true);
   }

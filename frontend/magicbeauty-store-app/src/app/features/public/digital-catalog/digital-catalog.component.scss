@@ -78,7 +78,12 @@
   padding: 0;
   border: none;
 
+  // Un <legend> normal se dibuja SOBRE el borde superior del fieldset y parte la
+  // línea divisora. Con float pasa a ser un título común, debajo de la línea
+  // (en un fieldset flex el float no cambia nada más del maquetado).
   legend {
+    float: left;
+    width: 100%;
     margin-bottom: 0.5rem;
     padding: 0;
     font-size: 0.78rem;

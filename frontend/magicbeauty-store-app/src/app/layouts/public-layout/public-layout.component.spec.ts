@@ -146,12 +146,12 @@ it('shows the official email and the address linked to Google Maps', async () =>
 });
 
 
-it('does not offer header search in the public portal', async () => {
+it('offers header search to anonymous visitors in the public portal', async () => {
   const fixture = createPortalLayout(false);
   await fixture.whenStable();
-  expect(fixture.nativeElement.querySelector('.desktop-search')).toBeNull();
-  expect(fixture.nativeElement.querySelector('button[aria-label="Buscar"]')).toBeNull();
-  expect(fixture.nativeElement.querySelector('.mobile-search-panel')).toBeNull();
+  expect(fixture.nativeElement.querySelector('.desktop-search')).not.toBeNull();
+  expect(fixture.nativeElement.querySelector('button[aria-label="Buscar"]')).not.toBeNull();
+  expect(fixture.nativeElement.querySelector('.mobile-search-panel')).not.toBeNull();
   fixture.destroy();
 });
 
