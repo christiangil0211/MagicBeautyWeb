@@ -53,6 +53,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAlegraClient>(provider => provider.GetRequiredService<AlegraClient>());
         services.AddScoped<MagicBeauty.Store.Application.Features.Sales.ISalesSource, AlegraSalesSource>();
+        services.AddScoped<MagicBeauty.Store.Application.Features.Customers.ICustomerImportSource, AlegraCustomerSource>();
         services.AddSingleton<AlegraSyncLock>();
         services.AddScoped<IAlegraProductSyncService, AlegraProductSyncService>();
 

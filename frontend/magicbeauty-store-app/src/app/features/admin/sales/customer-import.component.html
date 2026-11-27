@@ -1,0 +1,20 @@
+<p-button label="Importar contactos" icon="pi pi-users" severity="secondary" [outlined]="true" (onClick)="show()" />
+
+<p-dialog header="Importar contactos" [visible]="open()" (visibleChange)="open.set($event)"
+  [modal]="true" [draggable]="false" [resizable]="false" appendTo="body"
+  [style]="{ width: 'min(92vw, 520px)' }">
+  <p>Importa los datos de facturación de la fuente configurada para relacionarlos con las ventas.</p>
+  @if (busy()) {
+    <p role="status">Consultando importación de contactos…</p>
+  }
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+  }
+  @if (run(); as current) {
+    <p role="status">{{ current.contacts }} contactos procesados, {{ current.skippedContacts }} omitidos.</p>
+    @if (current.error) { <p role="alert">{{ current.error }}</p> }
+  }
+  <ng-template #footer>
+    <p-button label="Importar" [loading]="busy()" (onClick)="start()" />
+  </ng-template>
+</p-dialog>

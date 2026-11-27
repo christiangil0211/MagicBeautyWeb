@@ -61,6 +61,11 @@ public sealed class AlegraClient(
     internal Task<AlegraInvoice> GetInvoiceAsync(string id, CancellationToken cancellationToken) =>
         GetSalesAsync<AlegraInvoice>($"invoices/{Uri.EscapeDataString(id)}", cancellationToken);
 
+    internal Task<List<AlegraContact>> GetContactsAsync(int offset, int limit, CancellationToken cancellationToken) =>
+        GetSalesAsync<List<AlegraContact>>(
+            FormattableString.Invariant($"contacts?start={offset}&limit={limit}&type=client&mode=simple&order_field=id&order_direction=ASC"),
+            cancellationToken);
+
     private async Task<T> GetSalesAsync<T>(string path, CancellationToken cancellationToken) where T : class
     {
         const int attempts = 4;
@@ -72,11 +77,11 @@ public sealed class AlegraClient(
                 using var response = await httpClient.GetAsync(path, cancellationToken);
                 if (response.IsSuccessStatusCode)
                     return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken)
-                        ?? throw new SalesSourceReadException("La respuesta de ventas está vacía.");
+                        ?? throw new SalesSourceReadException("La respuesta del origen está vacía.");
 
                 var transient = response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500;
                 if (!transient || attempt >= attempts)
-                    throw new SalesSourceReadException($"La consulta de ventas falló (HTTP {(int)response.StatusCode}).");
+                    throw new SalesSourceReadException($"La consulta al origen falló (HTTP {(int)response.StatusCode}).");
 
                 var requested = response.Headers.RetryAfter?.Delta
                     ?? (response.Headers.RetryAfter?.Date is { } date ? date - DateTimeOffset.UtcNow : TimeSpan.Zero);
@@ -92,11 +97,11 @@ public sealed class AlegraClient(
                 exception is HttpRequestException or TaskCanceledException)
             {
                 if (attempt >= attempts)
-                    throw new SalesSourceReadException("El origen de ventas no respondió después de varios intentos.", exception);
+                    throw new SalesSourceReadException("El origen no respondió después de varios intentos.", exception);
             }
             catch (JsonException exception)
             {
-                throw new SalesSourceReadException("El origen devolvió una factura con un formato inesperado.", exception);
+                throw new SalesSourceReadException("El origen devolvió datos con un formato inesperado.", exception);
             }
 
             await Task.Delay(delay, cancellationToken);

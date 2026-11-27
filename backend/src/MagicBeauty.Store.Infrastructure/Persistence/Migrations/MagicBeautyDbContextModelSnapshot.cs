@@ -293,6 +293,9 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.Property<bool>("AllPagesRead")
                         .HasColumnType("bit");
 
+                    b.Property<int>("Contacts")
+                        .HasColumnType("int");
+
                     b.Property<string>("Error")
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
@@ -306,6 +309,11 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.Property<int>("Invoices")
                         .HasColumnType("int");
 
+                    b.Property<int>("Kind")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<DateOnly?>("LastSaleDate")
                         .HasColumnType("date");
 
@@ -313,6 +321,9 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("Pages")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SkippedContacts")
                         .HasColumnType("int");
 
                     b.Property<string>("Source")
@@ -922,6 +933,14 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                     b.Property<decimal?>("Balance")
                         .HasPrecision(19, 4)
                         .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("CustomerDocumentNumber")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("CustomerExternalId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<long?>("CustomerId")
                         .HasColumnType("bigint");

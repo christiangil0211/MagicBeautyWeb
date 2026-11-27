@@ -29,10 +29,11 @@ export class SalesImportService {
     return this.http.get<SalesImportRun>(`${this.url}/${encodeURIComponent(id)}`, { transferCache: false });
   }
 
-  start(resumeId?: string, refreshDetails = false) {
+  start(resumeId?: string, refreshDetails = false, backfillFrom?: string) {
     let params = new HttpParams();
     if (resumeId) params = params.set('resumeId', resumeId);
     if (refreshDetails) params = params.set('refreshDetails', true);
+    if (backfillFrom) params = params.set('backfillFrom', backfillFrom);
     return this.http.post<{ id: string }>(this.url, {}, { params });
   }
 }

@@ -32,6 +32,10 @@
             </span>
           </label>
         }
+        <label class="refresh-option">
+          <span>Volver a consultar ventas desde esta fecha (opcional). Importa primero los contactos para vincular las facturas.</span>
+          <input pInputText type="date" [value]="backfillFrom()" (change)="backfillFrom.set($any($event.target).value)">
+        </label>
       </div>
     }
 
