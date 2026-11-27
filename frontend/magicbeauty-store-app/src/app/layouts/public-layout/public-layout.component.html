@@ -110,7 +110,7 @@
       muestran las categorías, el portal como una opción más y el back office.
     -->
     @if (showMenu()) {
-    <nav class="store-menu" (mouseleave)="closeMegaMenu()">
+    <nav class="store-menu" (mouseleave)="leaveMenu($event)" (mouseenter)="stopTrackingOutside()">
         @for (item of menu(); track item.id) {
           <div class="store-menu__item" (mouseenter)="openMegaMenu(item.id)" (focusin)="openMegaMenu(item.id)">
             <a class="store-menu__link" [routerLink]="categoryPath(item.slug)" [class.active]="isCategoryActive(item)">
@@ -365,9 +365,14 @@
 
 <ng-template #categoryBranches let-items>
   @for (node of items; track node.id) {
-    <div class="nav-dropdown__branch" (mouseenter)="expandChild(node.id)" (mouseleave)="collapseChild(node.id)" (focusin)="expandChild(node.id)">
-      <div class="nav-dropdown__row">
-        <a class="nav-dropdown__link" [routerLink]="categoryPath(node.slug)" (click)="closeMegaMenu()">{{ node.name }}</a>
+    <!--
+      Acordeón: al posarse sobre una fila se abre su rama y se cierran las hermanas.
+      Salir de una fila no cierra nada; el panel se ajusta a lo que tenga abierto.
+    -->
+    <div class="nav-dropdown__branch">
+      <div class="nav-dropdown__row" (mousemove)="hoverBranch(node.id, $event)" (mouseleave)="leaveBranch(node.id)">
+        <a class="nav-dropdown__link" [routerLink]="categoryPath(node.slug)" (focusin)="activateBranch(node.id)"
+          (click)="closeMegaMenu()">{{ node.name }}</a>
         @if (node.children.length > 0) {
           <button type="button" class="nav-dropdown__toggle" [attr.aria-expanded]="isChildExpanded(node.id)"
             [attr.aria-label]="'Ver subcategorías de ' + node.name" (click)="toggleChild(node.id, $event)">
