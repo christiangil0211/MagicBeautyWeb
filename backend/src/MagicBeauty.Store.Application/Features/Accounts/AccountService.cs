@@ -119,6 +119,11 @@ public sealed class AccountService(
             item.ConsumedAt = now;
         }
 
+        if (user.EmailConfirmedAt is null && user.DocumentNumber is { } document)
+        {
+            user.CustomerId = await userRepository.FindConsentedCustomerIdAsync(user.Id, document, cancellationToken);
+        }
+
         user.EmailConfirmedAt ??= now;
         user.LastLoginAt = now;
         user.UpdatedAt = now;
@@ -133,6 +138,16 @@ public sealed class AccountService(
         var users = await userRepository.GetAllAsync(cancellationToken);
 
         return users.Select(MapToDto).ToList();
+    }
+
+    public async Task SendRegistrationCodeAsync(int userId, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user is not { IsActive: true, MustChangePassword: false, EmailConfirmedAt: null, CommercialRoleId: not null })
+            return;
+
+        await IssueVerificationCodeAsync(user, DateTime.UtcNow, cancellationToken);
+        await userRepository.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<AuthenticatedAccount?> GetSessionAccountAsync(int userId, CancellationToken cancellationToken)

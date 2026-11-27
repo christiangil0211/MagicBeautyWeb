@@ -11,11 +11,12 @@ import { AUTH_WAIT_MESSAGES, AccountPanelComponent, SESSION_MESSAGES } from './a
 
 function setup(login: () => Observable<LoginOutcome>) {
   const loginSpy = vi.fn(login);
+  const registerSpy = vi.fn(() => of(undefined));
   TestBed.configureTestingModule({
     imports: [AccountPanelComponent],
     providers: [provideRouter([]), { provide: AuthService, useValue: {
       session: signal(null), canManageStore: signal(false), isAuthenticated: signal(false),
-      login: loginSpy
+      login: loginSpy, register: registerSpy, requestableRoles: () => of([])
     } }]
   });
   const fixture = TestBed.createComponent(AccountPanelComponent);
@@ -24,8 +25,29 @@ function setup(login: () => Observable<LoginOutcome>) {
   fixture.componentInstance.password.set('test-password');
   fixture.detectChanges();
 
-  return { fixture, panel: fixture.componentInstance, loginSpy };
+  return { fixture, panel: fixture.componentInstance, loginSpy, registerSpy };
 }
+
+it('starts registration with both consents unchecked and keeps the result generic', () => {
+  const { fixture, panel, registerSpy } = setup(() => new Subject<LoginOutcome>());
+  panel.showRegistration();
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  expect(element.querySelector<HTMLInputElement>('#register-privacy')?.checked).toBe(false);
+  expect(element.querySelector<HTMLInputElement>('#register-marketing')?.checked).toBe(false);
+  panel.updateRegistration('fullName', 'Cliente de prueba');
+  panel.updateRegistration('phone', '3001234567');
+  panel.updateRegistration('city', 'Cali');
+  panel.updateRegistration('password', 'Clave-Segura-123');
+  panel.submitRegistration();
+  expect(registerSpy).not.toHaveBeenCalled();
+  panel.updateRegistration('privacyAccepted', true);
+  panel.submitRegistration();
+  expect(registerSpy).toHaveBeenCalledWith(expect.objectContaining({ policyVersion: '1.0', marketingOptIn: false }));
+  expect(panel.step()).toBe('code');
+  expect(panel.info()).toContain('Si la cuenta es nueva');
+  expect(panel.registration().password).toBe('');
+});
 
 const loaderText = (element: HTMLElement) => element.querySelector('app-loader')?.textContent?.replace(/\s+/g, ' ').trim() ?? null;
 

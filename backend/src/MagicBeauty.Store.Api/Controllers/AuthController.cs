@@ -3,6 +3,7 @@ using System.Security.Claims;
 using MagicBeauty.Store.Api.Filters;
 using MagicBeauty.Store.Api.Security;
 using MagicBeauty.Store.Application.Features.Accounts;
+using MagicBeauty.Store.Application.Features.Customers;
 using MagicBeauty.Store.Contracts.Auth.Requests;
 using MagicBeauty.Store.Contracts.Auth.Responses;
 using Microsoft.AspNetCore.Authentication;
@@ -25,6 +26,31 @@ public sealed class AuthController(
     IAuthorizationService authorizationService) : ControllerBase
 {
     private const string InvalidCredentialsMessage = "Correo o contrasena incorrectos.";
+
+    [HttpPost("register")]
+    [AuthRequestBudget]
+    [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
+    public async Task<IActionResult> Register(
+        RegisterCustomerRequest request,
+        [FromServices] CustomerRegistrationService registration,
+        [FromServices] RegistrationCodeQueue queue,
+        [FromServices] ILogger<AuthController> logger,
+        CancellationToken cancellationToken)
+    {
+        var userId = await registration.RegisterAsync(
+            request, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken);
+        if (userId is { } id && !queue.TryEnqueue(id))
+            logger.LogWarning("La cola de confirmación de altas está llena.");
+
+        return Accepted();
+    }
+
+    [HttpGet("requestable-roles")]
+    [AuthRequestBudget]
+    [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
+    public async Task<ActionResult<IReadOnlyList<RequestableRoleDto>>> GetRequestableRoles(
+        [FromServices] CustomerRegistrationService registration, CancellationToken cancellationToken) =>
+        Ok(await registration.GetRequestableRolesAsync(cancellationToken));
 
     [HttpPost("login")]
     [AuthRequestBudget]

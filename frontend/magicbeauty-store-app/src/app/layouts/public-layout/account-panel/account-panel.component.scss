@@ -279,6 +279,28 @@
   }
 }
 
+.account-panel__form .account-panel__consent {
+  display: flex;
+  align-items: start;
+  gap: 0.625rem;
+  margin: 0.25rem 0;
+
+  input {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    margin: 0.2rem 0 0;
+    accent-color: var(--mb-primary);
+  }
+
+  label {
+    margin: 0;
+    letter-spacing: normal;
+    text-transform: none;
+    line-height: 1.45;
+  }
+}
+
 /* Campo con ícono a la izquierda. */
 .account-panel__field {
   position: relative;
