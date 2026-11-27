@@ -1,9 +1,15 @@
 <section class="panel">
   <div class="panel__head">
-    <h2>Asignar productos</h2>
+    <h2>{{ isCategoryView() ? 'Productos de la categoría' : 'Asignar productos' }}</h2>
     <span class="panel__count">
-      {{ selected().length }} de {{ assignable().length }} seleccionados
-      @if (assignedIds().size > 0) {
+      {{ selected().length }} de {{ selectable().length }} seleccionados
+      @if (isCategoryView()) {
+        @if (products().length > selectable().length) {
+          <span class="panel__count-assigned">
+            · {{ products().length - selectable().length }} por subcategorías
+          </span>
+        }
+      } @else if (assignedIds().size > 0) {
         <span class="panel__count-assigned">
           · {{ assignedIds().size }} ya en esta categoría
         </span>
@@ -13,7 +19,7 @@
 
   @if (category()) {
     <p class="panel__hint">
-      Agregando productos a:
+      {{ isCategoryView() ? 'Productos de (incluye subcategorías):' : 'Agregando productos a:' }}
       <span class="category-path">
         @for (name of categoryPath(); track $index) {
           @if (!$first) {
@@ -56,6 +62,18 @@
         (ngModelChange)="scopeChanged($event)"
       />
       <span id="scope-label" class="sr-only">Mostrar productos</span>
+
+      <p-button
+        class="toolbar__consult"
+        label="Consultar productos"
+        icon="pi pi-list"
+        size="small"
+        severity="secondary"
+        [outlined]="!isCategoryView()"
+        [disabled]="working() || !category()"
+        [attr.aria-pressed]="isCategoryView()"
+        (onClick)="toggleCategoryView()"
+      />
     </div>
 
     <div class="toolbar__actions">
@@ -65,7 +83,7 @@
         size="small"
         severity="secondary"
         [text]="true"
-        [disabled]="assigning() || selected().length === 0"
+        [disabled]="working() || selected().length === 0"
         (onClick)="clearSelection()"
       />
       <p-button
@@ -74,22 +92,37 @@
         size="small"
         severity="secondary"
         [outlined]="true"
-        [disabled]="assigning() || assignable().length === 0"
+        [disabled]="working() || selectable().length === 0"
         (onClick)="selectAll()"
       />
-      <p-button
-        label="Agregar categoría"
-        icon="pi pi-tag"
-        size="small"
-        [loading]="assigning()"
-        (onClick)="confirmAssign()"
-      />
+      @if (isCategoryView()) {
+        <p-button
+          label="Desasociar productos"
+          icon="pi pi-minus-circle"
+          size="small"
+          severity="danger"
+          [loading]="unassigning()"
+          [disabled]="assigning()"
+          (onClick)="confirmUnassign()"
+        />
+      } @else {
+        <p-button
+          label="Agregar categoría"
+          icon="pi pi-tag"
+          size="small"
+          [loading]="assigning()"
+          [disabled]="unassigning()"
+          (onClick)="confirmAssign()"
+        />
+      }
     </div>
   </div>
 
-  <div class="mb-table-wrap" [class.is-loading]="loading() || assigning()">
+  <div class="mb-table-wrap" [class.is-loading]="loading() || working()">
     @if (assigning()) {
       <app-loader mode="overlay" message="Agregando categoría…" />
+    } @else if (unassigning()) {
+      <app-loader mode="overlay" message="Desasociando productos…" />
     } @else if (loading()) {
       <app-loader
         mode="overlay"
@@ -124,12 +157,12 @@
       </ng-template>
 
       <ng-template pTemplate="body" let-product>
-        <tr [class.row--assigned]="isAssigned(product)">
+        <tr [class.row--assigned]="!isCategoryView() && isAssigned(product)">
           <td class="center">
             <p-tableCheckbox
               [value]="product"
-              [disabled]="assigning() || isAssigned(product)"
-              [attr.title]="isAssigned(product) ? 'Ya pertenece a esta categoría' : null"
+              [disabled]="working() || !isSelectable(product)"
+              [attr.title]="notSelectableReason(product)"
             />
           </td>
           <td>
@@ -180,9 +213,15 @@
                     {{
                       scope() === 'uncategorized'
                         ? 'Ningún producto sin categoría coincide con la búsqueda.'
-                        : 'Ningún producto coincide con la búsqueda.'
+                        : isCategoryView()
+                          ? 'Ningún producto de esta categoría coincide con la búsqueda.'
+                          : 'Ningún producto coincide con la búsqueda.'
                     }}
                   </span>
+                } @else if (isCategoryView()) {
+                  <i class="pi pi-inbox"></i>
+                  <strong>Categoría sin productos</strong>
+                  <span>Ni esta categoría ni sus subcategorías tienen productos asignados.</span>
                 } @else if (scope() === 'uncategorized') {
                   <i class="pi pi-check-circle"></i>
                   <strong>Todo está organizado</strong>

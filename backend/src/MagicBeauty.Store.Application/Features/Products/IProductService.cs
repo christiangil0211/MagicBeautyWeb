@@ -33,6 +33,14 @@ public interface IProductService
         AssignCategoryToProductsRequest request,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Quita la categoria de los productos indicados en una sola operacion y devuelve
+    /// cuantos la perdieron. Conserva sus otras categorias y no cambia ningun otro dato.
+    /// </summary>
+    Task<UnassignCategoryFromProductsResultDto> UnassignCategoryAsync(
+        UnassignCategoryFromProductsRequest request,
+        CancellationToken cancellationToken);
+
     Task SetPricesAsync(int id, SetProductPricesRequest request, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ProductVariantDto>> GetVariantsAsync(int productId, CancellationToken cancellationToken);

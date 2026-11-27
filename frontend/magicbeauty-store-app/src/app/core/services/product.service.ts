@@ -93,6 +93,14 @@ export class ProductService {
     });
   }
 
+  /** Desasociación masiva: quita la categoría de los productos sin tocar las demás que tengan. */
+  unassignCategory(categoryId: number, productIds: number[]): Observable<{ updatedCount: number }> {
+    return this.http.post<{ updatedCount: number }>(`${this.apiUrl}/categories/unassign`, {
+      categoryId,
+      productIds
+    });
+  }
+
   setPrices(id: number, prices: UpsertProductPriceRequest[]): Observable<void> {
     return this.http.put<void>(`${this.apiUrl}/${id}/prices`, { prices });
   }

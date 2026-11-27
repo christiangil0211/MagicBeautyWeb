@@ -156,6 +156,66 @@ public sealed class ProductCategoryAssignmentTests
         repository.Verify(item => item.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task UnassignRemovesOnlyTheDirectLinkAndKeepsTheOtherCategories()
+    {
+        using var db = await CreateDatabaseAsync();
+        await Service(db).AssignCategoryAsync(Request(Conditioner, 304), default);
+        await Service(db).AssignCategoryAsync(Request(Shampoo, 301), default);
+        db.ChangeTracker.Clear();
+        var before = await SnapshotAsync(db);
+
+        // 302 no esta en Shampoo y 304 llega repetido: solo cuentan 301 y 304.
+        var result = await Service(db).UnassignCategoryAsync(UnassignRequest(Shampoo, 301, 302, 304, 304), default);
+        db.ChangeTracker.Clear();
+
+        Assert.Equal(2, result.UpdatedCount);
+        Assert.Empty(await ProductsInAsync(db, Shampoo));
+        Assert.Equal(new[] { 304, 305 }, await ProductsInAsync(db, Conditioner));
+        Assert.Equal(before, await SnapshotAsync(db));
+
+        // Repetir la operacion no cambia nada.
+        var again = await Service(db).UnassignCategoryAsync(UnassignRequest(Shampoo, 301, 304), default);
+        Assert.Equal(0, again.UpdatedCount);
+    }
+
+    [Fact]
+    public async Task UnassigningAParentDoesNotTouchTheLinksOfItsSubcategories()
+    {
+        using var db = await CreateDatabaseAsync();
+
+        var result = await Service(db).UnassignCategoryAsync(UnassignRequest(HairCare, 304, 305), default);
+        db.ChangeTracker.Clear();
+
+        Assert.Equal(0, result.UpdatedCount);
+        Assert.Equal(new[] { 304 }, await ProductsInAsync(db, Shampoo));
+        Assert.Equal(new[] { 305 }, await ProductsInAsync(db, Conditioner));
+    }
+
+    [Fact]
+    public async Task UnassignRejectsAnEmptySelectionOrAMissingCategory()
+    {
+        using var db = await CreateDatabaseAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Service(db).UnassignCategoryAsync(UnassignRequest(Shampoo), default));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => Service(db).UnassignCategoryAsync(UnassignRequest(999, 304), default));
+
+        Assert.Equal(2, await db.ProductCategories.CountAsync());
+    }
+
+    [Fact]
+    public async Task FilteringByAParentListsTheProductsOfEveryLevelBelowIt()
+    {
+        using var db = await CreateDatabaseAsync();
+
+        var products = await Service(db).GetAllAsync(null, HairCare, null, null, null, default);
+
+        Assert.Equal(new[] { 304, 305 }, products.Select(product => product.Id).Order().ToArray());
+    }
+
+    private static UnassignCategoryFromProductsRequest UnassignRequest(int categoryId, params int[] productIds) =>
+        new() { CategoryId = categoryId, ProductIds = [.. productIds] };
+
     private static AssignCategoryToProductsRequest Request(int categoryId, params int[] productIds) =>
         new() { CategoryId = categoryId, ProductIds = [.. productIds] };
 

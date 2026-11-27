@@ -58,18 +58,45 @@ function setup(category: Category | null = shampooCategory, initial = defaultPro
   // Imita al API: filtra por búsqueda y por "sin categoría", y al asignar agrega el
   // vínculo conservando las categorías que el producto ya tenía.
   let stored = [...initial];
+  // Por categoría el API suma las subcategorías: 22 ("Sin sulfatos") es hija de Shampoo (21).
+  const subtree: Record<number, number[]> = { 21: [21, 22] };
   const api = {
     getAll: vi.fn((filters: ProductFilters): Observable<ProductListItem[]> => {
       const term = (filters.search ?? '').toLowerCase();
+      const inCategory =
+        filters.categoryId == null ? null : (subtree[filters.categoryId] ?? [filters.categoryId]);
       return of(
         stored.filter(
           (item) =>
             (item.name.toLowerCase().includes(term) ||
               item.reference.toLowerCase().includes(term)) &&
-            (filters.hasCategories !== false || item.categoryLinks.length === 0),
+            (filters.hasCategories !== false || item.categoryLinks.length === 0) &&
+            (inCategory === null ||
+              item.categoryLinks.some((current) => inCategory.includes(current.categoryId))),
         ),
       );
     }),
+    unassignCategory: vi.fn(
+      (categoryId: number, productIds: number[]): Observable<{ updatedCount: number }> => {
+        let updatedCount = 0;
+        stored = stored.map((item) => {
+          if (
+            !productIds.includes(item.id) ||
+            !item.categoryLinks.some((current) => current.categoryId === categoryId)
+          ) {
+            return item;
+          }
+          updatedCount++;
+          return product(
+            item.id,
+            item.name,
+            item.isActive,
+            item.categoryLinks.filter((current) => current.categoryId !== categoryId),
+          );
+        });
+        return of({ updatedCount });
+      },
+    ),
     assignCategory: vi.fn(
       (categoryId: number, productIds: number[]): Observable<{ updatedCount: number }> => {
         stored = stored.map((item) =>
@@ -538,4 +565,105 @@ it('steps back to the last page with products after assigning the whole current 
   expect(component.products().length).toBe(20);
   expect(component.first()).toBe(10);
   expect(rows(fixture)[0][1]).toBe('CAP411');
+});
+
+const categoryProducts = [
+  product(301, 'Shampoo sin sal', true, [link(21, 'Shampoo'), link(30, 'Ofertas')]),
+  product(302, 'Shampoo sin sulfatos', true, [link(22, 'Sin sulfatos')]),
+  product(303, 'Shampoo descontinuado', false, [link(21, 'Shampoo')]),
+  product(304, 'Mascarilla nutritiva'),
+];
+
+it('consults the products of the category including its subcategories and toggles back', () => {
+  const { api, fixture, component } = setup(shampooCategory, categoryProducts);
+
+  button(fixture, 'Consultar productos').click();
+  fixture.detectChanges();
+
+  expect(api.getAll).toHaveBeenLastCalledWith({ search: null, hasCategories: null, categoryId: 21 });
+  expect(component.isCategoryView()).toBe(true);
+  expect(ids(component.products())).toEqual([301, 302, 303]);
+  // Solo se puede desasociar lo que tiene la categoría directamente.
+  expect(ids(component.selectable())).toEqual([301, 303]);
+  expect(component.notSelectableReason(component.products()[1])).toContain('subcategoría');
+  expect(
+    Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.toolbar__actions button'),
+      (item) => item.textContent?.trim(),
+    ),
+  ).toEqual(['Quitar selección', 'Seleccionar todo', 'Desasociar productos']);
+
+  button(fixture, 'Consultar productos').click();
+  fixture.detectChanges();
+
+  expect(component.scope()).toBe('all');
+  expect(api.getAll).toHaveBeenLastCalledWith({ search: null, hasCategories: null });
+  expect(button(fixture, 'Agregar categoría')).toBeTruthy();
+});
+
+it('consults the new category when another one is chosen in the tree', () => {
+  const { api, fixture, component } = setup(shampooCategory, categoryProducts);
+  component.toggleCategoryView();
+  component.selectAll();
+
+  fixture.componentRef.setInput('category', { ...shampooCategory, id: 22, name: 'Sin sulfatos' });
+  fixture.detectChanges();
+
+  expect(api.getAll).toHaveBeenLastCalledWith({ search: null, hasCategories: null, categoryId: 22 });
+  expect(ids(component.products())).toEqual([302]);
+  expect(component.selected()).toEqual([]);
+
+  fixture.componentRef.setInput('category', undefined);
+  fixture.detectChanges();
+
+  expect(component.scope()).toBe('all');
+  expect(ids(component.products())).toEqual([301, 302, 303, 304]);
+});
+
+it('unassigns the selected products after confirming and keeps their other categories', () => {
+  const { api, messages, confirmations, fixture, component } = setup(
+    shampooCategory,
+    categoryProducts,
+  );
+  component.toggleCategoryView();
+  component.selectAll();
+  fixture.detectChanges();
+
+  button(fixture, 'Desasociar productos').click();
+  expect(confirmations.length).toBe(1);
+  expect(confirmations[0].header).toBe('Desasociar productos');
+  expect(api.unassignCategory).not.toHaveBeenCalled();
+
+  confirmations[0].accept!();
+  fixture.detectChanges();
+
+  expect(api.unassignCategory).toHaveBeenCalledWith(21, [301, 303]);
+  expect(messages.add).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      severity: 'success',
+      detail: 'Se quitaron 2 productos de la categoría "Shampoo".',
+    }),
+  );
+  // Queda solo el que llega por la subcategoría, y 301 conserva "Ofertas".
+  expect(ids(component.products())).toEqual([302]);
+  expect(component.selected()).toEqual([]);
+  expect(component.unassigning()).toBe(false);
+});
+
+it('asks to select products before unassigning', () => {
+  const { api, messages, confirmations, component } = setup(shampooCategory, categoryProducts);
+  component.toggleCategoryView();
+
+  component.confirmUnassign();
+
+  expect(confirmations.length).toBe(0);
+  expect(api.unassignCategory).not.toHaveBeenCalled();
+  expect(messages.add).toHaveBeenCalledWith(
+    expect.objectContaining({ severity: 'warn', summary: 'Selecciona productos' }),
+  );
+});
+
+it('disables "Consultar productos" while no category is selected', () => {
+  const { fixture } = setup(null);
+  expect(button(fixture, 'Consultar productos').disabled).toBe(true);
 });
