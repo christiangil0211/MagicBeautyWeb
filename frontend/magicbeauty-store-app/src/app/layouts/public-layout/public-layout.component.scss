@@ -649,7 +649,7 @@
   top: 100%;
   left: 0;
   z-index: 45;
-  width: 268px;
+  width: 300px;
   padding: 0.4rem 0;
   background: #fff;
   border: 1px solid var(--mb-border);
@@ -688,10 +688,10 @@
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.7rem 1.05rem;
-  font-size: 0.75rem;
+  padding: 0.8rem 1.15rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.035em;
   text-transform: uppercase;
   text-decoration: none;
   color: var(--mb-raspberry);
@@ -719,7 +719,7 @@
   cursor: pointer;
 
   i {
-    font-size: 0.7rem;
+    font-size: 0.85rem;
     transition: transform 0.18s ease;
   }
 
@@ -754,6 +754,13 @@
 
 .nav-dropdown__sublist {
   padding-left: 0.75rem;
+
+  // Subcategorías: un punto más pequeñas que su categoría, para marcar el nivel.
+  .nav-dropdown__link {
+    padding-block: 0.65rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
 }
 
 /* ===== Contador del pedido ===== */

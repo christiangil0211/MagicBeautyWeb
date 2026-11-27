@@ -20,7 +20,6 @@
   /* Una columna por pestaña, siempre en una sola fila. */
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
-  margin-top: -32px;
   overflow: hidden;
   background: var(--mb-surface);
   border: 1px solid var(--mb-border-soft);
