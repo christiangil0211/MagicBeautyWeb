@@ -6,9 +6,9 @@ import { vi } from 'vitest';
 import { AuthService } from '../../core/services/auth.service';
 import { CategoryService } from '../../core/services/category.service';
 import { CategoryMenuItem } from '../../shared/models/category.model';
-import { PublicLayoutComponent } from './public-layout.component';
+import { BRANCH_HOVER_DELAY_MS, PublicLayoutComponent } from './public-layout.component';
 
-it('opens every nested level on hover and keeps ancestors open', async () => {
+async function openMegaMenu(menu: CategoryMenuItem[]) {
   TestBed.configureTestingModule({
     imports: [PublicLayoutComponent],
     providers: [provideRouter([]),
@@ -16,15 +16,7 @@ it('opens every nested level on hover and keeps ancestors open', async () => {
         canManageStore: signal(false), isAuthenticated: signal(false), session: signal(null), ensureSession: () => of(null),
         priceAudienceKey: signal('anonymous')
       } },
-      { provide: CategoryService, useValue: { getMenu: () => of([
-        { id: 1, slug: 'root', name: 'Root', children: [
-          { id: 2, slug: 'child', name: 'Child', children: [
-            { id: 3, slug: 'grandchild', name: 'Grandchild', children: [
-              { id: 4, slug: 'leaf', name: 'Leaf', children: [] }
-            ] }
-          ] }
-        ] }
-      ]) } }
+      { provide: CategoryService, useValue: { getMenu: () => of(menu) } }
     ]
   });
   const fixture = TestBed.createComponent(PublicLayoutComponent);
@@ -33,19 +25,139 @@ it('opens every nested level on hover and keeps ancestors open', async () => {
   await fixture.whenStable();
   fixture.nativeElement.querySelector('.store-menu__item').dispatchEvent(new Event('mouseenter'));
   fixture.detectChanges();
-  const child = fixture.nativeElement.querySelector('.nav-dropdown__branch') as HTMLElement;
-  child.dispatchEvent(new Event('mouseenter'));
-  fixture.detectChanges();
-  const grandchild = child.querySelector('.nav-dropdown__branch') as HTMLElement;
-  expect(grandchild).not.toBeNull();
-  grandchild.dispatchEvent(new Event('mouseenter'));
-  fixture.detectChanges();
-  expect(grandchild.textContent).toContain('Leaf');
+  vi.useFakeTimers();
+
+  /** Mueve el puntero sobre la fila de la categoría y espera la apertura. */
+  const hover = (name: string, x = 10, y = 10) => {
+    const row = Array.from(fixture.nativeElement.querySelectorAll('.nav-dropdown__row') as NodeListOf<HTMLElement>)
+      .find(item => item.querySelector('.nav-dropdown__link')?.textContent?.trim() === name);
+    if (!row) throw new Error('No se encontró la fila ' + name);
+    row.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y }));
+    return row;
+  };
+  const wait = () => {
+    vi.advanceTimersByTime(BRANCH_HOVER_DELAY_MS);
+    fixture.detectChanges();
+  };
+  return { fixture, hover, wait };
+}
+
+afterEach(() => vi.useRealTimers());
+
+it('opens every nested level on hover and keeps ancestors open', async () => {
+  const { fixture, hover, wait } = await openMegaMenu([
+    { id: 1, slug: 'root', name: 'Root', children: [
+      { id: 2, slug: 'child', name: 'Child', children: [
+        { id: 3, slug: 'grandchild', name: 'Grandchild', children: [
+          { id: 4, slug: 'leaf', name: 'Leaf', children: [] }
+        ] }
+      ] }
+    ] }
+  ]);
+
+  hover('Child', 10, 10);
+  wait();
+  hover('Grandchild', 10, 40);
+  wait();
+
+  expect(fixture.nativeElement.querySelector('.nav-dropdown').textContent).toContain('Leaf');
   expect(fixture.componentInstance.isChildExpanded(2)).toBe(true);
   expect(fixture.componentInstance.isChildExpanded(3)).toBe(true);
-  child.dispatchEvent(new Event('mouseleave'));
-  fixture.detectChanges();
-  expect(child.querySelector('.nav-dropdown__sublist')).toBeNull();
+});
+
+it('switches between sibling categories like an accordion without closing the menu', async () => {
+  const { fixture, hover, wait } = await openMegaMenu([
+    { id: 1, slug: 'maquillaje', name: 'Maquillaje', children: [
+      { id: 2, slug: 'rostro', name: 'Rostro', children: [
+        { id: 21, slug: 'correctores', name: 'Correctores', children: [] },
+        { id: 22, slug: 'polvos', name: 'Polvos', children: [] },
+        { id: 23, slug: 'bases', name: 'Bases', children: [] }
+      ] },
+      { id: 3, slug: 'ojos', name: 'Ojos', children: [
+        { id: 31, slug: 'sombras', name: 'Sombras', children: [] }
+      ] },
+      { id: 4, slug: 'labios', name: 'Labios', children: [
+        { id: 41, slug: 'labiales', name: 'Labiales', children: [] }
+      ] }
+    ] }
+  ]);
+  const component = fixture.componentInstance;
+
+  hover('Rostro', 10, 10);
+  wait();
+  expect(component.isChildExpanded(2)).toBe(true);
+
+  // Bajar por las subcategorías de Rostro no cierra nada.
+  const bases = hover('Bases', 10, 100);
+  bases.dispatchEvent(new Event('mouseleave'));
+  wait();
+  expect(component.isChildExpanded(2)).toBe(true);
+
+  hover('Ojos', 10, 140);
+  wait();
+  expect(component.isChildExpanded(2)).toBe(false);
+  expect(component.isChildExpanded(3)).toBe(true);
+  expect(component.openMenuId()).toBe(1);
+
+  // Las filas se desplazan bajo el puntero quieto: ese evento no abre otra rama.
+  hover('Labios', 10, 140);
+  wait();
+  expect(component.isChildExpanded(3)).toBe(true);
+  expect(component.isChildExpanded(4)).toBe(false);
+
+  // Cruzar una fila de paso tampoco la abre.
+  const labios = hover('Labios', 10, 150);
+  labios.dispatchEvent(new Event('mouseleave'));
+  wait();
+  expect(component.isChildExpanded(4)).toBe(false);
+  expect(component.isChildExpanded(3)).toBe(true);
+});
+
+it('keeps the menu open when it shrinks under a still pointer and closes it once the pointer moves away', async () => {
+  const { fixture, hover, wait } = await openMegaMenu([
+    { id: 1, slug: 'maquillaje', name: 'Maquillaje', children: [
+      { id: 2, slug: 'rostro', name: 'Rostro', children: [
+        { id: 21, slug: 'correctores', name: 'Correctores', children: [] },
+        { id: 22, slug: 'polvos', name: 'Polvos', children: [] }
+      ] },
+      { id: 3, slug: 'ojos', name: 'Ojos', children: [] }
+    ] }
+  ]);
+  const component = fixture.componentInstance;
+  const nav = fixture.nativeElement.querySelector('.store-menu') as HTMLElement;
+
+  hover('Rostro', 10, 10);
+  wait();
+  // Ojos no tiene subcategorías: se cierra Rostro y no se abre nada más.
+  hover('Ojos', 10, 140);
+  wait();
+  expect(component.isChildExpanded(2)).toBe(false);
+  expect(fixture.nativeElement.querySelector('.nav-dropdown__sublist')).toBeNull();
+
+  // El panel se encoge y el puntero quieto queda fuera: el menú sigue abierto.
+  nav.dispatchEvent(new MouseEvent('mouseleave', { clientX: 10, clientY: 140 }));
+  expect(component.openMenuId()).toBe(1);
+
+  // Volver hacia el menú lo mantiene abierto; alejarse lo cierra.
+  document.dispatchEvent(new MouseEvent('mousemove', { clientX: 10, clientY: 120 }));
+  expect(component.openMenuId()).toBe(1);
+  document.dispatchEvent(new MouseEvent('mousemove', { clientX: 10, clientY: 200 }));
+  expect(component.openMenuId()).toBeNull();
+});
+
+it('closes the menu right away when the pointer really leaves it', async () => {
+  const { fixture, hover, wait } = await openMegaMenu([
+    { id: 1, slug: 'maquillaje', name: 'Maquillaje', children: [
+      { id: 3, slug: 'ojos', name: 'Ojos', children: [] }
+    ] }
+  ]);
+  hover('Ojos', 10, 40);
+  wait();
+  hover('Ojos', 12, 45);
+
+  const nav = fixture.nativeElement.querySelector('.store-menu') as HTMLElement;
+  nav.dispatchEvent(new MouseEvent('mouseleave', { clientX: 400, clientY: 45 }));
+  expect(fixture.componentInstance.openMenuId()).toBeNull();
 });
 
 function createPortalLayout(

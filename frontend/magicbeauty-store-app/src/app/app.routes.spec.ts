@@ -81,8 +81,8 @@ it.each(['/admin/products', '/admin/catalogs'])('keeps %s behind the guard for a
 
 
 it.each([
-  ['/categoria/maquillaje', 'mayorista'],
-  ['/productos', 'mayorista'],
+  ['/categoria/maquillaje', 'favoritos'],
+  ['/productos', 'favoritos'],
   // Igual que el detalle del portal: sin banner.
   ['/productos/ACO011', undefined]
 ])('keeps authenticated store navigation outside the wholesale portal with the portal banner at %s', async (url, bannerTitle) => {
@@ -99,7 +99,7 @@ it.each([
   expect(element.querySelector('.store-menu__link--portal.active')).toBeNull();
   await navigateAs(harness, '/catalogo', true);
   expect(element.querySelector('app-portal-shell')).not.toBeNull();
-  expect(element.querySelector('.page-heading__title')?.textContent).toContain('mayorista');
+  expect(element.querySelector('.page-heading__title')?.textContent).toContain('favoritos');
 });
 
 

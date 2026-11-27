@@ -48,9 +48,9 @@ export const PORTAL_BANNERS = {
     text: 'Las marcas que te encantan con precios especiales para tu negocio. Arma tu pedido y envíalo por WhatsApp.'
   },
   digitalCatalog: {
-    title: 'Catálogo',
-    highlight: 'mayorista',
-    text: 'Encuentra fácilmente los productos que necesitas. Filtra, busca y consulta precios especiales para tu negocio.'
+    title: 'Busca tus',
+    highlight: 'favoritos',
+    text: 'Explora todos nuestros productos: búscalos por nombre, filtra por marca o precio y agrega a tu pedido lo que más te guste.'
   },
   traditionalCatalogs: {
     title: 'Nuestros',
