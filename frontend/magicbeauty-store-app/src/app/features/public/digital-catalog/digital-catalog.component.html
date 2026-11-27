@@ -106,7 +106,7 @@
 
     @if (priceBounds().max > 0) {
       <fieldset class="filter-group">
-        <legend>Precio detal</legend>
+        <legend>Precio</legend>
         <p-slider
           [range]="true"
           [min]="priceBounds().min"
@@ -114,7 +114,7 @@
           [step]="priceStep"
           [ngModel]="priceValues()"
           (ngModelChange)="priceValues.set($event)"
-          ariaLabel="Rango de precio detal" />
+          ariaLabel="Rango de precio" />
         <p class="price-range">{{ money(priceValues()[0]) }} – {{ money(priceValues()[1]) }}</p>
       </fieldset>
     }
@@ -148,8 +148,8 @@
           <span>Ordenar</span>
           <select class="mb-input" [value]="sort()" (change)="setSort($any($event.target).value)">
             <option value="name">Nombre A-Z</option>
-            <option value="price-asc">Precio detal: menor a mayor</option>
-            <option value="price-desc">Precio detal: mayor a menor</option>
+            <option value="price-asc">Precio: menor a mayor</option>
+            <option value="price-desc">Precio: mayor a menor</option>
           </select>
         </label>
       </div>

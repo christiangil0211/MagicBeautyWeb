@@ -8,4 +8,8 @@ public sealed class SessionDto
 
     /// <summary>Resultado de la politica de administracion para el usuario actual.</summary>
     public bool CanManageStore { get; set; }
+
+    public string? CommercialRoleCode { get; set; }
+
+    public string? PermissionsVersion { get; set; }
 }

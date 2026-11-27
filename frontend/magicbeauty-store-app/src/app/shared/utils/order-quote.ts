@@ -2,16 +2,7 @@ import { OrderDraftLine, orderLineKey } from '../models/order-draft.model';
 import { PRICE_TYPE_CODES } from '../models/price-type.model';
 import { CatalogPrice, CatalogProductListItem, ProductDetail } from '../models/product.model';
 
-export type QuoteKind = 'retail' | 'wholesale';
-
-/**
- * Cada cotización usa exclusivamente su tipo de precio, buscado por código: nunca
- * por la posición en que la API devuelve los precios.
- */
-export const QUOTE_KINDS: Record<QuoteKind, { label: string; priceTypeCode: string }> = {
-  retail: { label: 'Cotización detal', priceTypeCode: PRICE_TYPE_CODES.retail },
-  wholesale: { label: 'Cotización mayorista', priceTypeCode: PRICE_TYPE_CODES.wholesale }
-};
+export type OrderQuoteType = Pick<CatalogPrice, 'priceTypeCode' | 'priceTypeName' | 'isDefault'>;
 
 /**
  * - available: se puede cotizar (sin mirar existencias: las confirma el equipo).
@@ -35,8 +26,9 @@ export interface QuoteLine {
 }
 
 export interface OrderQuote {
-  kind: QuoteKind;
+  priceTypeCode: string | null;
   label: string;
+  priceColumnLabel: string;
   lines: QuoteLine[];
   /** Suma de las líneas disponibles que tienen precio de este tipo. */
   total: number;
@@ -46,6 +38,21 @@ export interface OrderQuote {
   missingPriceCount: number;
   /** Líneas de productos que ya no están en el catálogo: no se cotizan. */
   excludedCount: number;
+}
+
+/** Los tipos de cotización salen de las tarifas visibles de las líneas que aún se pueden pedir. */
+export function getOrderQuoteTypes(availability: ReadonlyMap<string, OrderLineAvailability>): OrderQuoteType[] {
+  const types = new Map<string, OrderQuoteType>();
+
+  for (const { status, prices } of availability.values()) {
+    if (status !== 'available') continue;
+
+    for (const { priceTypeCode, priceTypeName, isDefault } of prices) {
+      if (!types.has(priceTypeCode)) types.set(priceTypeCode, { priceTypeCode, priceTypeName, isDefault });
+    }
+  }
+
+  return [...types.values()].sort((first, second) => Number(!!second.isDefault) - Number(!!first.isDefault));
 }
 
 /**
@@ -90,9 +97,10 @@ export function resolveOrderAvailability(
 export function buildOrderQuote(
   lines: readonly OrderDraftLine[],
   availability: ReadonlyMap<string, OrderLineAvailability>,
-  kind: QuoteKind
+  type: OrderQuoteType | null
 ): OrderQuote {
-  const { label, priceTypeCode } = QUOTE_KINDS[kind];
+  const priceTypeCode = type?.priceTypeCode ?? null;
+  const name = quoteTypeName(type);
   let total = 0;
   let pricedCount = 0;
   let missingPriceCount = 0;
@@ -126,14 +134,21 @@ export function buildOrderQuote(
   });
 
   return {
-    kind,
-    label,
+    priceTypeCode,
+    label: name ? `Cotización ${name}` : 'Cotización',
+    priceColumnLabel: name ? `Precio ${name}` : 'Precio',
     lines: quoteLines,
     total: roundMoney(total),
     pricedCount,
     missingPriceCount,
     excludedCount
   };
+}
+
+function quoteTypeName(type: OrderQuoteType | null): string | null {
+  if (type?.priceTypeCode === PRICE_TYPE_CODES.retail && type.priceTypeName === 'Detal') return 'detal';
+  if (type?.priceTypeCode === PRICE_TYPE_CODES.wholesale && type.priceTypeName === 'Por mayor') return 'mayorista';
+  return type?.priceTypeName ?? null;
 }
 
 function roundMoney(amount: number): number {

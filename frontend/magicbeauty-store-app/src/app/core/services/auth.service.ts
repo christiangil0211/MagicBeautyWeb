@@ -1,7 +1,8 @@
-import { isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap, timeout } from 'rxjs';
+import { DestroyRef, Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EMPTY, Observable, catchError, exhaustMap, filter, finalize, fromEvent, interval, map, merge, of, shareReplay, switchMap, tap, throttleTime, timeout } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ANONYMOUS_SESSION, LoginResponse, Session } from '../../shared/models/session.model';
@@ -55,6 +56,29 @@ export class AuthService {
   readonly session = this.sessionState.asReadonly();
   readonly canManageStore = computed(() => this.sessionState()?.canManageStore ?? false);
   readonly isAuthenticated = computed(() => this.sessionState()?.isAuthenticated ?? false);
+  readonly priceAudienceKey = computed(() => {
+    const session = this.sessionState();
+    if (!session) return this.isBrowser ? 'checking' : 'anonymous';
+    if (!session.isAuthenticated) return 'anonymous';
+    return JSON.stringify([session.displayName, session.canManageStore, session.commercialRoleCode, session.permissionsVersion]);
+  });
+
+  constructor() {
+    const document = inject(DOCUMENT);
+    const destroyRef = inject(DestroyRef);
+    if (!this.isBrowser || !document.defaultView) return;
+
+    // Una pestaña visible confirma periódicamente los permisos y vuelve a consultarlos al regresar.
+    merge(fromEvent(document.defaultView, 'focus'), fromEvent(document, 'visibilitychange'),
+      interval(300_000).pipe(filter(() => this.isAuthenticated())))
+      .pipe(
+        filter(() => !document.hidden && this.sessionState() !== null),
+        throttleTime(1000),
+        exhaustMap(() => this.fetchSession().pipe(timeout({ first: AUTH_REQUEST_TIMEOUT_MS }), catchError(() => EMPTY))),
+        takeUntilDestroyed(destroyRef)
+      )
+      .subscribe();
+  }
 
   /** Devuelve la sesión conocida o la consulta una sola vez. */
   ensureSession(): Observable<Session> {
@@ -177,7 +201,7 @@ export class AuthService {
     }
 
     const generation = this.generation;
-    const request: Observable<Session> = this.http.get<Session>(`${this.apiUrl}/session`).pipe(
+    const request: Observable<Session> = this.http.get<Session>(`${this.apiUrl}/session`, { transferCache: false }).pipe(
       tap(session => {
         if (generation === this.generation) {
           this.sessionState.set(session);

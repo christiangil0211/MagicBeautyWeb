@@ -7,6 +7,7 @@ import { ToastModule } from 'primeng/toast';
 import { SEO_DEFAULTS, toMetaDescription } from '../../../core/seo/seo.model';
 import { SeoService } from '../../../core/seo/seo.service';
 import { buildBrandPageJsonLd, buildBreadcrumbJsonLd } from '../../../core/seo/structured-data';
+import { AuthService } from '../../../core/services/auth.service';
 import { BrandService } from '../../../core/services/brand.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { OrderDraftService } from '../../../core/services/order-draft.service';
@@ -18,6 +19,7 @@ import { PublicBrandPage } from '../../../shared/models/brand.model';
 import { CategoryMenuItem } from '../../../shared/models/category.model';
 import { ProductCardModel, toProductCard } from '../../../shared/models/product.model';
 import { NO_CATALOG_FILTER, ProductSort, collectSubtrees, filterCatalog, sortCatalog } from '../../../shared/utils/catalog-filters';
+import { priceAudienceState } from '../../../shared/utils/visible-price';
 
 /** Título pedido para la página de cada marca. */
 export function brandPageTitle(name: string): string {
@@ -43,18 +45,20 @@ export class BrandPageComponent {
   private readonly orderDraft = inject(OrderDraftService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
+  private readonly audience = inject(AuthService).priceAudienceKey;
+  private readonly refresh = signal(0);
 
   /** Parámetro de la ruta /marcas/:slug. */
   readonly slug = input<string>('');
 
-  readonly data = signal<PublicBrandPage | null>(null);
-  readonly loading = signal(true);
+  readonly data = priceAudienceState<PublicBrandPage | null>(this.audience, null);
+  readonly loading = priceAudienceState(this.audience, true);
   /** Solo un 404 del API confirma que la marca no existe (o está inactiva). */
-  readonly notFound = signal(false);
-  readonly loadFailed = signal(false);
+  readonly notFound = priceAudienceState(this.audience, false);
+  readonly loadFailed = priceAudienceState(this.audience, false);
 
   readonly categoryTree = signal<CategoryMenuItem[]>([]);
-  readonly categoryId = signal<number | null>(null);
+  readonly categoryId = linkedSignal<string, number | null>({ source: this.slug, computation: () => null });
   readonly sort = signal<ProductSort>('name');
   readonly pageSize = 20;
 
@@ -93,9 +97,14 @@ export class BrandPageComponent {
       .getCatalogTree()
       .subscribe({ next: tree => this.categoryTree.set(tree), error: () => this.categoryTree.set([]) });
 
-    effect(() => {
+    effect(onCleanup => {
       const slug = this.slug();
-      untracked(() => this.load(slug));
+      const audience = this.audience();
+      this.refresh();
+      if (audience === 'checking') return;
+
+      const subscription = untracked(() => this.load(slug, audience));
+      onCleanup(() => subscription?.unsubscribe());
     });
 
     effect(() => {
@@ -114,7 +123,7 @@ export class BrandPageComponent {
   }
 
   retry(): void {
-    this.load(this.slug());
+    this.refresh.update(current => current + 1);
   }
 
   goToPage(page: number): void {
@@ -147,20 +156,23 @@ export class BrandPageComponent {
     this.router.navigate(['/catalogo', product.reference]);
   }
 
-  private load(slug: string): void {
+  private load(slug: string, audience: string) {
     if (!slug) return;
 
     this.loading.set(true);
+    this.data.set(null);
     this.notFound.set(false);
     this.loadFailed.set(false);
-    this.categoryId.set(null);
-
-    this.brandService.getPublicBrand(slug).subscribe({
+    return this.brandService.getPublicBrand(slug).subscribe({
       next: data => {
+        if (this.audience() !== audience || this.slug() !== slug) return;
+
         this.data.set(data);
         this.loading.set(false);
       },
       error: error => {
+        if (this.audience() !== audience || this.slug() !== slug) return;
+
         this.data.set(null);
         // Un error o una demora del API nunca se presentan como "no existe".
         if (error instanceof HttpErrorResponse && error.status === 404) this.notFound.set(true);

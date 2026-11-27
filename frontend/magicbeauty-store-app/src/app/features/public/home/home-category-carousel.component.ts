@@ -1,9 +1,12 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, effect, inject, input, untracked } from '@angular/core';
 import { timeout } from 'rxjs';
 
 import { CatalogService } from '../../../core/services/catalog.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { CategoryCarousel } from '../../../shared/models/category.model';
 import { CatalogProductListItem, ProductCardModel, toProductCard } from '../../../shared/models/product.model';
+import { priceAudienceState } from '../../../shared/utils/visible-price';
 import { colombiaDate } from '../portal/home-slides';
 import { HOME_FAVORITES_MAX, categoryGroup, isHomeReady, pickHomeFavorites } from './home-favorites';
 import { HomeProductCarouselComponent } from './home-product-carousel.component';
@@ -18,7 +21,7 @@ const HOME_CATEGORY_PER_GROUP = HOME_FAVORITES_MAX / 2;
 /**
  * Carrusel de una categoría del inicio (se enciende en Admin › Categorías ›
  * "Carrusel en el inicio", en cualquier nivel). Muestra productos listos para
- * el inicio (foto, precio detal y existencias) de la categoría y sus
+ * el inicio (foto, precio visible y existencias) de la categoría y sus
  * subcategorías, con los más vendidos primero. Sin productos listos, la
  * sección no aparece; si el API falla o tarda, muestra el respaldo.
  */
@@ -39,25 +42,42 @@ const HOME_CATEGORY_PER_GROUP = HOME_FAVORITES_MAX / 2;
     }
   `
 })
-export class HomeCategoryCarouselComponent implements OnInit {
+export class HomeCategoryCarouselComponent {
   private readonly catalog = inject(CatalogService);
+  private readonly audience = inject(AuthService).priceAudienceKey;
 
   readonly category = input.required<CategoryCarousel>();
-  readonly state = signal<HomeSectionState | 'hidden'>('loading');
-  readonly cards = signal<ProductCardModel[]>([]);
+  readonly state = priceAudienceState<HomeSectionState | 'hidden'>(this.audience, 'loading');
+  readonly cards = priceAudienceState<ProductCardModel[]>(this.audience, []);
 
-  ngOnInit(): void {
-    this.catalog
-      .getProducts({ categoryId: this.category().id, homeRanking: true })
-      .pipe(timeout({ first: HOME_API_TIMEOUT_MS }))
-      .subscribe({
-        next: products => {
-          const picked = pickCategoryProducts(products, colombiaDate(new Date()));
-          this.cards.set(picked.map(toProductCard));
-          this.state.set(picked.length > 0 ? 'ready' : 'hidden');
-        },
-        error: () => this.state.set('fallback')
-      });
+  constructor() {
+    if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
+
+    effect(onCleanup => {
+      const categoryId = this.category().id;
+      const audience = this.audience();
+      if (audience === 'checking') return;
+
+      this.cards.set([]);
+      this.state.set('loading');
+
+      const subscription = untracked(() => this.catalog
+        .getProducts({ categoryId, homeRanking: true })
+        .pipe(timeout({ first: HOME_API_TIMEOUT_MS }))
+        .subscribe({
+          next: products => {
+            if (this.audience() !== audience || this.category().id !== categoryId) return;
+
+            const picked = pickCategoryProducts(products, colombiaDate(new Date()));
+            this.cards.set(picked.map(toProductCard));
+            this.state.set(picked.length > 0 ? 'ready' : 'hidden');
+          },
+          error: () => {
+            if (this.audience() === audience && this.category().id === categoryId) this.state.set('fallback');
+          }
+        }));
+      onCleanup(() => subscription.unsubscribe());
+    });
   }
 
   carouselState(): HomeSectionState {

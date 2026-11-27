@@ -1,13 +1,15 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, PLATFORM_ID, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
+import { Subscription } from 'rxjs';
 
 import { publicBrandName, toMetaDescription } from '../../../core/seo/seo.model';
 import { SeoService } from '../../../core/seo/seo.service';
 import { buildBreadcrumbJsonLd, buildProductJsonLd, isCompleteProduct } from '../../../core/seo/structured-data';
+import { AuthService } from '../../../core/services/auth.service';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { OrderDraftService } from '../../../core/services/order-draft.service';
 import { MAX_LINE_QUANTITY } from '../../../shared/models/order-draft.model';
@@ -22,6 +24,7 @@ import {
   ProductDetailVariant,
   toProductCard
 } from '../../../shared/models/product.model';
+import { priceAudienceState } from '../../../shared/utils/visible-price';
 
 /** Cuántos productos acompañan la ficha. */
 const RELATED_LIMIT = 5;
@@ -40,6 +43,9 @@ export class ProductDetailComponent {
   private readonly orderDraft = inject(OrderDraftService);
   private readonly router = inject(Router);
   private readonly seo = inject(SeoService);
+  private readonly auth = inject(AuthService);
+  private readonly audience = this.auth.priceAudienceKey;
+  private readonly refresh = signal(0);
 
   /** Referencia que llega de la ruta /catalogo/:reference (withComponentInputBinding). */
   readonly reference = input.required<string>();
@@ -57,22 +63,22 @@ export class ProductDetailComponent {
    */
   readonly quoteMode = input(false);
 
-  readonly product = signal<ProductDetail | null>(null);
-  readonly loading = signal(true);
+  readonly product = priceAudienceState<ProductDetail | null>(this.audience, null);
+  readonly loading = priceAudienceState(this.audience, true);
   /** El API respondió 404: el producto no existe o está inactivo. */
-  readonly notFound = signal(false);
+  readonly notFound = priceAudienceState(this.audience, false);
   /**
    * El API falló o no respondió (caído, lento, sin red). No se sabe si el producto
    * existe, así que la página no se marca `noindex`: se ofrece reintentar.
    */
-  readonly loadFailed = signal(false);
+  readonly loadFailed = priceAudienceState(this.audience, false);
 
   readonly selectedVariantId = signal<number | null>(null);
   readonly selectedImageId = signal<number | null>(null);
   readonly quantity = signal(1);
   readonly isFavorite = signal(false);
 
-  readonly related = signal<ProductCardModel[]>([]);
+  readonly related = priceAudienceState<ProductCardModel[]>(this.audience, []);
 
   readonly selectedVariant = computed<ProductDetailVariant | null>(() => {
     const id = this.selectedVariantId();
@@ -154,11 +160,14 @@ export class ProductDetailComponent {
   readonly breadcrumbCategory = computed(() => this.product()?.categories[0] ?? null);
 
   constructor() {
-    effect(() => {
+    effect(onCleanup => {
       const reference = this.reference();
+      const audience = this.audience();
+      this.refresh();
 
-      if (reference) {
-        this.load(reference);
+      if (reference && audience !== 'checking') {
+        const subscription = untracked(() => this.load(reference, audience));
+        onCleanup(() => subscription.unsubscribe());
       }
     });
 
@@ -206,11 +215,11 @@ export class ProductDetailComponent {
   }
 
   addToCart(): void {
-    if (!this.canAddToCart()) {
+    const product = this.product();
+    if (!product || !this.canAddToCart()) {
       return;
     }
 
-    const product = this.product()!;
     const variant = this.selectedVariant();
 
     this.orderDraft.add(
@@ -269,6 +278,8 @@ export class ProductDetailComponent {
     const category = product.categories[0];
     const image = product.images.find(item => item.productVariantId == null);
     const brand = publicBrandName(product.brandName);
+    // El SEO inicial lo genera un lector anónimo; una tarifa de sesión no es una oferta pública.
+    const seoProduct = this.isBrowser && this.auth.session()?.isAuthenticated !== false ? { ...product, prices: [] } : product;
 
     this.seo.apply({
       title: [product.name, brand].filter(part => part).join(' · ') + ' en Cali · Magic Beauty Cosmetics',
@@ -285,7 +296,7 @@ export class ProductDetailComponent {
       image: image?.url,
       imageAlt: image?.altText || product.name,
       jsonLd: {
-        product: buildProductJsonLd(product, path),
+        product: buildProductJsonLd(seoProduct, path),
         breadcrumb: buildBreadcrumbJsonLd([
           { name: 'Inicio', path: '/' },
           { name: 'Catálogo digital', path: '/catalogo' },
@@ -296,21 +307,28 @@ export class ProductDetailComponent {
     });
   }
 
-  private load(reference: string): void {
+  private load(reference: string, audience: string): Subscription {
     this.loading.set(true);
+    this.product.set(null);
+    this.related.set([]);
     this.notFound.set(false);
     this.loadFailed.set(false);
     this.selectedVariantId.set(null);
     this.selectedImageId.set(null);
     this.quantity.set(1);
 
-    this.catalogService.getProductDetail(reference).subscribe({
+    const subscription = new Subscription();
+    subscription.add(this.catalogService.getProductDetail(reference).subscribe({
       next: product => {
+        if (this.audience() !== audience || this.reference() !== reference) return;
+
         this.product.set(product);
         this.loading.set(false);
-        this.loadRelated(product);
+        subscription.add(this.loadRelated(product, reference, audience));
       },
       error: (error: unknown) => {
+        if (this.audience() !== audience || this.reference() !== reference) return;
+
         this.product.set(null);
         this.loading.set(false);
 
@@ -320,25 +338,32 @@ export class ProductDetailComponent {
           this.loadFailed.set(true);
         }
       }
-    });
+    }));
+    return subscription;
   }
 
   /** Vuelve a pedir el producto después de un error del API. */
   retry(): void {
-    this.load(this.reference());
+    this.refresh.update(current => current + 1);
   }
 
   /** Unos pocos productos de la misma categoría: la ficha no descarga el catálogo entero. */
-  private loadRelated(product: ProductDetail): void {
+  private loadRelated(product: ProductDetail, reference: string, audience: string): Subscription | undefined {
     // Solo en el navegador: el servidor no debe esperar el catálogo completo para
     // entregar la ficha, que es lo que importa para el SEO.
     if (!this.isBrowser) {
       return;
     }
 
-    this.catalogService.getRelatedProducts(product.reference, RELATED_LIMIT).subscribe({
-      next: products => this.related.set(products.slice(0, RELATED_LIMIT).map(toProductCard)),
-      error: () => this.related.set([])
+    return this.catalogService.getRelatedProducts(product.reference, RELATED_LIMIT).subscribe({
+      next: products => {
+        if (this.audience() === audience && this.reference() === reference) {
+          this.related.set(products.slice(0, RELATED_LIMIT).map(toProductCard));
+        }
+      },
+      error: () => {
+        if (this.audience() === audience && this.reference() === reference) this.related.set([]);
+      }
     });
   }
 }

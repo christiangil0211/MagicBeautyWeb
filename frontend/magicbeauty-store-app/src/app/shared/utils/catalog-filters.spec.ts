@@ -9,10 +9,10 @@ const item = (id: number, brandName: string, categoryIds: number[], retail: numb
   hasVariants: false,
   availableQuantity: 1,
   categoryIds,
-  // El mayorista va primero a propósito: el filtro usa el código RETAIL, no la posición.
-  prices: [
+  // El mayorista va primero a propósito: se debe preferir el tipo predeterminado.
+  prices: retail === null ? [] : [
     { priceTypeCode: 'WHOLESALE', priceTypeName: 'Por mayor', amount: 1 },
-    ...(retail === null ? [] : [{ priceTypeCode: 'RETAIL', priceTypeName: 'Detal', amount: retail }])
+    { priceTypeCode: 'RETAIL', priceTypeName: 'Detal', amount: retail, isDefault: true }
   ]
 });
 
@@ -47,15 +47,25 @@ describe('catalog filters', () => {
     expect(result.map(i => i.id)).toEqual([1, 3]);
   });
 
-  it('filters by the RETAIL price and leaves out products without it', () => {
+  it('filters by the default visible price and leaves out products with no price', () => {
     const result = filterCatalog(items, { categoryIds: null, brandNames: null, priceRange: { min: 10000, max: 30000 } });
 
     expect(result.map(i => i.id)).toEqual([1]);
   });
 
-  it('sorts by retail price with products without price at the end', () => {
+  it('sorts by the default visible price with products without price at the end', () => {
     expect(sortCatalog(items, 'price-asc').map(i => i.id)).toEqual([2, 1, 3, 4]);
     expect(sortCatalog(items, 'price-desc').map(i => i.id)).toEqual([3, 1, 2, 4]);
     expect(sortCatalog(items, 'name').map(i => i.id)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('uses the first visible price for a commercial audience without the default type', () => {
+    const wholesale = { ...items[0], prices: [{ priceTypeCode: 'WHOLESALE', priceTypeName: 'Por mayor', amount: 6000 }] };
+    const distributor = { ...items[1], prices: [{ priceTypeCode: 'DISTRIBUTOR', priceTypeName: 'Distribuidor', amount: 4000 }] };
+
+    expect(sortCatalog([wholesale, distributor], 'price-asc').map(i => i.id)).toEqual([2, 1]);
+    expect(filterCatalog([wholesale, distributor], {
+      categoryIds: null, brandNames: null, priceRange: { min: 3000, max: 5000 }
+    }).map(i => i.id)).toEqual([2]);
   });
 });

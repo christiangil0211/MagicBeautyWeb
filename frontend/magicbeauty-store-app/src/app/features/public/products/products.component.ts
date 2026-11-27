@@ -3,7 +3,7 @@ import { Component, DestroyRef, PLATFORM_ID, computed, inject, input, linkedSign
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
-import { catchError, combineLatest, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, combineLatest, distinctUntilChanged, filter, map, of, switchMap, tap } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -21,6 +21,7 @@ import {
   filterCatalog,
   sortCatalog
 } from '../../../shared/utils/catalog-filters';
+import { priceAudienceState } from '../../../shared/utils/visible-price';
 
 /**
  * Vitrina genérica de la tienda. Su única responsabilidad es decidir qué
@@ -46,18 +47,19 @@ export class ProductsComponent {
   private readonly messageService = inject(MessageService);
   private readonly orderDraft = inject(OrderDraftService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
 
   /** Las pistas de administración solo se muestran a quien puede administrar. */
-  readonly canManageStore = inject(AuthService).canManageStore;
+  readonly canManageStore = this.auth.canManageStore;
 
   /** Listado tal como lo entregó el API (búsqueda y categoría del servidor aplicadas). */
-  readonly items = signal<CatalogProductListItem[]>([]);
-  readonly loading = signal(true);
+  readonly items = priceAudienceState<CatalogProductListItem[]>(this.auth.priceAudienceKey, []);
+  readonly loading = priceAudienceState(this.auth.priceAudienceKey, true);
   /**
    * El API falló o no respondió. No es lo mismo que un listado vacío: una
    * categoría no debe marcarse `noindex` por "vacía" si solo falló la consulta.
    */
-  readonly loadFailed = signal(false);
+  readonly loadFailed = priceAudienceState(this.auth.priceAudienceKey, false);
   readonly favorites = signal<Set<number>>(new Set());
 
   /** Texto buscado desde la cabecera (?q=). Vacío muestra todo el catálogo. */
@@ -116,22 +118,26 @@ export class ProductsComponent {
       return;
     }
 
-    // Cada búsqueda nueva cancela la anterior para que no lleguen resultados viejos.
+    // La vigencia de los importes depende de la búsqueda, la categoría y la sesión.
     combineLatest([
       inject(ActivatedRoute).queryParamMap.pipe(
         map(params => (params.get('q') ?? '').trim()),
         distinctUntilChanged()
       ),
-      toObservable(this.categoryId)
+      toObservable(this.categoryId),
+      toObservable(this.auth.priceAudienceKey)
     ]).pipe(
         tap(([term]) => {
           this.searchTerm.set(term);
           this.loading.set(true);
           this.loadFailed.set(false);
         }),
-        switchMap(([term, categoryId]) =>
+        switchMap(([term, categoryId, audience]) => audience === 'checking' ? EMPTY :
           this.catalogService.getProducts({ search: term || null, categoryId }).pipe(
+            filter(() => this.auth.priceAudienceKey() === audience),
             catchError(() => {
+              if (this.auth.priceAudienceKey() !== audience) return EMPTY;
+
               this.loadFailed.set(true);
               return of([]);
             })

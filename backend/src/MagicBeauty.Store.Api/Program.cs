@@ -118,6 +118,8 @@ if (app.Services.GetService<LocalFileStorageOptions>() is { } localStorage)
     });
 }
 
+app.UseRouting();
+app.UsePrivateCookieResponses();
 app.UseCors(CorsPolicyName);
 
 // Fuera de Development la cookie es SameSite=None: se exige un origen de produccion al

@@ -496,7 +496,8 @@ public sealed class AccountService(
             .Select(role => role.Code)
             .ToList();
 
-        return new AuthenticatedAccount(user.Id, user.Email, roles, user.SecurityStamp);
+        var commercialRole = user.CommercialRole is { IsActive: true } active ? active.Code : null;
+        return new AuthenticatedAccount(user.Id, user.Email, roles, user.SecurityStamp, commercialRole);
     }
 
     private static UserDto MapToDto(User user)
