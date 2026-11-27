@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<ISitemapService, SitemapService>();
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<CustomerRegistrationService>();
+        services.AddScoped<CustomerAdministration>();
         services.AddScoped<ITraditionalCatalogService, TraditionalCatalogService>();
 
         return services;

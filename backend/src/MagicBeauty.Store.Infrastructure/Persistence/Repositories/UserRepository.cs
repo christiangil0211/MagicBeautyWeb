@@ -1,5 +1,6 @@
 using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Domain.Entities;
+using MagicBeauty.Store.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 
@@ -38,6 +39,7 @@ public sealed class UserRepository(MagicBeautyDbContext dbContext) : IUserReposi
             .Include(user => user.CommercialRole)
             .Include(user => user.UserRoles)
                 .ThenInclude(link => link.Role)
+            .Where(user => user.UserRoles.Any(link => link.Role!.Code == RoleCodes.Admin))
             .OrderBy(user => user.Email)
             .ToListAsync(cancellationToken);
     }

@@ -265,6 +265,9 @@ public sealed class AccountService(
         var user = await userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new KeyNotFoundException("El usuario no existe.");
 
+        if (!user.UserRoles.Any(link => link.Role?.Code == RoleCodes.Admin))
+            throw new KeyNotFoundException("El administrador no existe.");
+
         if (!user.IsActive)
         {
             throw new InvalidOperationException("El usuario esta inactivo.");

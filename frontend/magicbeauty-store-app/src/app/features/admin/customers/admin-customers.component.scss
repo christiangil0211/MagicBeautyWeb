@@ -1,0 +1,33 @@
+:host { display: block; }
+
+.customers, .edit { display: grid; gap: 1rem; }
+.views, .actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.actions--end { justify-content: flex-end; }
+
+.panel {
+  background: var(--mb-surface);
+  border: 1px solid var(--mb-border);
+  border-radius: var(--mb-radius);
+  box-shadow: var(--mb-shadow-sm);
+  padding: 1.25rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: .75rem;
+  margin-bottom: 1rem;
+
+  div { display: grid; gap: .35rem; min-width: min(100%, 9rem); }
+  input { width: 100%; }
+}
+
+.filters__search { flex: 1 1 13rem; }
+.filters label, .edit label { color: var(--mb-text-secondary); font-size: .85rem; font-weight: 600; }
+.edit p, .hint, .error, .notice { margin: 0; }
+.hint { color: var(--mb-text-secondary); margin-bottom: 1rem; }
+.notice { color: var(--mb-primary); }
+.error { color: var(--p-red-700); padding-block: .45rem; }
+.empty { text-align: center; color: var(--mb-text-secondary); }
+td small { display: block; color: var(--mb-text-secondary); margin-top: .2rem; }

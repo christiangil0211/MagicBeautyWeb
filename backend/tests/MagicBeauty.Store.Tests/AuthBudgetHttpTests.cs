@@ -98,6 +98,18 @@ public sealed class AuthBudgetHttpTests
     }
 
     [Fact]
+    public async Task ACommercialSessionCannotReviewCommercialRequests()
+    {
+        await using var api = await TestApi.StartAsync(InMemoryDatabase("CUSTOMER_WHOLESALE"), AuthRequestBudget.Default);
+        using var login = await api.Client.PostAsJsonAsync("/api/auth/login", new { email = Email, password = Password });
+        login.EnsureSuccessStatusCode();
+
+        using var decision = await api.Client.PostAsJsonAsync("/api/admin/customers/role-requests/1/decision", new { approve = true });
+
+        Assert.Equal(HttpStatusCode.Forbidden, decision.StatusCode);
+    }
+
+    [Fact]
     public async Task ForgotPasswordResponseDoesNotRevealWhetherTheAccountExists()
     {
         await using var api = await TestApi.StartAsync(InMemoryDatabase(), AuthRequestBudget.Default);
