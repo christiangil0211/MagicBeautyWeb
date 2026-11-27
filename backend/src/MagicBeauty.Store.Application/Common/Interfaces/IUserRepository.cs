@@ -27,7 +27,13 @@ public interface IUserRepository
     /// <summary>Codigos sin consumir del usuario, del mas reciente al mas antiguo.</summary>
     Task<IReadOnlyList<EmailVerificationCode>> GetPendingCodesAsync(
         int userId,
+        EmailCodePurpose purpose,
         CancellationToken cancellationToken);
+
+    Task RecordCodeFailureAsync(EmailVerificationCode code, DateTime now, int maxAttempts, CancellationToken cancellationToken);
+
+    /// <summary>Consume la prueba de correo y guarda la cuenta de forma indivisible.</summary>
+    Task<bool> TryCommitCodeAsync(EmailVerificationCode code, DateTime now, int maxAttempts, CancellationToken cancellationToken);
 
     Task AddAsync(User user, CancellationToken cancellationToken);
 

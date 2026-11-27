@@ -34,7 +34,7 @@ export interface AccountAdminLink {
   path: string;
 }
 
-type LoginStep = 'credentials' | 'code' | 'new-password' | 'register';
+type LoginStep = 'credentials' | 'code' | 'new-password' | 'register' | 'forgot-password' | 'reset-password';
 
 const EMPTY_REGISTRATION: RegisterCustomer = {
   fullName: '', email: '', phone: '', city: '', password: '',
@@ -132,6 +132,26 @@ export class AccountPanelComponent {
 
   updateRegistration<K extends keyof RegisterCustomer>(field: K, value: RegisterCustomer[K]): void {
     this.registration.update(draft => ({ ...draft, [field]: value }));
+  }
+
+  showForgotPassword(): void {
+    this.backToCredentials();
+    this.step.set('forgot-password');
+  }
+
+  submitForgotPassword(): void {
+    if (this.submitting()) return;
+    const email = this.email().trim();
+    if (!EMAIL_PATTERN.test(email)) {
+      this.error.set('Escribe un correo electrónico válido.');
+      return;
+    }
+
+    this.send(this.auth.forgotPassword(email), 'No pudimos solicitar la recuperación.', () => {
+      this.code.set('');
+      this.info.set('Si hay una cuenta activa con ese correo, recibirás un código de recuperación.');
+      this.step.set('reset-password');
+    });
   }
 
   submitRegistration(): void {
@@ -237,6 +257,21 @@ export class AccountPanelComponent {
           ? 'Las contraseñas no coinciden.'
           : 'La contraseña aún no cumple todos los requisitos.'
       );
+      return;
+    }
+
+    if (this.step() === 'reset-password') {
+      const code = this.code().trim();
+      if (!/^\d{6}$/.test(code)) {
+        this.error.set('El código tiene 6 dígitos.');
+        return;
+      }
+
+      this.send(this.auth.resetPassword(this.email().trim(), code, this.newPassword()),
+        'No pudimos guardar tu contraseña.', () => {
+          this.backToCredentials();
+          this.info.set('Cambiaste tu contraseña. Ingresa con la nueva.');
+        });
       return;
     }
 

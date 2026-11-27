@@ -138,6 +138,16 @@ export class AuthService {
       .pipe(timeout({ first: AUTH_REQUEST_TIMEOUT_MS }));
   }
 
+  forgotPassword(email: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/forgot-password`, { email })
+      .pipe(timeout({ first: AUTH_REQUEST_TIMEOUT_MS }));
+  }
+
+  resetPassword(email: string, code: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/reset-password`, { email, code, newPassword })
+      .pipe(timeout({ first: AUTH_REQUEST_TIMEOUT_MS }));
+  }
+
   /** Confirma el correo con el código recibido y abre la sesión. */
   verifyEmail(email: string, code: string): Observable<SessionCheck> {
     const remaining = this.startBudget();

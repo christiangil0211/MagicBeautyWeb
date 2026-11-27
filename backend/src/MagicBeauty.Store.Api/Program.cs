@@ -35,8 +35,8 @@ builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.Is
 builder.Services.AddAlegraIntegration(builder.Configuration);
 
 builder.Services.AddStoreAuthentication(builder.Environment, builder.Configuration);
-builder.Services.AddSingleton<RegistrationCodeQueue>();
-builder.Services.AddHostedService<RegistrationCodeWorker>();
+builder.Services.AddSingleton<AccountCodeQueue>();
+builder.Services.AddHostedService<AccountCodeWorker>();
 
 // Login, verificacion y cambio de contrasena terminan en 13 s como maximo.
 builder.Services.AddAuthRequestBudget();

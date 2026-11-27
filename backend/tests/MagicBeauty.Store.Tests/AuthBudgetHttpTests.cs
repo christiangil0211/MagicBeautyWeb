@@ -98,6 +98,84 @@ public sealed class AuthBudgetHttpTests
     }
 
     [Fact]
+    public async Task ForgotPasswordResponseDoesNotRevealWhetherTheAccountExists()
+    {
+        await using var api = await TestApi.StartAsync(InMemoryDatabase(), AuthRequestBudget.Default);
+        using var known = await api.Client.PostAsJsonAsync("/api/auth/forgot-password", new { email = Email });
+        using var absent = await api.Client.PostAsJsonAsync("/api/auth/forgot-password", new { email = "absent@example.invalid" });
+
+        Assert.Equal(HttpStatusCode.Accepted, known.StatusCode);
+        Assert.Equal(known.StatusCode, absent.StatusCode);
+        Assert.Equal(await known.Content.ReadAsStringAsync(), await absent.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task PasswordResetUsesItsOwnCodeAndOnlyOneConcurrentUseSucceeds()
+    {
+        await using var db = await RelationalAccountsAsync();
+        var hasher = new IdentityPasswordHasher();
+        var user = new User
+        {
+            Email = Email, PasswordHash = hasher.Hash(Password),
+            FailedLoginCount = 4, LockoutEndsAt = DateTime.UtcNow.AddMinutes(15)
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        var oldStamp = user.SecurityStamp;
+        const string verificationCode = "000000";
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes($"{user.Id}:{verificationCode}"));
+        db.EmailVerificationCodes.Add(new EmailVerificationCode
+        {
+            UserId = user.Id, CodeHash = Convert.ToHexString(hash),
+            CreatedAt = DateTime.UtcNow, ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+        });
+        await db.SaveChangesAsync();
+        var sender = new Mock<IEmailSender>();
+        string? body = null;
+        sender.Setup(service => service.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), default))
+            .Callback<string, string, string, CancellationToken>((_, _, message, _) => body = message);
+        var accounts = new AccountService(new UserRepository(db), hasher, sender.Object);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => accounts.VerifyEmailAsync(Email, verificationCode, default));
+        await accounts.SendPasswordResetCodeAsync(Email, default);
+        await accounts.SendPasswordResetCodeAsync(Email, default);
+        sender.Verify(service => service.SendAsync(Email, It.IsAny<string>(), It.IsAny<string>(), default), Times.Once);
+        const string newPassword = "Mi-Nueva-Clave-123";
+        var code = System.Text.RegularExpressions.Regex.Match(body!, @"\b[0-9]{6}\b").Value;
+        var incorrectCode = code == verificationCode ? "999999" : verificationCode;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => accounts.ResetPasswordAsync(Email, incorrectCode, newPassword, default));
+
+        // Dos ámbitos distintos compiten por el mismo UPDATE condicional.
+        var connection = db.Database.GetConnectionString()!;
+        var results = await Task.WhenAll(Task.Run(ResetAsync), Task.Run(ResetAsync));
+        Assert.Single(results, result => result);
+        db.ChangeTracker.Clear();
+        var reset = await db.Users.SingleAsync();
+        Assert.True(hasher.Verify(reset.PasswordHash, newPassword));
+        Assert.NotNull(reset.EmailConfirmedAt);
+        Assert.NotEqual(oldStamp, reset.SecurityStamp);
+        Assert.Null(reset.LockoutEndsAt);
+        Assert.Equal(0, reset.FailedLoginCount);
+        Assert.True(await db.EmailVerificationCodes.AllAsync(candidate => candidate.ConsumedAt != null));
+        Assert.Equal(1, (await db.EmailVerificationCodes.SingleAsync(candidate => candidate.Purpose == EmailCodePurpose.PasswordReset)).Attempts);
+
+        async Task<bool> ResetAsync()
+        {
+            await using var scope = new MagicBeautyDbContext(new DbContextOptionsBuilder<MagicBeautyDbContext>()
+                .UseSqlite(connection).Options);
+            try
+            {
+                await new AccountService(new UserRepository(scope), hasher, sender.Object)
+                    .ResetPasswordAsync(Email, code, newPassword, default);
+                return true;
+            }
+            catch (InvalidOperationException exception) when (exception.Message.Contains("código de recuperación"))
+            {
+                return false;
+            }
+        }
+    }
+
+    [Fact]
     public async Task RegistrationDoesNotIdentifyDuplicateAccounts()
     {
         var database = InMemoryDatabase();
@@ -134,11 +212,7 @@ public sealed class AuthBudgetHttpTests
     [Fact]
     public async Task ConfirmationLinksOnlyTheConsentedMatchingCustomerWithoutGrantingRequestedRole()
     {
-        var database = InMemoryDatabase();
-        await using var db = database();
-        db.Roles.AddRange(
-            new Role { Id = 2, Code = "CUSTOMER_RETAIL", Kind = RoleKind.Commercial },
-            new Role { Id = 3, Code = "CUSTOMER_WHOLESALE", Kind = RoleKind.Commercial, IsSelfRequestable = true });
+        await using var db = await RelationalAccountsAsync();
         var customer = new Customer { Source = "test", ExternalId = "one", DocumentNumber = "001234", Name = "Cliente" };
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
@@ -354,6 +428,19 @@ public sealed class AuthBudgetHttpTests
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
     }
 
+    private static async Task<MagicBeautyDbContext> RelationalAccountsAsync()
+    {
+        var options = new DbContextOptionsBuilder<MagicBeautyDbContext>()
+            .UseSqlite($"Data Source={Guid.NewGuid():N};Mode=Memory;Cache=Shared").Options;
+        var db = new MagicBeautyDbContext(options);
+        await db.Database.OpenConnectionAsync();
+        // SQLite ejecuta las transacciones y los UPDATE condicionales. SQL Server genera rowversion por sí mismo.
+        var schema = db.Database.GenerateCreateScript().Replace(
+            "\"RowVersion\" BLOB NOT NULL", "\"RowVersion\" BLOB NOT NULL DEFAULT X'00'", StringComparison.Ordinal);
+        await db.Database.ExecuteSqlRawAsync(schema);
+        return db;
+    }
+
     private sealed class TestApi : IAsyncDisposable
     {
         private readonly WebApplication app;
@@ -395,7 +482,7 @@ public sealed class AuthBudgetHttpTests
             builder.Services.AddScoped(_ => database());
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddSingleton(TimeProvider.System);
-            builder.Services.AddSingleton<RegistrationCodeQueue>();
+            builder.Services.AddSingleton<AccountCodeQueue>();
             builder.Services.AddScoped<CustomerRegistrationService>();
             builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
             builder.Services.AddSingleton(Mock.Of<IEmailSender>());

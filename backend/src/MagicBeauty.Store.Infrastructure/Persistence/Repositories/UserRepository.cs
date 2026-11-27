@@ -88,14 +88,60 @@ public sealed class UserRepository(MagicBeautyDbContext dbContext) : IUserReposi
 
     public async Task<IReadOnlyList<EmailVerificationCode>> GetPendingCodesAsync(
         int userId,
+        EmailCodePurpose purpose,
         CancellationToken cancellationToken)
     {
         return await dbContext.EmailVerificationCodes
-            .Where(code => code.UserId == userId && code.Purpose == EmailCodePurpose.EmailConfirmation && code.ConsumedAt == null)
+            .Where(code => code.UserId == userId && code.Purpose == purpose && code.ConsumedAt == null)
             .OrderByDescending(code => code.CreatedAt)
             .ThenByDescending(code => code.Id)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task RecordCodeFailureAsync(
+        EmailVerificationCode code, DateTime now, int maxAttempts, CancellationToken cancellationToken)
+    {
+        await CurrentCode(code, now, maxAttempts)
+            .ExecuteUpdateAsync(update => update.SetProperty(candidate => candidate.Attempts, candidate => candidate.Attempts + 1),
+                cancellationToken);
+    }
+
+    public async Task<bool> TryCommitCodeAsync(
+        EmailVerificationCode code, DateTime now, int maxAttempts, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async token =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(token);
+                var consumed = await CurrentCode(code, now, maxAttempts)
+                    .ExecuteUpdateAsync(update => update.SetProperty(candidate => candidate.ConsumedAt, now), token);
+                if (consumed != 1) return false;
+
+                // Cambiar credenciales también invalida retos que se emitieron antes del cambio.
+                await dbContext.EmailVerificationCodes.Where(candidate => candidate.UserId == code.UserId &&
+                        candidate.ConsumedAt == null &&
+                        (candidate.Purpose == code.Purpose || code.Purpose == EmailCodePurpose.PasswordReset))
+                    .ExecuteUpdateAsync(update => update.SetProperty(candidate => candidate.ConsumedAt, now), token);
+                await dbContext.SaveChangesAsync(false, token);
+                await transaction.CommitAsync(token);
+                dbContext.ChangeTracker.AcceptAllChanges();
+                return true;
+            }, cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
+    }
+
+    private IQueryable<EmailVerificationCode> CurrentCode(EmailVerificationCode code, DateTime now, int maxAttempts) =>
+        dbContext.EmailVerificationCodes.Where(candidate =>
+            candidate.Id == code.Id && candidate.UserId == code.UserId && candidate.Purpose == code.Purpose &&
+            candidate.ConsumedAt == null && candidate.ExpiresAt > now && candidate.Attempts < maxAttempts &&
+            !dbContext.EmailVerificationCodes.Any(newer => newer.UserId == candidate.UserId &&
+                newer.Purpose == candidate.Purpose &&
+                (newer.CreatedAt > candidate.CreatedAt || newer.CreatedAt == candidate.CreatedAt && newer.Id > candidate.Id)));
 
     public async Task AddAsync(User user, CancellationToken cancellationToken)
     {

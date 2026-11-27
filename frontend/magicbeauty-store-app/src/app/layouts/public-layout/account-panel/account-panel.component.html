@@ -15,6 +15,8 @@
           Crea tu contraseña
         } @else if (step() === 'register') {
           Crear cuenta
+        } @else if (step() === 'forgot-password' || step() === 'reset-password') {
+          Recuperar contraseña
         } @else {
           Iniciar sesión
         }
@@ -92,6 +94,9 @@
       </div>
 
       <form class="account-panel__form" novalidate (ngSubmit)="submitCredentials()">
+        @if (info(); as message) {
+          <p class="account-panel__note" role="status">{{ message }}</p>
+        }
         <label for="account-email">Correo electrónico</label>
         <div class="account-panel__field">
           <i class="pi pi-envelope" aria-hidden="true"></i>
@@ -140,6 +145,26 @@
       <div class="account-panel__secondary">
         <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="showRegistration()">
           Crear cuenta
+        </button>
+        <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="showForgotPassword()">
+          ¿Olvidaste tu contraseña?
+        </button>
+      </div>
+    </div>
+  } @else if (step() === 'forgot-password') {
+    <div class="account-panel__body">
+      <form class="account-panel__form" novalidate (ngSubmit)="submitForgotPassword()">
+        <label for="recovery-email">Correo electrónico</label>
+        <input id="recovery-email" name="email" type="email" autocomplete="username" maxlength="254"
+          [ngModel]="email()" (ngModelChange)="email.set($event)" />
+        @if (error(); as message) {
+          <p class="account-panel__error" role="alert">{{ message }}</p>
+        }
+        <button type="submit" class="account-panel__button" [disabled]="submitting()">Solicitar código</button>
+      </form>
+      <div class="account-panel__secondary">
+        <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="backToCredentials()">
+          Volver a iniciar sesión
         </button>
       </div>
     </div>
@@ -197,16 +222,22 @@
         </button>
       </div>
     </div>
-  } @else if (step() === 'new-password') {
+  } @else if (step() === 'new-password' || step() === 'reset-password') {
     <div class="account-panel__body">
       <p class="account-panel__note">
         <i class="pi pi-key"></i>
-        Ingresaste con una contraseña temporal. Elige la tuya para continuar.
+        {{ step() === 'reset-password' ? info() : 'Ingresaste con una contraseña temporal. Elige la tuya para continuar.' }}
       </p>
 
       <form class="account-panel__form" novalidate (ngSubmit)="submitNewPassword()">
         <!-- Ayuda a los gestores de contraseñas a guardar la nueva para este correo. -->
         <input type="email" name="username" autocomplete="username" [value]="email()" hidden />
+
+        @if (step() === 'reset-password') {
+          <label for="recovery-code">Código de recuperación</label>
+          <input id="recovery-code" name="code" class="account-panel__code" type="text" inputmode="numeric"
+            autocomplete="one-time-code" maxlength="6" [ngModel]="code()" (ngModelChange)="code.set($event)" />
+        }
 
         <label for="account-new-password">Nueva contraseña</label>
         <div class="account-panel__password">
@@ -248,11 +279,16 @@
         }
 
         <button type="submit" class="account-panel__button" [disabled]="submitting() || !newPasswordReady()">
-          {{ submitting() ? 'Guardando…' : 'Guardar e ingresar' }}
+          {{ submitting() ? 'Guardando…' : step() === 'reset-password' ? 'Guardar contraseña' : 'Guardar e ingresar' }}
         </button>
       </form>
 
       <div class="account-panel__secondary">
+        @if (step() === 'reset-password') {
+          <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="showForgotPassword()">
+            Solicitar otro código
+          </button>
+        }
         <button type="button" class="account-panel__link" (click)="backToCredentials()">
           Usar otra cuenta
         </button>

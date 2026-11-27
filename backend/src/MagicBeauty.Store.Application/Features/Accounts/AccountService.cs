@@ -16,6 +16,8 @@ public sealed class AccountService(
 {
     private const int MaxFailedLogins = 5;
     private const int MaxCodeAttempts = 5;
+    private const string InvalidConfirmationCode = "El codigo no es valido o ya vencio. Inicia sesion de nuevo para recibir otro.";
+    private const string InvalidResetCode = "El código de recuperación no es válido o ya venció.";
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(10);
 
@@ -58,7 +60,7 @@ public sealed class AccountService(
         // correo existe y es de quien inicia sesion.
         if (user.EmailConfirmedAt is null)
         {
-            await IssueVerificationCodeAsync(user, now, cancellationToken);
+            await IssueCodeAsync(user, EmailCodePurpose.EmailConfirmation, now, cancellationToken);
             user.UpdatedAt = now;
             await userRepository.SaveChangesAsync(cancellationToken);
 
@@ -77,60 +79,71 @@ public sealed class AccountService(
         string code,
         CancellationToken cancellationToken)
     {
-        const string invalidMessage = "El codigo no es valido o ya vencio. Inicia sesion de nuevo para recibir otro.";
-
-        var normalized = EmailRules.Normalize(email);
-        var user = normalized.Length == 0
-            ? null
-            : await userRepository.GetByEmailAsync(normalized, cancellationToken);
-
-        if (user is null || !user.IsActive)
-        {
-            throw new InvalidOperationException(invalidMessage);
-        }
-
         var now = DateTime.UtcNow;
-        var pending = await userRepository.GetPendingCodesAsync(user.Id, cancellationToken);
-        var current = pending.FirstOrDefault();
-
-        if (current is null || current.ExpiresAt <= now || current.Attempts >= MaxCodeAttempts)
-        {
-            throw new InvalidOperationException(invalidMessage);
-        }
-
-        var provided = (code ?? string.Empty).Trim();
-
-        if (!CryptographicOperations.FixedTimeEquals(
-                Convert.FromHexString(current.CodeHash),
-                Convert.FromHexString(HashCode(user.Id, provided))))
-        {
-            current.Attempts++;
-            await userRepository.SaveChangesAsync(cancellationToken);
-
-            var remaining = MaxCodeAttempts - current.Attempts;
-
-            throw new InvalidOperationException(remaining > 0
-                ? "Codigo incorrecto. Te quedan " + remaining + " intento(s)."
-                : invalidMessage);
-        }
-
-        foreach (var item in pending)
-        {
-            item.ConsumedAt = now;
-        }
-
-        if (user.EmailConfirmedAt is null && user.DocumentNumber is { } document)
-        {
-            user.CustomerId = await userRepository.FindConsentedCustomerIdAsync(user.Id, document, cancellationToken);
-        }
-
-        user.EmailConfirmedAt ??= now;
+        var (user, current) = await ValidateCodeAsync(email, code, EmailCodePurpose.EmailConfirmation, now, cancellationToken);
+        await ConfirmAccountAsync(user, now, cancellationToken);
         user.LastLoginAt = now;
         user.UpdatedAt = now;
 
-        await userRepository.SaveChangesAsync(cancellationToken);
+        if (!await userRepository.TryCommitCodeAsync(current, DateTime.UtcNow, MaxCodeAttempts, cancellationToken))
+            throw new InvalidOperationException(InvalidConfirmationCode);
 
         return ToAccount(user);
+    }
+
+    public async Task ResetPasswordAsync(string email, string code, string newPassword, CancellationToken cancellationToken)
+    {
+        PasswordPolicy.EnsureValid(newPassword);
+        var now = DateTime.UtcNow;
+        var (user, current) = await ValidateCodeAsync(email, code, EmailCodePurpose.PasswordReset, now, cancellationToken);
+        await ConfirmAccountAsync(user, now, cancellationToken);
+        user.PasswordHash = passwordHasher.Hash(newPassword);
+        user.MustChangePassword = false;
+        user.TemporaryPasswordExpiresAt = null;
+        user.FailedLoginCount = 0;
+        user.LockoutEndsAt = null;
+        user.UpdatedAt = now;
+        user.RotateSecurityStamp();
+
+        if (!await userRepository.TryCommitCodeAsync(current, DateTime.UtcNow, MaxCodeAttempts, cancellationToken))
+            throw new InvalidOperationException(InvalidResetCode);
+    }
+
+    private async Task<(User User, EmailVerificationCode Code)> ValidateCodeAsync(
+        string email, string code, EmailCodePurpose purpose, DateTime now, CancellationToken cancellationToken)
+    {
+        var normalized = EmailRules.Normalize(email);
+        var invalid = purpose == EmailCodePurpose.PasswordReset ? InvalidResetCode : InvalidConfirmationCode;
+        var user = normalized.Length == 0 ? null : await userRepository.GetByEmailAsync(normalized, cancellationToken);
+        if (user is not { IsActive: true } ||
+            purpose == EmailCodePurpose.EmailConfirmation &&
+            (user.LockoutEndsAt > now || user.MustChangePassword || user.EmailConfirmedAt is not null))
+            throw new InvalidOperationException(invalid);
+
+        var pending = await userRepository.GetPendingCodesAsync(user.Id, purpose, cancellationToken);
+        var current = pending.FirstOrDefault();
+        if (current is null || current.ExpiresAt <= now || current.Attempts >= MaxCodeAttempts)
+            throw new InvalidOperationException(invalid);
+
+        if (!CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(current.CodeHash),
+                Convert.FromHexString(HashCode(user.Id, purpose, (code ?? string.Empty).Trim()))))
+        {
+            await userRepository.RecordCodeFailureAsync(current, now, MaxCodeAttempts, cancellationToken);
+            throw new InvalidOperationException(invalid);
+        }
+
+        return (user, current);
+    }
+
+    private async Task ConfirmAccountAsync(User user, DateTime now, CancellationToken cancellationToken)
+    {
+        if (user.EmailConfirmedAt is not null) return;
+
+        if (user.DocumentNumber is { } document)
+            user.CustomerId = await userRepository.FindConsentedCustomerIdAsync(user.Id, document, cancellationToken);
+
+        user.EmailConfirmedAt = now;
     }
 
     public async Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken cancellationToken)
@@ -146,7 +159,16 @@ public sealed class AccountService(
         if (user is not { IsActive: true, MustChangePassword: false, EmailConfirmedAt: null, CommercialRoleId: not null })
             return;
 
-        await IssueVerificationCodeAsync(user, DateTime.UtcNow, cancellationToken);
+        await IssueCodeAsync(user, EmailCodePurpose.EmailConfirmation, DateTime.UtcNow, cancellationToken);
+        await userRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task SendPasswordResetCodeAsync(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        if (user is not { IsActive: true }) return;
+
+        await IssueCodeAsync(user, EmailCodePurpose.PasswordReset, DateTime.UtcNow, cancellationToken);
         await userRepository.SaveChangesAsync(cancellationToken);
     }
 
@@ -416,14 +438,14 @@ public sealed class AccountService(
         return user;
     }
 
-    private async Task IssueVerificationCodeAsync(User user, DateTime now, CancellationToken cancellationToken)
+    private async Task IssueCodeAsync(User user, EmailCodePurpose purpose, DateTime now, CancellationToken cancellationToken)
     {
-        var pending = await userRepository.GetPendingCodesAsync(user.Id, cancellationToken);
+        var pending = await userRepository.GetPendingCodesAsync(user.Id, purpose, cancellationToken);
         var latest = pending.FirstOrDefault();
 
         if (latest is not null &&
             latest.ExpiresAt > now &&
-            latest.Attempts < MaxCodeAttempts &&
+            (purpose == EmailCodePurpose.PasswordReset || latest.Attempts < MaxCodeAttempts) &&
             now - latest.CreatedAt < ResendCooldown)
         {
             return;
@@ -441,23 +463,27 @@ public sealed class AccountService(
             new EmailVerificationCode
             {
                 UserId = user.Id,
-                CodeHash = HashCode(user.Id, code),
+                Purpose = purpose,
+                CodeHash = HashCode(user.Id, purpose, code),
                 ExpiresAt = now.Add(CodeLifetime),
                 CreatedAt = now
             },
             cancellationToken);
 
+        var reset = purpose == EmailCodePurpose.PasswordReset;
         await emailSender.SendAsync(
             user.Email,
-            "Tu codigo de verificacion - Magic Beauty",
-            "Tu codigo para confirmar el correo en Magic Beauty es: " + code + "\n\n" +
+            reset ? "Recupera tu contraseña - Magic Beauty" : "Tu codigo de verificacion - Magic Beauty",
+            (reset ? "Tu código para recuperar la contraseña es: " : "Tu codigo para confirmar el correo en Magic Beauty es: ") + code + "\n\n" +
             "Vence en " + (int)CodeLifetime.TotalMinutes + " minutos. Si no fuiste tu, ignora este mensaje.",
             cancellationToken);
     }
 
-    private static string HashCode(int userId, string code)
+    private static string HashCode(int userId, EmailCodePurpose purpose, string code)
     {
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(userId + ":" + code)));
+        // Conserva los códigos de confirmación emitidos antes de agregar Purpose.
+        var prefix = purpose == EmailCodePurpose.PasswordReset ? "reset:" : string.Empty;
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(prefix + userId + ":" + code)));
     }
 
     private static AuthenticatedAccount ToAccount(User user)
