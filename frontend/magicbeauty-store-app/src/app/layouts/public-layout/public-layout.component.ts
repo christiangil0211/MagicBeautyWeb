@@ -25,6 +25,7 @@ const ADMIN_LINKS: AccountAdminLink[] = [
   { label: 'Clientes', icon: 'pi pi-id-card', path: '/admin/customers' },
   { label: 'Marcas', icon: 'pi pi-tag', path: '/admin/brands' },
   { label: 'Catálogos tradicionales', icon: 'pi pi-book', path: '/admin/catalogs' },
+  { label: 'Banners del inicio', icon: 'pi pi-images', path: '/admin/home-banners' },
   { label: 'Administradores', icon: 'pi pi-users', path: '/admin/users' }
 ];
 
