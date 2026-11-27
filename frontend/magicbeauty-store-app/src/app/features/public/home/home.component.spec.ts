@@ -37,7 +37,7 @@ async function render(
     imports: [HomeComponent],
     providers: [
       provideRouter([]),
-      { provide: AuthService, useValue: { canManageStore: signal(options.admin ?? false) } },
+      { provide: AuthService, useValue: { canManageStore: signal(options.admin ?? false), priceAudienceKey: signal('anonymous') } },
       { provide: CategoryService, useValue: { getHomeTiles: () => options.tiles$ ?? of(options.tiles ?? []), getHomeCarousels: () => of([]) } },
       { provide: CatalogService, useValue: { getBestSellers: () => of([]), getProducts: () => options.products$ ?? of(options.products ?? []) } },
       { provide: BrandService, useValue: { getPublicBrands: () => of([]) } }
@@ -124,8 +124,9 @@ it('never shows out-of-stock or photo-less products among the favorites, and all
   const { root } = await render({ products });
   const cards = Array.from(root.querySelectorAll('app-home-favorites app-product-card'), card => text(card));
 
-  expect(cards.length).toBe(2);
+  expect(cards.length).toBe(3);
   expect(cards.join(' ')).toContain('Producto 1');
+  expect(cards.join(' ')).toContain('Producto 4');
   expect(cards.join(' ')).toContain('Producto 5');
 });
 

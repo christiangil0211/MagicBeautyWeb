@@ -17,7 +17,8 @@ public sealed class EmailVerificationCodeConfiguration : IEntityTypeConfiguratio
             .HasMaxLength(64)
             .IsRequired();
 
-        builder.HasIndex(code => new { code.UserId, code.ConsumedAt });
+        builder.Property(code => code.Purpose).HasDefaultValue(EmailCodePurpose.EmailConfirmation);
+        builder.HasIndex(code => new { code.UserId, code.Purpose, code.ConsumedAt });
 
         builder.HasOne(code => code.User)
             .WithMany(user => user.VerificationCodes)

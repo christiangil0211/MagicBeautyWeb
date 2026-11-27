@@ -100,6 +100,12 @@ export const routes: Routes = [
         title: 'Administradores · Magic Beauty'
       },
       {
+        path: 'customers',
+        loadComponent: () =>
+          import('./features/admin/customers/admin-customers.component').then(m => m.AdminCustomersComponent),
+        title: 'Clientes · Magic Beauty'
+      },
+      {
         path: '',
         redirectTo: 'categories',
         pathMatch: 'full'
@@ -116,6 +122,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./layouts/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
     children: [
+      {
+        path: 'politica-de-datos',
+        loadComponent: () =>
+          import('./features/public/privacy-policy/privacy-policy.component').then(m => m.PrivacyPolicyComponent),
+        title: 'Política de datos · Magic Beauty Cosmetics',
+        data: NO_INDEX
+      },
       {
         path: 'marcas',
         loadComponent: () => import('./features/public/brands/brands.component').then(m => m.BrandsComponent),

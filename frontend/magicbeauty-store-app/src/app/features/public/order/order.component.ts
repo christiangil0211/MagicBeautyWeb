@@ -4,7 +4,7 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { catchError, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, map, of, switchMap, timer } from 'rxjs';
 
 import { whatsappUrl } from '../../../core/constants/store-contact';
 import { AuthService } from '../../../core/services/auth.service';
@@ -17,19 +17,22 @@ import { formatCop } from '../../../shared/utils/currency';
 import {
   OrderLineAvailability,
   OrderQuote,
-  QUOTE_KINDS,
-  QuoteKind,
   QuoteLine,
-  buildOrderQuote
+  buildOrderQuote,
+  getOrderQuoteTypes
 } from '../../../shared/utils/order-quote';
 import { buildOrderWhatsappMessage } from '../../../shared/utils/order-whatsapp-message';
 
 type PricingState = 'loading' | 'ready' | 'error';
 
+interface PricingResult {
+  key: string;
+  availability: ReadonlyMap<string, OrderLineAvailability> | null;
+}
+
 /**
- * Pestaña "Mi pedido". Un solo pedido con dos cotizaciones (detal y mayorista)
- * calculadas con los precios vigentes de la API: nunca con precios guardados en
- * el navegador. El total es estimado y se confirma por WhatsApp.
+ * Calcula las cotizaciones del pedido con las tarifas visibles de la sesión.
+ * El borrador conserva los productos y los importes se confirman por WhatsApp.
  */
 @Component({
   selector: 'app-order',
@@ -42,34 +45,48 @@ export class OrderComponent {
   private readonly orderDraft = inject(OrderDraftService);
   private readonly availabilityService = inject(OrderAvailabilityService);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly auth = inject(AuthService);
 
   readonly lines = this.orderDraft.lines;
   readonly itemCount = this.orderDraft.itemCount;
   readonly isEmpty = this.orderDraft.isEmpty;
 
-  readonly quoteKinds = (Object.keys(QUOTE_KINDS) as QuoteKind[]).map(kind => ({ kind, ...QUOTE_KINDS[kind] }));
-  readonly quoteKind = signal<QuoteKind>('retail');
-
-  readonly pricingState = signal<PricingState>('loading');
-  private readonly availability = signal<Map<string, OrderLineAvailability> | null>(null);
+  private readonly selectedPriceTypeCode = signal<string | null>(null);
+  private readonly result = signal<PricingResult | null>(null);
   private readonly reload = signal(0);
+  private readonly productKeys = computed(() => this.lines().map(orderLineKey).sort().join(','));
+  private readonly requestKey = computed(() => {
+    const products = this.productKeys();
+    if (!products || this.auth.session() === null) return null;
 
-  readonly quotes = computed<Record<QuoteKind, OrderQuote> | null>(() => {
-    const availability = this.availability();
-
-    if (!availability) {
-      return null;
-    }
-
-    return {
-      retail: buildOrderQuote(this.lines(), availability, 'retail'),
-      wholesale: buildOrderQuote(this.lines(), availability, 'wholesale')
-    };
+    return JSON.stringify([this.auth.priceAudienceKey(), products, this.reload()]);
   });
 
-  readonly quote = computed(() => this.quotes()?.[this.quoteKind()] ?? null);
+  // La clave se comprueba al leer para ocultar una cotización anterior antes de que se cancele su petición.
+  private readonly currentResult = computed(() => {
+    const result = this.result();
+    return result?.key === this.requestKey() ? result : null;
+  });
 
-  readonly priceColumnLabel = computed(() => (this.quoteKind() === 'retail' ? 'Precio detal' : 'Precio mayorista'));
+  readonly pricingState = computed<PricingState>(() => {
+    const result = this.currentResult();
+    return result === null ? 'loading' : result.availability ? 'ready' : 'error';
+  });
+
+  readonly quotes = computed<OrderQuote[]>(() => {
+    const availability = this.currentResult()?.availability;
+    return availability ? getOrderQuoteTypes(availability).map(type => buildOrderQuote(this.lines(), availability, type)) : [];
+  });
+
+  readonly quote = computed(() => {
+    const availability = this.currentResult()?.availability;
+    if (!availability) return null;
+
+    const quotes = this.quotes();
+    return quotes.find(quote => quote.priceTypeCode === this.selectedPriceTypeCode())
+      ?? quotes[0]
+      ?? buildOrderQuote(this.lines(), availability, null);
+  });
 
   /** Hay algo que cotizar y los precios son los vigentes. */
   readonly canSend = computed(() => {
@@ -91,43 +108,27 @@ export class OrderComponent {
       return;
     }
 
-    // Qué productos hay (no cuántos): cambiar cantidades no vuelve a consultar la API.
-    const identity = computed(() =>
-      this.lines()
-        .map(line => orderLineKey(line))
-        .sort()
-        .join(',')
-    );
-
-    // Los precios visibles dependen de la sesión: al ingresar o salir se recalculan.
-    const auth = inject(AuthService);
-    const sessionKey = computed(() => {
-      const session = auth.session();
-
-      return session ? `${session.isAuthenticated}:${session.displayName ?? ''}` : 'pending';
-    });
-
-    combineLatest([toObservable(identity), toObservable(sessionKey), toObservable(this.reload)])
+    toObservable(this.requestKey)
       .pipe(
-        // Hasta saber quién navega no se consulta: si no, al llegar la sesión se
-        // cancelaba la primera consulta (el API la veía como petición abortada).
-        filter(([, session]) => session !== 'pending'),
-        debounceTime(50),
-        map(([lines, session, attempt]) => `${lines}|${session}|${attempt}`),
-        distinctUntilChanged(),
-        tap(() => this.pricingState.set('loading')),
-        switchMap(() =>
-          this.availabilityService.load(this.lines()).pipe(
-            map(availability => ({ availability, failed: false })),
-            catchError(() => of({ availability: null, failed: true }))
-          )
-        ),
+        switchMap(key => {
+          if (key === null) return EMPTY;
+
+          const lines = this.lines();
+          return timer(50).pipe(
+            switchMap(() => this.availabilityService.load(lines)),
+            map(availability => ({ key, availability })),
+            catchError(() => of({ key, availability: null }))
+          );
+        }),
         takeUntilDestroyed()
       )
-      .subscribe(({ availability, failed }) => {
-        // Con error no se reutilizan precios viejos: mejor no cotizar que cotizar mal.
-        this.availability.set(availability);
-        this.pricingState.set(failed ? 'error' : 'ready');
+      .subscribe(result => {
+        if (result.key !== this.requestKey()) return;
+
+        this.result.set(result);
+        if (result.availability) {
+          this.selectedPriceTypeCode.set(this.quote()?.priceTypeCode ?? null);
+        }
       });
   }
 
@@ -135,8 +136,10 @@ export class OrderComponent {
     this.reload.update(value => value + 1);
   }
 
-  selectQuote(kind: QuoteKind): void {
-    this.quoteKind.set(kind);
+  selectQuote(code: string | null): void {
+    if (this.quotes().some(quote => quote.priceTypeCode === code)) {
+      this.selectedPriceTypeCode.set(code);
+    }
   }
 
   increase(item: QuoteLine): void {

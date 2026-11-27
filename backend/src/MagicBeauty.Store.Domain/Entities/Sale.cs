@@ -7,6 +7,10 @@ public sealed class Sale
     public long Id { get; set; }
     public string Source { get; set; } = "";
     public string ExternalId { get; set; } = "";
+    public long? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
+    public string? CustomerExternalId { get; set; }
+    public string? CustomerDocumentNumber { get; set; }
     public DateOnly SaleDate { get; set; }
     public DateOnly? DueDate { get; set; }
     public string? PaymentForm { get; set; }
@@ -43,20 +47,25 @@ public sealed class SourceItemMapping
 }
 
 public enum ImportStatus { Queued, Running, Succeeded, Failed }
+public enum ImportKind { Sales, Customers }
 
 public sealed class ImportRun
 {
     public Guid Id { get; set; }
     public string Source { get; set; } = "";
     public ImportStatus Status { get; set; }
+    public ImportKind Kind { get; set; }
     public bool? Active { get; set; }
     public DateOnly From { get; set; }
     public DateOnly Through { get; set; }
     public DateOnly? LastSaleDate { get; set; }
     public int NextOffset { get; set; }
     public bool AllPagesRead { get; set; }
+    public bool CapturesCustomerEvidence { get; set; }
     public int Pages { get; set; }
     public int Invoices { get; set; }
+    public int Contacts { get; set; }
+    public int SkippedContacts { get; set; }
     public DateTimeOffset StartedAt { get; set; }
     public DateTimeOffset? FinishedAt { get; set; }
     public string? Error { get; set; }

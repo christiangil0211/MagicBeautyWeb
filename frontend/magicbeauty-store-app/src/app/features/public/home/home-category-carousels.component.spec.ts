@@ -1,9 +1,11 @@
 import { DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import { Observable, of, throwError } from 'rxjs';
 
 import { CatalogService } from '../../../core/services/catalog.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { CategoryCarousel } from '../../../shared/models/category.model';
 import { CatalogProductListItem } from '../../../shared/models/product.model';
@@ -32,6 +34,7 @@ async function render(
     imports: [HomeCategoryCarouselsComponent],
     providers: [
       provideRouter([]),
+      { provide: AuthService, useValue: { priceAudienceKey: signal('anonymous') } },
       MessageService,
       {
         provide: CategoryService,

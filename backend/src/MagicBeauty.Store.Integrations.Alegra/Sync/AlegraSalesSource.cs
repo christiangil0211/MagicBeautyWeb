@@ -10,7 +10,7 @@ namespace MagicBeauty.Store.Integrations.Alegra.Sync;
 internal sealed class AlegraSalesSource(
     AlegraClient client, AlegraDbContext db, IOptions<AlegraOptions> options) : ISalesSource
 {
-    public string Source => "alegra";
+    public string Source => AlegraCustomerSource.SourceCode;
     public bool IsEnabled => options.Value.Enabled && options.Value.IsConfigured;
 
     public async Task<IReadOnlyDictionary<string, int>> GetItemMappingsAsync(CancellationToken cancellationToken) =>
@@ -27,7 +27,10 @@ internal sealed class AlegraSalesSource(
             if (string.IsNullOrWhiteSpace(id) || invoice.Date < from || invoice.Date > through)
                 throw new SalesSourceReadException("La respuesta de facturas no respeta el intervalo solicitado.");
 
-            var detail = invoice.Items is null ? await client.GetInvoiceAsync(id, cancellationToken) : invoice;
+            var hasCustomerIdentity = ReadCustomerId(invoice.Client) is not null || ReadCustomerDocument(invoice.Client) is not null;
+            var detail = invoice.Items is null || !hasCustomerIdentity
+                ? await client.GetInvoiceAsync(id, cancellationToken)
+                : invoice;
             if (detail.Id != id || detail.Date < from || detail.Date > through || detail.Items is null)
                 throw new SalesSourceReadException("No se pudo validar el detalle de una factura.");
 
@@ -48,6 +51,8 @@ internal sealed class AlegraSalesSource(
             }).ToArray();
             sales.Add(new ImportedSale(id, detail.Date, status, lines)
             {
+                CustomerExternalId = ReadCustomerId(detail.Client) ?? ReadCustomerId(invoice.Client),
+                CustomerDocumentNumber = ReadCustomerDocument(detail.Client) ?? ReadCustomerDocument(invoice.Client),
                 DueDate = DateOnly.TryParseExact(detail.DueDate ?? invoice.DueDate, "yyyy-MM-dd",
                     System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None,
                     out var dueDate) ? dueDate : null,
@@ -64,6 +69,14 @@ internal sealed class AlegraSalesSource(
 
         return new SalesBatch(sales, offset + invoices.Count, invoices.Count < pageSize);
     }
+
+    private static string? ReadCustomerId(System.Text.Json.JsonElement client) =>
+        AlegraContact.Text(AlegraContact.Property(client, "id")) ?? AlegraContact.Text(client);
+
+    private static string? ReadCustomerDocument(System.Text.Json.JsonElement client) =>
+        AlegraContact.ReadDocument(AlegraContact.Property(client, "identification")) ??
+        AlegraContact.ReadDocument(AlegraContact.Property(client, "identificationObject"));
+
     private static string? PaymentLabel(string? value, bool isForm) => (value?.Trim().ToUpperInvariant(), isForm) switch
     {
         ("CASH", true) => "Contado",

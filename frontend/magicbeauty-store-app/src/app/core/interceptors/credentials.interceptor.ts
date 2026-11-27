@@ -1,5 +1,6 @@
+import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
+import { PLATFORM_ID, inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
@@ -10,8 +11,17 @@ import { AuthService } from '../services/auth.service';
  * responde 401, deja la UI en estado anónimo.
  */
 export const credentialsInterceptor: HttpInterceptorFn = (request, next) => {
-  if (!request.url.startsWith(environment.apiBaseUrl)) {
+  const api = environment.apiBaseUrl.replace(/\/$/, '');
+  if (request.url !== api && !request.url.startsWith(api + '/')) {
     return next(request);
+  }
+
+  if (!isPlatformBrowser(inject(PLATFORM_ID))) {
+    return next(request.clone({
+      withCredentials: false,
+      credentials: 'omit',
+      headers: request.headers.delete('Cookie').delete('Authorization')
+    }));
   }
 
   const auth = inject(AuthService);

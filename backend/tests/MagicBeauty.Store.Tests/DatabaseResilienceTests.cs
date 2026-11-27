@@ -229,6 +229,7 @@ internal sealed class UnresponsiveServer : IAsyncDisposable
     private readonly List<TcpClient> clients = [];
     private readonly CancellationTokenSource stop = new();
     private readonly Task acceptLoop;
+    private readonly TaskCompletionSource firstConnection = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int connections;
 
     public UnresponsiveServer()
@@ -239,6 +240,7 @@ internal sealed class UnresponsiveServer : IAsyncDisposable
 
     public int Connections => Volatile.Read(ref connections);
 
+    public Task FirstConnection => firstConnection.Task;
 
     public string ConnectionString(int connectTimeoutSeconds = 1) =>
         $"Server=tcp:127.0.0.1,{((IPEndPoint)listener.LocalEndpoint).Port};Database=Prueba;User ID=prueba;Password=prueba;" +
@@ -270,6 +272,7 @@ internal sealed class UnresponsiveServer : IAsyncDisposable
                     clients.Add(client);
                 }
 
+                firstConnection.TrySetResult();
             }
         }
         catch (OperationCanceledException)

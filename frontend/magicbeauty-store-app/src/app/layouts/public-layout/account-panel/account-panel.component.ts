@@ -2,11 +2,13 @@ import { Component, DestroyRef, computed, effect, inject, input, output, signal,
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { SelectModule } from 'primeng/select';
 import { Observable, finalize } from 'rxjs';
 
 import { LoaderComponent } from '../../../shared/components/loader/loader.component';
 import { STORE_CONTACT, whatsappDisplayPhone, whatsappUrl } from '../../../core/constants/store-contact';
 import { AuthService, SessionCheck } from '../../../core/services/auth.service';
+import { PRIVACY_POLICY_VERSION, RegisterCustomer, RequestableRole } from '../../../shared/models/registration.model';
 import { EMAIL_PATTERN, PASSWORD_RULES } from '../../../shared/utils/account-rules';
 import { authErrorMessage } from '../../../shared/utils/auth-errors';
 
@@ -32,7 +34,12 @@ export interface AccountAdminLink {
   path: string;
 }
 
-type LoginStep = 'credentials' | 'code' | 'new-password';
+type LoginStep = 'credentials' | 'code' | 'new-password' | 'register' | 'forgot-password' | 'reset-password';
+
+const EMPTY_REGISTRATION: RegisterCustomer = {
+  fullName: '', email: '', phone: '', city: '', password: '',
+  privacyAccepted: false, marketingOptIn: false, policyVersion: PRIVACY_POLICY_VERSION
+};
 
 /**
  * Panel lateral de "Cuenta". Sin sesión: correo y contraseña y, si el correo aún
@@ -41,7 +48,7 @@ type LoginStep = 'credentials' | 'code' | 'new-password';
  */
 @Component({
   selector: 'app-account-panel',
-  imports: [FormsModule, RouterLink, LoaderComponent],
+  imports: [FormsModule, RouterLink, SelectModule, LoaderComponent],
   templateUrl: './account-panel.component.html',
   styleUrl: './account-panel.component.scss'
 })
@@ -73,6 +80,9 @@ export class AccountPanelComponent {
   readonly newPassword = signal('');
   readonly confirmPassword = signal('');
   readonly passwordRules = PASSWORD_RULES;
+  readonly registration = signal<RegisterCustomer>({ ...EMPTY_REGISTRATION });
+  readonly requestableRoles = signal<RequestableRole[]>([]);
+  readonly afterRegistration = signal(false);
 
   /** La contraseña nueva cumple todo y coincide con la confirmación. */
   readonly newPasswordReady = computed(
@@ -105,6 +115,74 @@ export class AccountPanelComponent {
   close(): void {
     this.resetForm();
     this.closed.emit();
+  }
+
+  showRegistration(): void {
+    this.backToCredentials();
+    this.registration.set({ ...EMPTY_REGISTRATION, email: this.email().trim() });
+    this.step.set('register');
+    this.auth.requestableRoles().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: roles => this.requestableRoles.set(roles),
+      error: () => {
+        if (this.step() === 'register')
+          this.error.set('No se pudieron consultar las condiciones comerciales disponibles.');
+      }
+    });
+  }
+
+  updateRegistration<K extends keyof RegisterCustomer>(field: K, value: RegisterCustomer[K]): void {
+    this.registration.update(draft => ({ ...draft, [field]: value }));
+  }
+
+  showForgotPassword(): void {
+    this.backToCredentials();
+    this.step.set('forgot-password');
+  }
+
+  submitForgotPassword(): void {
+    if (this.submitting()) return;
+    const email = this.email().trim();
+    if (!EMAIL_PATTERN.test(email)) {
+      this.error.set('Escribe un correo electrónico válido.');
+      return;
+    }
+
+    this.send(this.auth.forgotPassword(email), 'No pudimos solicitar la recuperación.', () => {
+      this.code.set('');
+      this.info.set('Si hay una cuenta activa con ese correo, recibirás un código de recuperación.');
+      this.step.set('reset-password');
+    });
+  }
+
+  submitRegistration(): void {
+    if (this.submitting()) return;
+    const draft = this.registration();
+    if (!draft.privacyAccepted) {
+      this.error.set('Debes aceptar la política de datos.');
+      return;
+    }
+    if (!draft.fullName.trim() || !draft.phone.trim() || !draft.city.trim()) {
+      this.error.set('Escribe tu nombre, celular y ciudad.');
+      return;
+    }
+    if (!EMAIL_PATTERN.test(draft.email.trim()) || !this.passwordRules.every(rule => rule.test(draft.password)) ||
+        draft.password.length > 128) {
+      this.error.set('Revisa el correo y los requisitos de la contraseña.');
+      return;
+    }
+    if (draft.requestedRoleCode && !draft.documentNumber?.trim()) {
+      this.error.set('La solicitud comercial requiere cédula o NIT.');
+      return;
+    }
+
+    this.send(this.auth.register(draft), 'No pudimos procesar el registro.', () => {
+      this.email.set(draft.email.trim());
+      this.registration.set({ ...EMPTY_REGISTRATION });
+      this.afterRegistration.set(true);
+      this.step.set('code');
+      this.code.set('');
+      this.info.set('Si la cuenta es nueva, recibirás un código para confirmar tu correo.');
+    });
   }
 
   submitCredentials(): void {
@@ -182,6 +260,21 @@ export class AccountPanelComponent {
       return;
     }
 
+    if (this.step() === 'reset-password') {
+      const code = this.code().trim();
+      if (!/^\d{6}$/.test(code)) {
+        this.error.set('El código tiene 6 dígitos.');
+        return;
+      }
+
+      this.send(this.auth.resetPassword(this.email().trim(), code, this.newPassword()),
+        'No pudimos guardar tu contraseña.', () => {
+          this.backToCredentials();
+          this.info.set('Cambiaste tu contraseña. Ingresa con la nueva.');
+        });
+      return;
+    }
+
     this.send(
       this.auth.changeTemporaryPassword(this.email().trim(), this.password(), this.newPassword()),
       'No pudimos guardar tu contraseña.',
@@ -200,6 +293,8 @@ export class AccountPanelComponent {
   }
 
   backToCredentials(): void {
+    this.registration.set({ ...EMPTY_REGISTRATION });
+    this.afterRegistration.set(false);
     this.sessionPending.set(false);
     this.step.set('credentials');
     this.code.set('');
@@ -259,6 +354,8 @@ export class AccountPanelComponent {
 
   /** La contraseña no se conserva más de lo necesario. */
   private resetForm(): void {
+    this.registration.set({ ...EMPTY_REGISTRATION });
+    this.afterRegistration.set(false);
     this.step.set('credentials');
     this.password.set('');
     this.code.set('');

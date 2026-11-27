@@ -1,5 +1,6 @@
 ﻿using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Application.Features.Sales;
+using MagicBeauty.Store.Application.Features.Customers;
 using MagicBeauty.Store.Infrastructure.Persistence;
 using MagicBeauty.Store.Infrastructure.Persistence.Repositories;
 using MagicBeauty.Store.Infrastructure.Services;
@@ -27,6 +28,7 @@ public static class DependencyInjection
 
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<ISalesBatchWriter, SalesBatchWriter>();
+        services.AddScoped<ICustomerBatchWriter, CustomerBatchWriter>();
         services.AddScoped<ISalesRankingReader, SalesRankingReader>();
         services.AddScoped<IBrandRepository, BrandRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
@@ -34,6 +36,8 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<ITraditionalCatalogRepository, TraditionalCatalogRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ICustomerAdministrationRepository, CustomerAdministrationRepository>();
+        services.AddScoped<ICommercialRepurchaseRepository, CommercialRepurchaseRepository>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddSingleton<ICanvaLinkInspector, CanvaLinkInspector>();

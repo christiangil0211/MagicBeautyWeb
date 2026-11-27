@@ -14,6 +14,9 @@ public sealed class User
     /// <summary>Hash PBKDF2 de ASP.NET Core Identity. Nunca la contrasena en claro.</summary>
     public string PasswordHash { get; set; } = string.Empty;
 
+    /// <summary>Versión de acceso que permite revocar las sesiones previas de la cuenta.</summary>
+    public Guid SecurityStamp { get; private set; } = Guid.NewGuid();
+
     /// <summary>Null mientras el correo no se haya confirmado con un codigo.</summary>
     public DateTime? EmailConfirmedAt { get; set; }
 
@@ -40,7 +43,46 @@ public sealed class User
 
     public DateTime UpdatedAt { get; set; }
 
+    public string? FullName { get; set; }
+
+    public string? Phone { get; set; }
+
+    public string? City { get; set; }
+
+    public string? DocumentNumber { get; set; }
+
+    public int? CommercialRoleId { get; private set; }
+
+    public Role? CommercialRole { get; private set; }
+
+    public long? CustomerId { get; set; }
+
+    public Customer? Customer { get; set; }
+
+    public byte[] RowVersion { get; set; } = [];
+
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public ICollection<EmailVerificationCode> VerificationCodes { get; set; } = new List<EmailVerificationCode>();
+
+    /// <summary>Invalida los tickets emitidos antes del cambio de credenciales o permisos.</summary>
+    public void RotateSecurityStamp() => SecurityStamp = Guid.NewGuid();
+
+    /// <summary>Reemplaza la condición comercial y revoca las sesiones que tenían la anterior.</summary>
+    public void AssignCommercialRole(Role role)
+    {
+        if (role.Kind != RoleKind.Commercial || !role.IsActive)
+        {
+            throw new InvalidOperationException("El rol comercial no está disponible.");
+        }
+
+        if (CommercialRoleId == role.Id)
+        {
+            return;
+        }
+
+        CommercialRoleId = role.Id;
+        CommercialRole = role;
+        RotateSecurityStamp();
+    }
 }

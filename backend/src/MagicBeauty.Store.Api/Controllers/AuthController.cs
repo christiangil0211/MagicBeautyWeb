@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 
 using MagicBeauty.Store.Api.Filters;
 using MagicBeauty.Store.Api.Security;
 using MagicBeauty.Store.Application.Features.Accounts;
+using MagicBeauty.Store.Application.Features.Customers;
 using MagicBeauty.Store.Contracts.Auth.Requests;
 using MagicBeauty.Store.Contracts.Auth.Responses;
 using Microsoft.AspNetCore.Authentication;
@@ -25,6 +27,57 @@ public sealed class AuthController(
     IAuthorizationService authorizationService) : ControllerBase
 {
     private const string InvalidCredentialsMessage = "Correo o contrasena incorrectos.";
+
+    [HttpPost("register")]
+    [AuthRequestBudget]
+    [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
+    public async Task<IActionResult> Register(
+        RegisterCustomerRequest request,
+        [FromServices] CustomerRegistrationService registration,
+        [FromServices] AccountCodeQueue queue,
+        [FromServices] ILogger<AuthController> logger,
+        CancellationToken cancellationToken)
+    {
+        var userId = await registration.RegisterAsync(
+            request, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken);
+        if (userId is { } id && !queue.TryEnqueueRegistration(id))
+            logger.LogWarning("La cola de confirmación de altas está llena.");
+
+        return Accepted();
+    }
+
+    [HttpGet("requestable-roles")]
+    [AuthRequestBudget]
+    [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
+    public async Task<ActionResult<IReadOnlyList<RequestableRoleDto>>> GetRequestableRoles(
+        [FromServices] CustomerRegistrationService registration, CancellationToken cancellationToken) =>
+        Ok(await registration.GetRequestableRolesAsync(cancellationToken));
+
+    [HttpPost("forgot-password")]
+    [AuthRequestBudget]
+    [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
+    public IActionResult ForgotPassword(
+        ForgotPasswordRequest request, [FromServices] AccountCodeQueue queue,
+        [FromServices] ILogger<AuthController> logger, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!queue.TryEnqueueRecovery(EmailRules.RequireValid(request.Email)))
+            logger.LogWarning("La cola de recuperación de acceso está llena.");
+
+        return Accepted();
+    }
+
+    [HttpPost("reset-password")]
+    [AuthRequestBudget]
+    [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        await accountService.ResetPasswordAsync(request.Email, request.Code, request.NewPassword, cancellationToken);
+        if (User.FindFirstValue(ClaimTypes.Email) == EmailRules.Normalize(request.Email))
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        return NoContent();
+    }
 
     [HttpPost("login")]
     [AuthRequestBudget]
@@ -100,6 +153,7 @@ public sealed class AuthController(
     }
 
     [HttpGet("session")]
+    [PrivateCookieResponse]
     public async Task<ActionResult<SessionDto>> GetSession()
     {
         if (User.Identity?.IsAuthenticated != true)
@@ -117,7 +171,10 @@ public sealed class AuthController(
         {
             IsAuthenticated = true,
             DisplayName = User.Identity.Name,
-            CanManageStore = canManageStore.Succeeded
+            CanManageStore = canManageStore.Succeeded,
+            CommercialRoleCode = User.FindFirstValue(StoreSessionValidation.CommercialRoleClaim),
+            PermissionsVersion = Guid.TryParse(User.FindFirstValue(StoreSessionValidation.StampClaim), out var stamp)
+                ? Convert.ToHexString(SHA256.HashData(stamp.ToByteArray())) : null
         });
     }
 
@@ -135,10 +192,13 @@ public sealed class AuthController(
         {
             new(ClaimTypes.NameIdentifier, account.UserId.ToString()),
             new(ClaimTypes.Name, account.Email),
-            new(ClaimTypes.Email, account.Email)
+            new(ClaimTypes.Email, account.Email),
+            new(StoreSessionValidation.StampClaim, account.SecurityStamp.ToString("D"))
         };
 
         claims.AddRange(account.RoleCodes.Select(role => new Claim(ClaimTypes.Role, role)));
+        if (account.CommercialRoleCode is { } role)
+            claims.Add(new Claim(StoreSessionValidation.CommercialRoleClaim, role));
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 

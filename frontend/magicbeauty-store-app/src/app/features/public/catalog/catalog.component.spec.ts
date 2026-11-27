@@ -13,7 +13,7 @@ it('loads products for category 6 and updates when the category changes', async 
   TestBed.configureTestingModule({
     imports: [CatalogComponent],
     providers: [provideRouter([]),
-      { provide: AuthService, useValue: { canManageStore: signal(false) } },
+      { provide: AuthService, useValue: { canManageStore: signal(false), priceAudienceKey: signal('anonymous') } },
       { provide: CategoryService, useValue: { getMenu: () => of([
         { id: 6, slug: 'labiales', name: 'Labiales', children: [] },
         { id: 7, slug: 'ojos', name: 'Ojos', children: [] }
@@ -39,7 +39,7 @@ it('adds products to the quote from the card even without stock', async () => {
   TestBed.configureTestingModule({
     imports: [CatalogComponent],
     providers: [provideRouter([]),
-      { provide: AuthService, useValue: { canManageStore: signal(false) } },
+      { provide: AuthService, useValue: { canManageStore: signal(false), priceAudienceKey: signal('anonymous') } },
       { provide: CategoryService, useValue: { getMenu: () => of([{ id: 6, slug: 'labiales', name: 'Labiales', children: [] }]) } },
       { provide: CatalogService, useValue: { getProducts: () => of([
         { id: 399, reference: 'REF399', name: 'Producto 399', brandName: 'Marca', hasVariants: false, availableQuantity: 0, prices: [] }

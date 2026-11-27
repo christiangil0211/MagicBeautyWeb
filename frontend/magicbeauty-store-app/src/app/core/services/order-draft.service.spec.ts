@@ -56,6 +56,16 @@ describe('OrderDraftService', () => {
     expect(service.lines()).toEqual([{ ...shade, quantity: 3 }]);
   });
 
+  it('drops price amounts before persisting a product passed with extra properties', () => {
+    const service = createService();
+    const product = { ...lipstick, prices: [{ priceTypeCode: 'DISTRIBUTOR', amount: 12500 }] };
+
+    service.add(product);
+
+    const stored = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY)!);
+    expect(stored.lines).toEqual([{ ...lipstick, quantity: 1 }]);
+  });
+
   it('never touches localStorage on the server', () => {
     localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify({ version: 1, lines: [{ ...shade, quantity: 3 }] }));
 

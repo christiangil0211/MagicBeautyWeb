@@ -1,6 +1,6 @@
 import { CategoryMenuItem } from '../models/category.model';
-import { PRICE_TYPE_CODES } from '../models/price-type.model';
 import { CatalogProductListItem } from '../models/product.model';
+import { preferredVisiblePrice } from './visible-price';
 
 export type ProductSort = 'name' | 'price-asc' | 'price-desc';
 
@@ -18,14 +18,14 @@ export interface CatalogFilter {
   /** Categorías elegidas ya expandidas con sus subcategorías. */
   categoryIds: ReadonlySet<number> | null;
   brandNames: ReadonlySet<string> | null;
-  /** Sobre el precio detal (código RETAIL), nunca por la posición del precio. */
+  /** Sobre el precio predeterminado visible o el primero de la audiencia. */
   priceRange: PriceRange | null;
 }
 
 export const NO_CATALOG_FILTER: CatalogFilter = { categoryIds: null, brandNames: null, priceRange: null };
 
-export function retailPrice(item: CatalogProductListItem): number | null {
-  return item.prices.find(price => price.priceTypeCode === PRICE_TYPE_CODES.retail)?.amount ?? null;
+export function catalogPrice(item: CatalogProductListItem): number | null {
+  return preferredVisiblePrice(item.prices)?.amount ?? null;
 }
 
 export function matchesCategories(item: CatalogProductListItem, categoryIds: ReadonlySet<number> | null): boolean {
@@ -41,7 +41,7 @@ export function matchesPrice(item: CatalogProductListItem, range: PriceRange | n
     return true;
   }
 
-  const price = retailPrice(item);
+  const price = catalogPrice(item);
 
   return price !== null && price >= range.min && price <= range.max;
 }
@@ -55,7 +55,7 @@ export function filterCatalog(items: readonly CatalogProductListItem[], filter: 
   );
 }
 
-/** Orden estable: sin precio detal, al final; el API ya entrega por nombre. */
+/** Orden estable: sin precio visible, al final; el API ya entrega por nombre. */
 export function sortCatalog(items: CatalogProductListItem[], sort: ProductSort): CatalogProductListItem[] {
   if (sort === 'name') {
     return [...items].sort((first, second) => first.name.localeCompare(second.name, 'es'));
@@ -64,8 +64,8 @@ export function sortCatalog(items: CatalogProductListItem[], sort: ProductSort):
   const direction = sort === 'price-asc' ? 1 : -1;
 
   return [...items].sort((first, second) => {
-    const a = retailPrice(first);
-    const b = retailPrice(second);
+    const a = catalogPrice(first);
+    const b = catalogPrice(second);
 
     if (a === null || b === null) {
       return a === b ? 0 : a === null ? 1 : -1;

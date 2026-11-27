@@ -158,6 +158,7 @@ export interface ProductImageRequest {
  * qué orden: la tienda los pinta tal cual, sin conocer los códigos de antemano.
  */
 export interface CatalogPrice {
+  isDefault?: boolean;
   priceTypeCode: string;
   priceTypeName: string;
   amount: number;
