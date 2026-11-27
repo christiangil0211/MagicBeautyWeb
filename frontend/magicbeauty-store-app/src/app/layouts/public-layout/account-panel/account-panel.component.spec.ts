@@ -306,3 +306,12 @@ it.each([
   expect((element.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(false);
   expect(loginSpy).toHaveBeenCalledTimes(1);
 });
+
+it('hides «Crear cuenta» while registration is not open to the public', () => {
+  const { fixture } = setup(() => new Subject<LoginOutcome>());
+  fixture.detectChanges();
+
+  const links = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.account-panel__link')).map(link => link.textContent?.trim());
+  expect(links).not.toContain('Crear cuenta');
+  expect(links).toContain('¿Olvidaste tu contraseña?');
+});

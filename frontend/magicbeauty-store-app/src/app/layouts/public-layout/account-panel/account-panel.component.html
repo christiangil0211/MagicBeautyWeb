@@ -143,9 +143,11 @@
         </button>
       </form>
       <div class="account-panel__secondary">
-        <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="showRegistration()">
-          Crear cuenta
-        </button>
+        @if (registrationEnabled) {
+          <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="showRegistration()">
+            Crear cuenta
+          </button>
+        }
         <button type="button" class="account-panel__link" [disabled]="submitting()" (click)="showForgotPassword()">
           ¿Olvidaste tu contraseña?
         </button>

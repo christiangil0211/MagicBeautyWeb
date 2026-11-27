@@ -10,15 +10,20 @@
   display: grid;
   grid-template-columns: 1fr auto 48px;
   align-items: stretch;
-  border: 1px solid var(--mb-border);
+  // Borde en el fucsia de la marca para que el buscador se note siempre.
+  border: 1.5px solid var(--mb-primary);
   border-radius: var(--mb-radius-sm);
   overflow: hidden;
   background: var(--mb-surface-2);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
+  &:hover {
+    border-color: var(--mb-primary-hover, #cf1467);
+  }
+
   &:focus-within {
-    border-color: var(--mb-primary);
-    box-shadow: 0 0 0 3px rgba(236, 28, 121, 0.12);
+    border-color: var(--mb-primary-hover, #cf1467);
+    box-shadow: 0 0 0 3px rgba(236, 28, 121, 0.18);
     background: var(--mb-surface);
   }
 
@@ -31,8 +36,11 @@
     background: transparent;
     color: var(--mb-text);
 
+    // En el tono de la marca, como la lupa. El fucsia oscuro conserva el contraste
+    // AA (≈ 5:1) sobre el fondo del buscador.
     &::placeholder {
-      color: var(--mb-text-muted);
+      color: var(--mb-primary-hover, #cf1467);
+      opacity: 1;
     }
   }
 

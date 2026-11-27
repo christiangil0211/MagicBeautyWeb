@@ -34,7 +34,10 @@ export interface AccountAdminLink {
   path: string;
 }
 
-type LoginStep = 'credentials' | 'code' | 'new-password' | 'register' | 'forgot-password' | 'reset-password';
+/** Registro de clientes visible en «Mi cuenta». Apagado hasta abrirlo al público. */
+export const REGISTRATION_ENABLED = false;
+
+type LoginStep ='credentials' | 'code' | 'new-password' | 'register' | 'forgot-password' | 'reset-password';
 
 const EMPTY_REGISTRATION: RegisterCustomer = {
   fullName: '', email: '', phone: '', city: '', password: '',
@@ -62,6 +65,12 @@ export class AccountPanelComponent {
   readonly contact = STORE_CONTACT;
   readonly whatsappHref = whatsappUrl();
   readonly whatsappPhone = whatsappDisplayPhone();
+
+  /**
+   * «Crear cuenta» está listo pero oculto mientras no se abra el registro al
+   * público. Para mostrarlo, cambia REGISTRATION_ENABLED a true.
+   */
+  readonly registrationEnabled = REGISTRATION_ENABLED;
 
   readonly open = input(false);
   readonly adminLinks = input<AccountAdminLink[]>([]);
