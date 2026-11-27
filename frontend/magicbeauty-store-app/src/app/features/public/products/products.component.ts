@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, computed, inject, input, linkedSignal, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, PLATFORM_ID, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
@@ -22,6 +22,7 @@ import {
   sortCatalog
 } from '../../../shared/utils/catalog-filters';
 import { priceAudienceState } from '../../../shared/utils/visible-price';
+import { scrollBelowHeader } from '../../../shared/utils/scroll-below-header';
 
 /**
  * Vitrina genérica de la tienda. Su única responsabilidad es decidir qué
@@ -43,6 +44,7 @@ import { priceAudienceState } from '../../../shared/utils/visible-price';
   styleUrl: './products.component.scss'
 })
 export class ProductsComponent {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly catalogService = inject(CatalogService);
   private readonly messageService = inject(MessageService);
   private readonly orderDraft = inject(OrderDraftService);
@@ -107,8 +109,10 @@ export class ProductsComponent {
 
   goToPage(page: number): void {
     this.page.set(page);
-    // Al cambiar de página se vuelve al inicio del listado, no al pie.
-    globalThis.scrollTo?.({ top: 0, behavior: 'smooth' });
+    // Al cambiar de página se vuelve al inicio del listado: al buscador que va encima
+    // (catálogo digital) o al propio listado; nunca hasta los banners.
+    const host = this.host.nativeElement;
+    scrollBelowHeader(host.ownerDocument.querySelector<HTMLElement>('.catalog-search') ?? host);
   }
 
   constructor() {
