@@ -27,7 +27,10 @@ internal sealed class AlegraSalesSource(
             if (string.IsNullOrWhiteSpace(id) || invoice.Date < from || invoice.Date > through)
                 throw new SalesSourceReadException("La respuesta de facturas no respeta el intervalo solicitado.");
 
-            var detail = invoice.Items is null ? await client.GetInvoiceAsync(id, cancellationToken) : invoice;
+            var hasCustomerIdentity = ReadCustomerId(invoice.Client) is not null || ReadCustomerDocument(invoice.Client) is not null;
+            var detail = invoice.Items is null || !hasCustomerIdentity
+                ? await client.GetInvoiceAsync(id, cancellationToken)
+                : invoice;
             if (detail.Id != id || detail.Date < from || detail.Date > through || detail.Items is null)
                 throw new SalesSourceReadException("No se pudo validar el detalle de una factura.");
 

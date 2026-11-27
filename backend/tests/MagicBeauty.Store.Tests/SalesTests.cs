@@ -78,6 +78,22 @@ public sealed class SalesTests
     }
 
     [Fact]
+    public async Task AValidInvoiceWithoutCustomerIdentityCannotSupportCommercialExpiration()
+    {
+        await using var db = CreateDatabase();
+        var id = await AddRunAsync(db);
+        (await db.Set<ImportRun>().SingleAsync()).CapturesCustomerEvidence = true;
+        await db.SaveChangesAsync();
+
+        await new SalesBatchWriter(db, Clock).WriteAsync(id, Batch(Document("anonymous", SaleStatus.Closed, 1)), default);
+
+        Assert.Single(db.Sales);
+        var run = await db.Set<ImportRun>().SingleAsync();
+        Assert.True(run.AllPagesRead);
+        Assert.False(run.CapturesCustomerEvidence);
+    }
+
+    [Fact]
     public async Task ContactImportIsIdempotentAndDoesNotCreateWebAccounts()
     {
         await using var db = CreateDatabase();

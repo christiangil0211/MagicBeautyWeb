@@ -40,6 +40,8 @@ public sealed class MagicBeautyDbContext(DbContextOptions<MagicBeautyDbContext> 
 
     public DbSet<CommercialRoleHistory> CommercialRoleHistory => Set<CommercialRoleHistory>();
 
+    public DbSet<CommercialNotice> CommercialNotices => Set<CommercialNotice>();
+
     public DbSet<PrivacyConsent> PrivacyConsents => Set<PrivacyConsent>();
 
     public DbSet<Sale> Sales => Set<Sale>();
