@@ -9,7 +9,9 @@ using MagicBeauty.Store.Api.Middleware;
 using MagicBeauty.Store.Api.Security;
 using MagicBeauty.Store.Application.Common.Interfaces;
 using MagicBeauty.Store.Application.Features.Accounts;
+using MagicBeauty.Store.Application.Features.Catalog;
 using MagicBeauty.Store.Application.Features.Customers;
+using MagicBeauty.Store.Contracts.Catalog.Responses;
 using MagicBeauty.Store.Contracts.Auth.Responses;
 using MagicBeauty.Store.Domain.Entities;
 using MagicBeauty.Store.Infrastructure.Persistence;
@@ -95,6 +97,50 @@ public sealed class AuthBudgetHttpTests
         Assert.True((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
         clock.Advance(TimeSpan.FromMinutes(1));
         Assert.False((await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!.IsAuthenticated);
+    }
+
+    [Fact]
+    public async Task CatalogAndSessionResponsesCannotBeSharedBetweenAudiences()
+    {
+        var catalog = new Mock<ICatalogService>();
+        catalog.Setup(service => service.GetProductDetailAsync("TEST", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProductDetailDto());
+        await using var api = await TestApi.StartAsync(InMemoryDatabase(), AuthRequestBudget.Default, catalog: catalog.Object);
+
+        using var product = await api.Client.GetAsync("/api/catalog/products/TEST");
+        using var session = await api.Client.GetAsync("/api/auth/session");
+        foreach (var response in new[] { product, session })
+        {
+            response.EnsureSuccessStatusCode();
+            Assert.True(response.Headers.CacheControl is { Private: true, NoStore: true });
+            Assert.Contains("Cookie", response.Headers.Vary);
+        }
+    }
+
+    [Fact]
+    public async Task SessionDescribesItsCommercialRoleWithAnOpaquePermissionsVersion()
+    {
+        var database = InMemoryDatabase();
+        Guid stamp;
+        await using (var seed = database())
+        {
+            var role = new Role { Id = 2, Code = "CUSTOMER_WHOLESALE", Kind = RoleKind.Commercial };
+            seed.Roles.Add(role);
+            var user = await seed.Users.SingleAsync();
+            user.AssignCommercialRole(role);
+            await seed.SaveChangesAsync();
+            stamp = user.SecurityStamp;
+        }
+
+        await using var api = await TestApi.StartAsync(database, AuthRequestBudget.Default);
+        using var login = await api.Client.PostAsJsonAsync("/api/auth/login", new { email = Email, password = Password });
+        login.EnsureSuccessStatusCode();
+        var session = await api.Client.GetFromJsonAsync<SessionDto>("/api/auth/session");
+
+        Assert.NotNull(session);
+        Assert.Equal("CUSTOMER_WHOLESALE", session.CommercialRoleCode);
+        Assert.Matches("^[0-9A-F]{64}$", session.PermissionsVersion!);
+        Assert.NotEqual(stamp.ToString(), session.PermissionsVersion);
     }
 
     [Fact]
@@ -286,6 +332,7 @@ public sealed class AuthBudgetHttpTests
             using var renewed = await api.Client.GetAsync("/api/auth/session");
             Assert.True((await renewed.Content.ReadFromJsonAsync<SessionDto>())!.IsAuthenticated);
             Assert.Contains(renewed.Headers, header => header.Key == "Set-Cookie");
+            Assert.True(renewed.Headers.CacheControl is { Private: true, NoStore: true });
         }
 
         clock.Advance(TimeSpan.FromHours(4));
@@ -469,7 +516,8 @@ public sealed class AuthBudgetHttpTests
             Func<MagicBeautyDbContext> database,
             AuthRequestBudget budget,
             Func<IAccountService, IAccountService>? decorate = null,
-            TimeProvider? clock = null)
+            TimeProvider? clock = null,
+            ICatalogService? catalog = null)
         {
             // Raiz vacia: no se leen los appsettings reales de la API (hosts, secretos).
             var contentRoot = Directory.CreateTempSubdirectory("magicbeauty-api-").FullName;
@@ -493,6 +541,7 @@ public sealed class AuthBudgetHttpTests
             builder.Services.AddAuthRequestBudget(budget);
             builder.Services.AddScoped(_ => database());
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            if (catalog is not null) builder.Services.AddSingleton(catalog);
             builder.Services.AddSingleton(TimeProvider.System);
             builder.Services.AddSingleton<AccountCodeQueue>();
             builder.Services.AddScoped<CustomerRegistrationService>();
@@ -504,6 +553,8 @@ public sealed class AuthBudgetHttpTests
 
             var app = builder.Build();
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+            app.UseRouting();
+            app.UsePrivateCookieResponses();
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();

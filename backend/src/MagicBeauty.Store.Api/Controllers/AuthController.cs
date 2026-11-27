@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 
 using MagicBeauty.Store.Api.Filters;
 using MagicBeauty.Store.Api.Security;
@@ -152,6 +153,7 @@ public sealed class AuthController(
     }
 
     [HttpGet("session")]
+    [PrivateCookieResponse]
     public async Task<ActionResult<SessionDto>> GetSession()
     {
         if (User.Identity?.IsAuthenticated != true)
@@ -169,7 +171,10 @@ public sealed class AuthController(
         {
             IsAuthenticated = true,
             DisplayName = User.Identity.Name,
-            CanManageStore = canManageStore.Succeeded
+            CanManageStore = canManageStore.Succeeded,
+            CommercialRoleCode = User.FindFirstValue(StoreSessionValidation.CommercialRoleClaim),
+            PermissionsVersion = Guid.TryParse(User.FindFirstValue(StoreSessionValidation.StampClaim), out var stamp)
+                ? Convert.ToHexString(SHA256.HashData(stamp.ToByteArray())) : null
         });
     }
 
@@ -192,6 +197,8 @@ public sealed class AuthController(
         };
 
         claims.AddRange(account.RoleCodes.Select(role => new Claim(ClaimTypes.Role, role)));
+        if (account.CommercialRoleCode is { } role)
+            claims.Add(new Claim(StoreSessionValidation.CommercialRoleClaim, role));
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 

@@ -13,7 +13,8 @@ it('opens every nested level on hover and keeps ancestors open', async () => {
     imports: [PublicLayoutComponent],
     providers: [provideRouter([]),
       { provide: AuthService, useValue: {
-        canManageStore: signal(false), isAuthenticated: signal(false), session: signal(null), ensureSession: () => of(null)
+        canManageStore: signal(false), isAuthenticated: signal(false), session: signal(null), ensureSession: () => of(null),
+        priceAudienceKey: signal('anonymous')
       } },
       { provide: CategoryService, useValue: { getMenu: () => of([
         { id: 1, slug: 'root', name: 'Root', children: [
@@ -57,7 +58,8 @@ function createPortalLayout(
     imports: [PublicLayoutComponent],
     providers: [provideRouter([]),
       { provide: AuthService, useValue: {
-        canManageStore: signal(canManageStore), isAuthenticated, session: signal(null), ensureSession: () => of(null)
+        canManageStore: signal(canManageStore), isAuthenticated, session: signal(null), ensureSession: () => of(null),
+        priceAudienceKey: signal('anonymous')
       } },
       { provide: CategoryService, useValue: { getMenu } }
     ]

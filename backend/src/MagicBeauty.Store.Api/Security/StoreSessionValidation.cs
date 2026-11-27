@@ -12,6 +12,7 @@ namespace MagicBeauty.Store.Api.Security;
 internal static class StoreSessionValidation
 {
     public const string StampClaim = "magicbeauty:security-stamp";
+    public const string CommercialRoleClaim = "magicbeauty:commercial-role";
     private const string StartedAt = "magicbeauty:started-at";
     private const string CheckedAt = "magicbeauty:checked-at";
 
@@ -51,6 +52,7 @@ internal static class StoreSessionValidation
 
         // Comprueba también los roles vigentes por si se desactivó un rol completo.
         if (current is null || current.SecurityStamp != stamp ||
+            current.CommercialRoleCode != principal.FindFirstValue(CommercialRoleClaim) ||
             !current.RoleCodes.ToHashSet(StringComparer.Ordinal)
                 .SetEquals(principal.FindAll(ClaimTypes.Role).Select(claim => claim.Value)))
         {

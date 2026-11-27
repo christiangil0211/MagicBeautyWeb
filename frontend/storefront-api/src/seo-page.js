@@ -128,7 +128,8 @@ async function fetchWithTimeout(fetchImpl, url, init, timeoutMs) {
 
 /** JSON del API. `null` solo si el API respondió 404; cualquier otra falla lanza. */
 async function fetchApiJson(fetchImpl, path) {
-  const response = await fetchWithTimeout(fetchImpl, API_BASE_URL + path, { headers: { Accept: 'application/json' } }, API_TIMEOUT_MS);
+  const response = await fetchWithTimeout(fetchImpl, API_BASE_URL + path,
+    { credentials: 'omit', headers: { Accept: 'application/json' } }, API_TIMEOUT_MS);
 
   if (response.status === 404) {
     return null;

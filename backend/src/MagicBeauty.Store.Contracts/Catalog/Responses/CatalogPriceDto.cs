@@ -11,4 +11,6 @@ public sealed class CatalogPriceDto
     public string PriceTypeName { get; set; } = string.Empty;
 
     public decimal Amount { get; set; }
+
+    public bool IsDefault { get; set; }
 }

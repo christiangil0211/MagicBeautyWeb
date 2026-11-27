@@ -1,11 +1,14 @@
-import { Component, ElementRef, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, ElementRef, PLATFORM_ID, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { catchError, debounceTime, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, switchMap, tap } from 'rxjs';
 
 import { CatalogService } from '../../../core/services/catalog.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { CatalogProductListItem } from '../../models/product.model';
 import { formatCop } from '../../utils/currency';
+import { preferredVisiblePrice, priceAudienceState } from '../../utils/visible-price';
 
 /** Letras mínimas antes de sugerir: con una sola casi todo el catálogo coincide. */
 const MIN_CHARS = 2;
@@ -38,6 +41,7 @@ interface Suggestion {
 })
 export class SearchBoxComponent {
   private readonly catalogService = inject(CatalogService);
+  private readonly audience = inject(AuthService).priceAudienceKey;
   private readonly router = inject(Router);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly inputRef = viewChild.required<ElementRef<HTMLInputElement>>('input');
@@ -52,16 +56,19 @@ export class SearchBoxComponent {
 
   readonly term = signal('');
   readonly open = signal(false);
-  readonly loading = signal(false);
-  readonly results = signal<CatalogProductListItem[] | null>(null);
-  readonly activeIndex = signal(-1);
+  readonly loading = priceAudienceState(this.audience, false);
+  readonly results = priceAudienceState<CatalogProductListItem[] | null>(this.audience, null);
+  readonly activeIndex = priceAudienceState(this.audience, -1);
 
   readonly suggestions = computed<Suggestion[]>(() =>
-    (this.results() ?? []).slice(0, MAX_SUGGESTIONS).map(product => ({
-      product,
-      nameParts: highlight(product.name, this.term()),
-      price: product.prices.length > 0 ? formatCop(product.prices[0].amount) : null
-    }))
+    (this.results() ?? []).slice(0, MAX_SUGGESTIONS).map(product => {
+      const price = preferredVisiblePrice(product.prices);
+      return {
+        product,
+        nameParts: highlight(product.name, this.term()),
+        price: price ? formatCop(price.amount) : null
+      };
+    })
   );
 
   readonly total = computed(() => this.results()?.length ?? 0);
@@ -73,12 +80,14 @@ export class SearchBoxComponent {
     // La caja sigue a la URL (p. ej. al volver atrás) sin abrir sugerencias.
     effect(() => this.term.set(this.value()));
 
-    toObservable(this.term)
+    if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
+
+    combineLatest([
+      toObservable(this.term).pipe(map(term => term.trim()), debounceTime(DEBOUNCE_MS), distinctUntilChanged()),
+      toObservable(this.audience)
+    ])
       .pipe(
-        map(term => term.trim()),
-        debounceTime(DEBOUNCE_MS),
-        distinctUntilChanged(),
-        tap(term => {
+        tap(([term]) => {
           this.activeIndex.set(-1);
           this.loading.set(term.length >= MIN_CHARS);
 
@@ -86,11 +95,14 @@ export class SearchBoxComponent {
             this.results.set(null);
           }
         }),
-        // switchMap descarta la respuesta de lo que se escribió antes.
-        switchMap(term =>
+        // Descarta las sugerencias de búsquedas o sesiones anteriores.
+        switchMap(([term, audience]) => audience === 'checking' ? EMPTY :
           term.length < MIN_CHARS
             ? of(null)
-            : this.catalogService.getProducts({ search: term }).pipe(catchError(() => of([])))
+            : this.catalogService.getProducts({ search: term }).pipe(
+                catchError(() => of([])),
+                filter(() => this.audience() === audience)
+              )
         ),
         takeUntilDestroyed()
       )

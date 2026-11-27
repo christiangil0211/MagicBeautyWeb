@@ -228,6 +228,33 @@ public sealed class SalesTests
     }
 
     [Fact]
+    public async Task RankingChoosesTheDefaultOrTheFirstVisiblePriceAcrossAnyType()
+    {
+        CatalogProductListItemDto Item(int id, params CatalogPriceDto[] prices) => new()
+        {
+            Id = id, MainImageUrl = "https://example.invalid/photo", AvailableQuantity = 1, Prices = prices.ToList()
+        };
+        var wholesale = Item(1, new CatalogPriceDto { PriceTypeCode = "WHOLESALE", Amount = 10 });
+        var distributor = Item(2, new CatalogPriceDto { PriceTypeCode = "DISTRIBUTOR", Amount = 8 });
+        var missing = Item(3);
+        var noDefaultAmount = Item(4,
+            new CatalogPriceDto { PriceTypeCode = "WHOLESALE", Amount = 10 },
+            new CatalogPriceDto { PriceTypeCode = "RETAIL", IsDefault = true, Amount = 0 });
+        var catalog = new Mock<ICatalogService>();
+        catalog.Setup(service => service.GetProductsAsync(null, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([wholesale, distributor, missing, noDefaultAmount]);
+        var sales = new Mock<ISalesRankingReader>();
+        sales.Setup(reader => reader.GetUnitsByProductAsync(
+                It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, decimal> { [1] = 2, [2] = 4, [3] = 8, [4] = 10 });
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var ranked = await new BestSellers(sales.Object, catalog.Object, cache, Clock, Configuration())
+            .GetAsync(null, 30, 10, default);
+
+        Assert.Equal(new[] { 2, 1 }, ranked.Select(product => product.Id));
+    }
+
+    [Fact]
     public async Task RankingIncludesDescendantsDeduplicatesAndUsesFillWithoutAnAdapter()
     {
         await using var db = CreateDatabase();

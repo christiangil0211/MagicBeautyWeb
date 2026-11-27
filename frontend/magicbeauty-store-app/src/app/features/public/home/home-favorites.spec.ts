@@ -15,12 +15,18 @@ const product = (id: number, categoryIds: number[], overrides: Partial<CatalogPr
 });
 
 describe('isHomeReady', () => {
-  it('requires a photo, a retail price and stock, but not a brand', () => {
+  it('requires a photo, a positive visible price and stock, but not a brand', () => {
     expect(isHomeReady(product(1, [1]))).toBe(true);
     expect(isHomeReady(product(1, [1], { mainImageUrl: null }))).toBe(false);
     expect(isHomeReady(product(1, [1], { availableQuantity: 0 }))).toBe(false);
     expect(isHomeReady(product(1, [1], { prices: [] }))).toBe(false);
     expect(isHomeReady(product(1, [1], { prices: [{ priceTypeCode: 'RETAIL', priceTypeName: 'Detal', amount: 0 }] }))).toBe(false);
+  });
+
+  it('accepts the only visible price for a wholesale audience', () => {
+    expect(isHomeReady(product(1, [1], {
+      prices: [{ priceTypeCode: 'WHOLESALE', priceTypeName: 'Por mayor', amount: 3200 }]
+    }))).toBe(true);
   });
 });
 

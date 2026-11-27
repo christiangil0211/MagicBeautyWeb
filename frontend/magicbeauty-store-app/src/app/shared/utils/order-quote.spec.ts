@@ -1,6 +1,6 @@
 import { OrderDraftLine } from '../models/order-draft.model';
 import { CatalogProductListItem, ProductDetail } from '../models/product.model';
-import { buildOrderQuote, resolveOrderAvailability } from './order-quote';
+import { buildOrderQuote, getOrderQuoteTypes, resolveOrderAvailability } from './order-quote';
 import { buildOrderWhatsappMessage } from './order-whatsapp-message';
 
 const line = (overrides: Partial<OrderDraftLine>): OrderDraftLine => ({
@@ -53,6 +53,7 @@ const order = [
 
 describe('order quotes', () => {
   const availability = resolveOrderAvailability(order, products, details);
+  const quoteTypes = getOrderQuoteTypes(availability);
 
   it('quotes products without stock and leaves out only what is no longer in the catalog', () => {
     // Sin existencias (tono Coral, Rubor agotado) igual se cotiza: la disponibilidad la confirma el equipo.
@@ -62,7 +63,7 @@ describe('order quotes', () => {
   });
 
   it('prices the retail quote only with RETAIL prices', () => {
-    const quote = buildOrderQuote(order, availability, 'retail');
+    const quote = buildOrderQuote(order, availability, quoteTypes.find(type => type.priceTypeCode === 'RETAIL')!);
 
     expect(quote.lines.map(item => item.unitPrice)).toEqual([25000, 12500, 12500, null, 9000, null]);
     expect(quote.lines.map(item => item.subtotal)).toEqual([50000, 50000, 12500, null, 9000, null]);
@@ -73,7 +74,7 @@ describe('order quotes', () => {
   });
 
   it('prices the wholesale quote only with WHOLESALE prices and never invents a missing one', () => {
-    const quote = buildOrderQuote(order, availability, 'wholesale');
+    const quote = buildOrderQuote(order, availability, quoteTypes.find(type => type.priceTypeCode === 'WHOLESALE')!);
 
     expect(quote.lines[0].unitPrice).toBe(18000);
     expect(quote.lines[1].unitPrice).toBeNull();
@@ -88,7 +89,8 @@ describe('order quotes', () => {
   });
 
   it('builds the WhatsApp message from the quote without invented amounts', () => {
-    const message = buildOrderWhatsappMessage(buildOrderQuote(order, availability, 'wholesale'), 'Magic Beauty Cosmetics');
+    const type = quoteTypes.find(item => item.priceTypeCode === 'WHOLESALE')!;
+    const message = buildOrderWhatsappMessage(buildOrderQuote(order, availability, type), 'Magic Beauty Cosmetics');
     const normalized = message.replace(/ /g, ' ');
 
     expect(normalized).toContain('Hola, Magic Beauty Cosmetics.');
@@ -101,5 +103,16 @@ describe('order quotes', () => {
     expect(normalized).toContain('3 productos tienen precio por confirmar y no están incluidos en el total.');
     expect(normalized).not.toContain('Desactivado');
     expect(normalized).not.toContain('Retirado');
+  });
+
+  it('quotes available lines without assigning an amount if no rate is visible', () => {
+    const lines = [line({})];
+    const states = resolveOrderAvailability(lines, [{ ...products[0], prices: [] }], details);
+    const quote = buildOrderQuote(lines, states, null);
+
+    expect(getOrderQuoteTypes(states)).toEqual([]);
+    expect(quote.priceTypeCode).toBeNull();
+    expect(quote.lines[0].subtotal).toBeNull();
+    expect(quote.missingPriceCount).toBe(1);
   });
 });

@@ -82,6 +82,6 @@ export class BrandService {
   /** Tienda: página de una marca. 404 si no existe o está inactiva. */
   getPublicBrand(slug: string, page = 1, pageSize = 500): Observable<PublicBrandPage> {
     const params = new HttpParams().set('page', page).set('pageSize', pageSize);
-    return this.http.get<PublicBrandPage>(`${this.publicUrl}/${encodeURIComponent(slug)}`, { params });
+    return this.http.get<PublicBrandPage>(`${this.publicUrl}/${encodeURIComponent(slug)}`, { params, transferCache: false });
   }
 }

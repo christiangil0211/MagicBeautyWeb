@@ -1,5 +1,6 @@
 using MagicBeauty.Store.Application.Features.Catalog;
 using MagicBeauty.Store.Contracts.Catalog.Responses;
+using MagicBeauty.Store.Api.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,6 +13,7 @@ namespace MagicBeauty.Store.Api.Controllers;
 /// </summary>
 [ApiController]
 [AllowAnonymous]
+[PrivateCookieResponse]
 [Route("api/catalog")]
 public sealed class CatalogController(ICatalogService catalogService) : ControllerBase
 {

@@ -26,7 +26,7 @@ public sealed class BestSellers(
     {
         var candidates = products.DistinctBy(x => x.Id)
             .Where(x => !string.IsNullOrEmpty(x.MainImageUrl) && x.AvailableQuantity > 0 &&
-                x.Prices.Any(price => price.PriceTypeCode == "RETAIL" && price.Amount > 0))
+                (x.Prices.FirstOrDefault(price => price.IsDefault) ?? x.Prices.FirstOrDefault()) is { Amount: > 0 })
             .Select(product => (Product: product, Units: totals.GetValueOrDefault(product.Id)))
             .ToArray();
 

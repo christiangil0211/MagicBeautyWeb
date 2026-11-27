@@ -108,6 +108,22 @@ function read(html) {
 
 beforeEach(() => resetSeoPageCache());
 
+test('keeps its shared HTML anonymous when a browser sends a session cookie', async () => {
+  const mock = server({ '/catalog/products/ACE004': { json: PRODUCT } });
+  const result = await getSeoPageResponse({
+    originalUrl: SITE + '/catalogo/ACE004',
+    headers: new Headers({ Cookie: 'MagicBeauty.Session=private', Authorization: 'Bearer private' }),
+    ...mock
+  });
+  const request = mock.calls.find(call => call.url.startsWith(API_BASE_URL));
+  const outbound = new Headers(request.init.headers);
+  assert.equal(outbound.get('cookie'), null);
+  assert.equal(outbound.get('authorization'), null);
+  assert.equal(request.init.credentials, 'omit');
+  assert.equal(result.headers['Cache-Control'], 'public, max-age=300');
+  assert.equal(read(result.body).jsonLd.find(entry => entry['@type'] === 'Product').offers.price, 17000);
+});
+
 test('recognizes product and category URLs, including encoded references and a trailing slash', () => {
   assert.deepEqual(parsePath('/catalogo/ACE004'), { kind: 'product', reference: 'ACE004' });
   assert.deepEqual(parsePath('/catalogo/ACE004/'), { kind: 'product', reference: 'ACE004' });
