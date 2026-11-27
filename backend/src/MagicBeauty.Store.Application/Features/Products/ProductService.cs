@@ -287,6 +287,39 @@ public sealed partial class ProductService(
         return new AssignCategoryToProductsResultDto { UpdatedCount = links.Count };
     }
 
+    public async Task<UnassignCategoryFromProductsResultDto> UnassignCategoryAsync(
+        UnassignCategoryFromProductsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var productIds = (request.ProductIds ?? []).Distinct().ToList();
+
+        if (productIds.Count == 0)
+        {
+            throw new ArgumentException("Selecciona al menos un producto.");
+        }
+
+        if (!await categoryRepository.ExistsAsync(request.CategoryId, cancellationToken))
+        {
+            throw new KeyNotFoundException("La categoría no existe.");
+        }
+
+        // Solo el vinculo directo: las demas categorias del producto (incluidas las
+        // subcategorias de esta) se conservan. Un producto que ya no la tenia no cuenta.
+        var links = await productRepository.GetLinksInCategoryAsync(
+            request.CategoryId,
+            productIds,
+            cancellationToken);
+
+        if (links.Count > 0)
+        {
+            // Un unico guardado: o se quitan todos los vinculos o ninguno.
+            productRepository.RemoveCategoryLinks(links);
+            await productRepository.SaveChangesAsync(cancellationToken);
+        }
+
+        return new UnassignCategoryFromProductsResultDto { UpdatedCount = links.Count };
+    }
+
     public async Task SetPricesAsync(
         int id,
         SetProductPricesRequest request,

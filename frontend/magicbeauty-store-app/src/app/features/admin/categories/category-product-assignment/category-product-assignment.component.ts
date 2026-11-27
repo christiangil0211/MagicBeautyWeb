@@ -24,8 +24,11 @@ import { LoaderComponent } from '../../../../shared/components/loader/loader.com
 import { Category } from '../../../../shared/models/category.model';
 import { ProductCategoryLink, ProductListItem } from '../../../../shared/models/product.model';
 
-/** Qué productos lista la tabla: todos o solo los que no tienen ninguna categoría. */
-export type ProductScope = 'all' | 'uncategorized';
+/**
+ * Qué productos lista la tabla: todos, solo los que no tienen ninguna categoría, o
+ * los de la categoría seleccionada (en cualquier nivel, incluidas sus subcategorías).
+ */
+export type ProductScope = 'all' | 'uncategorized' | 'category';
 
 /** Chips de categoría visibles por fila; el resto se resume en "+N" con tooltip. */
 const VISIBLE_CATEGORY_CHIPS = 3;
@@ -73,6 +76,9 @@ export class CategoryProductAssignmentComponent {
   readonly selected = signal<ProductListItem[]>([]);
   readonly loading = signal(false);
   readonly assigning = signal(false);
+  readonly unassigning = signal(false);
+  /** Hay una asignación o desasociación en curso. */
+  readonly working = computed(() => this.assigning() || this.unassigning());
   readonly search = signal('');
   readonly scope = signal<ProductScope>('all');
 
@@ -94,6 +100,20 @@ export class CategoryProductAssignmentComponent {
     return this.products().filter((product) => !assigned.has(product.id));
   });
 
+  /** La tabla muestra los productos de la categoría seleccionada (botón "Consultar productos"). */
+  readonly isCategoryView = computed(() => this.scope() === 'category');
+
+  /**
+   * Filas que se pueden marcar. Al consultar la categoría, solo las que la tienen
+   * directamente (las que llegan por una subcategoría se desasocian desde ella);
+   * en los demás filtros, las que aún no la tienen.
+   */
+  readonly selectable = computed(() => {
+    if (!this.isCategoryView()) return this.assignable();
+    const assigned = this.assignedIds();
+    return this.products().filter((product) => assigned.has(product.id));
+  });
+
   /** Paginación en cliente: solo cambia lo que se ve, nunca la selección. */
   readonly pageSizes = [10, 25, 50];
   readonly first = signal(0);
@@ -110,6 +130,8 @@ export class CategoryProductAssignmentComponent {
                 search: this.search().trim() || null,
                 // Sin filtro se traen todos: un producto con categorías puede recibir más.
                 hasCategories: this.scope() === 'uncategorized' ? false : null,
+                // El API incluye los productos de todas las subcategorías, sin importar el nivel.
+                ...(this.isCategoryView() ? { categoryId: this.category()?.id ?? null } : {}),
               }),
             ),
             catchError((error) => {
@@ -123,8 +145,8 @@ export class CategoryProductAssignmentComponent {
       )
       .subscribe((products) => {
         this.products.set(products);
-        // Solo se asigna lo que está a la vista y aún no tiene la categoría.
-        this.keepAssignableSelection();
+        // Solo se marca lo que está a la vista y se puede asignar o desasociar.
+        this.keepSelectableSelection();
         // Si la página actual quedó vacía (p. ej. tras asignar), se retrocede a la última.
         if (this.first() >= products.length) {
           this.first.set(this.lastPageStart(products.length));
@@ -134,7 +156,23 @@ export class CategoryProductAssignmentComponent {
     // Al cambiar de categoría en el árbol se desmarcan los productos que ya la tienen.
     effect(() => {
       this.assignedIds();
-      untracked(() => this.keepAssignableSelection());
+      untracked(() => this.keepSelectableSelection());
+    });
+
+    // Consultando una categoría, al elegir otra en el árbol se consultan sus productos;
+    // si ya no hay categoría elegida se vuelve a la lista completa.
+    let lastCategoryId = this.category()?.id;
+    effect(() => {
+      const categoryId = this.category()?.id;
+      if (categoryId === lastCategoryId) return;
+      lastCategoryId = categoryId;
+      untracked(() => {
+        if (!this.isCategoryView()) return;
+        if (categoryId == null) this.scope.set('all');
+        this.selected.set([]);
+        this.first.set(0);
+        this.load();
+      });
     });
 
     this.load();
@@ -156,9 +194,29 @@ export class CategoryProductAssignmentComponent {
   scopeChanged(value: ProductScope | null): void {
     // El selector no permite quedar vacío, pero se protege igual.
     if (!value || value === this.scope()) return;
+    // Entre consultar la categoría y los demás filtros cambia qué se puede marcar.
+    if (this.isCategoryView() || value === 'category') this.selected.set([]);
     this.scope.set(value);
     this.first.set(0);
     this.load();
+  }
+
+  /** Botón "Consultar productos": alterna entre los productos de la categoría y todos. */
+  toggleCategoryView(): void {
+    if (this.working()) return;
+    if (this.isCategoryView()) {
+      this.scopeChanged('all');
+      return;
+    }
+    if (!this.category()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Selecciona una categoría',
+        detail: 'Elige en el árbol la categoría que quieres consultar.',
+      });
+      return;
+    }
+    this.scopeChanged('category');
   }
 
   pageChanged(event: TablePageEvent): void {
@@ -171,7 +229,19 @@ export class CategoryProductAssignmentComponent {
   }
 
   selectAll(): void {
-    this.selected.set([...this.assignable()]);
+    this.selected.set([...this.selectable()]);
+  }
+
+  isSelectable(product: ProductListItem): boolean {
+    return this.isCategoryView() ? this.isAssigned(product) : !this.isAssigned(product);
+  }
+
+  /** Por qué una fila no se puede marcar. */
+  notSelectableReason(product: ProductListItem): string | null {
+    if (this.isSelectable(product)) return null;
+    return this.isCategoryView()
+      ? 'Pertenece por una subcategoría; desasócialo desde ella'
+      : 'Ya pertenece a esta categoría';
   }
 
   isAssigned(product: ProductListItem): boolean {
@@ -198,7 +268,7 @@ export class CategoryProductAssignmentComponent {
   }
 
   confirmAssign(): void {
-    if (this.assigning()) return;
+    if (this.working()) return;
     const products = this.selected();
     const category = this.category();
 
@@ -267,11 +337,84 @@ export class CategoryProductAssignmentComponent {
       });
   }
 
-  private keepAssignableSelection(): void {
+  confirmUnassign(): void {
+    if (this.working()) return;
+    const products = this.selected();
+    const category = this.category();
+
+    if (!category) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Selecciona una categoría',
+        detail: 'Elige en el árbol la categoría que quieres quitar.',
+      });
+      return;
+    }
+
+    if (products.length === 0) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Selecciona productos',
+        detail: 'Marca al menos un producto para quitarle la categoría.',
+      });
+      return;
+    }
+
+    const productIds = products.map((product) => product.id);
+
+    this.confirmationService.confirm({
+      header: 'Desasociar productos',
+      message:
+        (products.length === 1
+          ? 'Al producto seleccionado se le quitará la categoría:'
+          : 'A los ' + products.length + ' productos seleccionados se les quitará la categoría:') +
+        '<span class="confirm-category-path">' +
+        this.categoryBranch(category)
+          .map((name) => this.escapeHtml(name))
+          .join(' › ') +
+        '</span>' +
+        '<span class="confirm-category-note">Las demás categorías que tengan se conservan.</span>',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Desasociar',
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-text',
+      accept: () => this.unassign(category, productIds),
+    });
+  }
+
+  private unassign(category: Category, productIds: number[]): void {
+    this.unassigning.set(true);
+
+    this.productService
+      .unassignCategory(category.id, productIds)
+      .pipe(finalize(() => this.unassigning.set(false)))
+      .subscribe({
+        next: ({ updatedCount }) => {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Productos desasociados',
+            detail:
+              (updatedCount === 1
+                ? 'Se quitó 1 producto'
+                : 'Se quitaron ' + updatedCount + ' productos') +
+              ' de la categoría "' +
+              category.name +
+              '".',
+          });
+
+          this.selected.set([]);
+          this.load();
+        },
+        error: (error) => this.showError('No se pudo desasociar', error),
+      });
+  }
+
+  private keepSelectableSelection(): void {
     const current = this.selected();
     const selectedIds = new Set(current.map((product) => product.id));
     // Se toman las filas actuales para que el checkbox de la tabla las reconozca.
-    const kept = this.assignable().filter((product) => selectedIds.has(product.id));
+    const kept = this.selectable().filter((product) => selectedIds.has(product.id));
 
     if (kept.length !== current.length || kept.some((product, index) => product !== current[index])) {
       this.selected.set(kept);
