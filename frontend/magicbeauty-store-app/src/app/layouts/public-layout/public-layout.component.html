@@ -23,7 +23,7 @@
       </div>
     </div>
 
-    <div class="main-header" [class.main-header--without-search]="!showHeaderSearch()">
+    <div class="main-header">
       <button type="button" class="mobile-menu-button mobile-only" (click)="openMobileMenu()" aria-label="Abrir menú">
         <span></span>
         <span></span>
@@ -35,12 +35,10 @@
         <img src="/images/logo-horizontal.png" alt="Magic Beauty Cosmetics" width="610" height="100" />
       </a>
 
-      @if (showHeaderSearch()) {
-        <app-search-box class="desktop-search" inputId="desktop-search" [catalogPath]="isAuthenticated() ? '/productos' : '/catalogo'" [value]="searchTerm()" />
-      }
+      <!-- El buscador se muestra siempre, con o sin sesión. -->
+      <app-search-box class="desktop-search" inputId="desktop-search" [catalogPath]="isAuthenticated() ? '/productos' : '/catalogo'" [value]="searchTerm()" />
 
       <div class="header-actions">
-        @if (showHeaderSearch()) {
         <button
           type="button"
           class="mobile-header-button mobile-only"
@@ -51,7 +49,6 @@
             <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
           </svg>
         </button>
-        }
 
         <button type="button" class="mobile-header-button mobile-only" (click)="openAccount()" aria-label="Cuenta">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -261,7 +258,6 @@
     <div class="overlay" (click)="closeMobileSearch()"></div>
   }
 
-  @if (showHeaderSearch()) {
   <section class="mobile-search-panel" [class.open]="isMobileSearchOpen()">
     <div class="mobile-panel-header">
       <h2>Buscar en nuestro sitio</h2>
@@ -282,7 +278,6 @@
       </div>
     </div>
   </section>
-  }
 
   @if (isMobileMenuOpen()) {
     <div class="overlay" (click)="closeMobileMenu()"></div>

@@ -864,12 +864,6 @@
   padding: 0 0 56px;
 }
 
-@media (min-width: 992px) {
-  .main-header--without-search {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-}
-
 /* Mobile navigation follows the store's beauty palette. */
 .mobile-menu-panel {
   background: linear-gradient(180deg, var(--mb-pink-100), var(--mb-white) 260px);

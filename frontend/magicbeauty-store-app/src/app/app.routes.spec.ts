@@ -147,13 +147,13 @@ it.each([false, true])('sends the old /mi-tienda home to the single store home (
   expect(harness.fixture.nativeElement.querySelector('app-portal-shell app-home')).not.toBeNull();
 });
 
-it('shows the store home to anonymous visitors without the admin menu or the header search', async () => {
+it('shows the store home to anonymous visitors with the header search but without the admin menu', async () => {
   setup();
   const harness = await RouterTestingHarness.create();
   await navigateAs(harness, '/');
   const element = harness.fixture.nativeElement as HTMLElement;
   expect(element.querySelector('app-portal-shell app-home')).not.toBeNull();
-  expect(element.querySelector('.desktop-search')).toBeNull();
+  expect(element.querySelector('.desktop-search')).not.toBeNull();
   expect(element.querySelector('.store-menu')).toBeNull();
   expect(element.textContent).not.toContain('Gestionar y administrar');
   expect(element.textContent).not.toContain('Administrar tienda');
