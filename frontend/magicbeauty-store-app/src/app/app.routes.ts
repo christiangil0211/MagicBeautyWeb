@@ -94,6 +94,12 @@ export const routes: Routes = [
         title: 'Catálogos tradicionales · Magic Beauty'
       },
       {
+        path: 'home-banners',
+        loadComponent: () =>
+          import('./features/admin/home-banners/admin-home-banners.component').then(m => m.AdminHomeBannersComponent),
+        title: 'Banners del inicio · Magic Beauty'
+      },
+      {
         path: 'users',
         loadComponent: () =>
           import('./features/admin/users/admin-users.component').then(m => m.AdminUsersComponent),

@@ -33,6 +33,13 @@ public sealed class AzureBlobStorageOptions
     public string BrandContainerName { get; set; } = "brand-logos";
     public string? BrandPublicBaseUrl { get; set; }
 
+    /// <summary>
+    /// Banners del carrusel del inicio. Opcional: vacío usa el contenedor de
+    /// categorías (con lectura pública) bajo la carpeta home-banners/.
+    /// </summary>
+    public string? BannerContainerName { get; set; }
+    public string? BannerPublicBaseUrl { get; set; }
+
     /// <summary>Opcional: dominio propio o CDN delante del contenedor.</summary>
     public string? PublicBaseUrl { get; set; }
 

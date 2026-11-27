@@ -1,7 +1,13 @@
+import { PublicHomeBanner } from '../../../shared/models/home-banner.model';
+
 /**
  * Banners del carrusel del inicio. Cada uno es una imagen completa (con su texto
  * dibujado); por eso el título va aparte en HTML (oculto en escritorio, visible en
  * móvil) y los botones dibujados se cubren con enlaces reales («zonas»).
+ *
+ * Los banners se administran en Admin › Banners del inicio (api/banners). Los de
+ * HOME_SLIDES son el respaldo: van en el HTML prerenderizado y se usan si el API
+ * falla o no tiene ninguno visible.
  */
 export interface HomeSlideLink {
   label: string;
@@ -37,6 +43,11 @@ export interface HomeSlide {
    * de Colombia, inclusive, `AAAA-MM-DD`). Fuera de ella pasa al final.
    */
   featured?: { from: string; until: string };
+  /**
+   * Copias de la imagen para `srcset`, de menor a mayor (sin la original). Si no se
+   * indican, se suponen `<nombre>-768.webp` y `<nombre>-1280.webp` junto a la original.
+   */
+  sources?: readonly { url: string; width: number }[];
 }
 
 /**
@@ -49,10 +60,40 @@ export const HOME_SLIDE_WIDTHS = [768, 1280] as const;
 /** Ocupa todo el ancho de la pantalla hasta su tamaño real. */
 export const HOME_SLIDE_SIZES = '(min-width: 2172px) 2172px, 100vw';
 
-export function homeSlideSrcset(slide: Pick<HomeSlide, 'image' | 'width'>): string {
+export function homeSlideSrcset(slide: Pick<HomeSlide, 'image' | 'width' | 'sources'>): string {
+  if (slide.sources) {
+    return [...slide.sources.map(source => `${source.url} ${source.width}w`), `${slide.image} ${slide.width}w`].join(', ');
+  }
+
   const base = slide.image.replace(/\.(jpe?g|png|webp)$/i, '');
 
   return [...HOME_SLIDE_WIDTHS.map(width => `${base}-${width}.webp ${width}w`), `${slide.image} ${slide.width}w`].join(', ');
+}
+
+/**
+ * Banner del API → diapositiva del carrusel. Solo se usan copias que existan;
+ * sin copias, la original sirve para todos los tamaños.
+ */
+export function slideFromBanner(banner: PublicHomeBanner): HomeSlide {
+  const sources = [
+    { url: banner.imageUrl768, width: 768 },
+    { url: banner.imageUrl1280, width: 1280 }
+  ].filter((source): source is { url: string; width: number } => !!source.url && source.width < banner.imageWidth);
+
+  return {
+    id: `banner-${banner.id}`,
+    name: banner.name,
+    title: banner.title,
+    image: banner.imageUrl ?? '',
+    width: banner.imageWidth,
+    height: banner.imageHeight,
+    alt: banner.altText,
+    link: banner.link ?? undefined,
+    hotspots: banner.hotspots.length ? banner.hotspots : undefined,
+    note: banner.noteHighlight || banner.noteText ? { strong: banner.noteHighlight ?? '', text: banner.noteText ?? '' } : undefined,
+    mobileCtas: banner.mobileCtas.length ? banner.mobileCtas : undefined,
+    sources
+  };
 }
 
 /** Fecha de hoy en Colombia (`AAAA-MM-DD`), la que rige las temporadas. */

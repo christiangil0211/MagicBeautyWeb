@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<ISalesRankingReader, SalesRankingReader>();
         services.AddScoped<IBrandRepository, BrandRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IHomeBannerRepository, HomeBannerRepository>();
         services.AddScoped<IPriceTypeRepository, PriceTypeRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<ITraditionalCatalogRepository, TraditionalCatalogRepository>();
