@@ -16,8 +16,8 @@ import { routeBanner } from '../../features/public/portal/portal-banner.service'
     '<div class="store-pages"><router-outlet /></div>',
   styles: [
     ':host { display: block; }',
-    '.store-pages { max-width: calc(var(--mb-container) + var(--mb-gutter) * 2); margin: 0 auto; padding: 24px var(--mb-gutter) 56px; scroll-margin-top: 1rem; }',
-    '@media (max-width: 640px) { .store-pages { padding: 20px 16px 36px; } }'
+    '.store-pages { max-width: calc(var(--mb-container) + var(--mb-gutter) * 2); margin: 0 auto; padding: 8px var(--mb-gutter) 56px; scroll-margin-top: 1rem; }',
+    '@media (max-width: 640px) { .store-pages { padding: 8px 16px 36px; } }'
   ]
 })
 export class StoreLayoutComponent {

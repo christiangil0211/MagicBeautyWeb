@@ -1,6 +1,20 @@
-import { Component, DestroyRef, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+  viewChild
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter } from 'rxjs';
 
 import { HomeBannerStore } from './home-banner-store';
 import {
@@ -12,6 +26,14 @@ import {
   orderHomeSlides
 } from './home-slides';
 import { PortalBanner } from './portal-navigation';
+
+/** Aire entre la cabecera fija y el título al bajar hasta él. */
+const HEADING_SCROLL_GAP_PX = 16;
+
+/** Páginas de una categoría: /categoria/:slug (tienda) y /catalogo/categoria/:slug (portal). */
+export function isCategoryPath(path: string): boolean {
+  return /^\/(catalogo\/)?categoria\/[^/]+\/?$/.test(path);
+}
 
 /**
  * Carrusel de campañas a todo el ancho bajo la cabecera, en todas las páginas con
@@ -72,9 +94,30 @@ export class PortalBannerComponent {
   private lastChange = Date.now();
   private swipeStartX: number | null = null;
 
+  private readonly heading = viewChild<ElementRef<HTMLElement>>('pageHeading');
+
   constructor() {
     const destroyRef = inject(DestroyRef);
     const store = inject(HomeBannerStore);
+    const injector = inject(Injector);
+
+    // Al elegir una categoría (menú, filtros o un enlace) la página baja hasta su
+    // título: con el carrusel arriba, si no, parecía que el clic no había hecho nada.
+    // No aplica a la primera carga ni a cambios de orden o página en la misma categoría.
+    let previousPath: string | null = null;
+    inject(Router)
+      .events.pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(destroyRef)
+      )
+      .subscribe(event => {
+        const path = event.urlAfterRedirects.split(/[?#]/)[0];
+        const changed = path !== previousPath;
+        previousPath = path;
+        if (event.id > 1 && changed && isCategoryPath(path) && !this.preview()) {
+          afterNextRender(() => this.scrollToHeading(), { injector });
+        }
+      });
 
     // Si la lista cambia (llegan los del API o se edita la vista previa), el
     // banner a la vista se conserva si sigue en ella; si no, vuelve al primero.
@@ -139,6 +182,23 @@ export class PortalBannerComponent {
         image.srcset = homeSlideSrcset(slide);
         image.src = slide.image;
       });
+  }
+
+  /** Deja el título de la página justo bajo la cabecera fija. */
+  private scrollToHeading(): void {
+    const heading = this.heading()?.nativeElement;
+    if (!heading || typeof window.scrollTo !== 'function') return;
+
+    const header = document.querySelector<HTMLElement>('.store-header');
+    // La cabecera es sticky con `top` negativo: solo queda a la vista una parte.
+    const headerOffset = header
+      ? header.getBoundingClientRect().height + (parseFloat(getComputedStyle(header).top) || 0)
+      : 0;
+    const top = Math.max(0, heading.getBoundingClientRect().top + window.scrollY - headerOffset - HEADING_SCROLL_GAP_PX);
+    if (Math.abs(window.scrollY - top) < 4) return;
+
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
   }
 
   showSlide(index: number): void {
