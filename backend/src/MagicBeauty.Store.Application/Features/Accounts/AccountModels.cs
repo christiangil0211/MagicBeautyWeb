@@ -15,7 +15,7 @@ public enum LoginStatus
 }
 
 /// <summary>Identidad que la capa web convierte en la cookie de sesion.</summary>
-public sealed record AuthenticatedAccount(int UserId, string Email, IReadOnlyList<string> RoleCodes);
+public sealed record AuthenticatedAccount(int UserId, string Email, IReadOnlyList<string> RoleCodes, Guid SecurityStamp);
 
 public sealed record LoginResult(LoginStatus Status, AuthenticatedAccount? Account = null, string? Email = null);
 

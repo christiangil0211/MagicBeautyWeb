@@ -904,6 +904,11 @@ namespace MagicBeauty.Store.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<Guid>("SecurityStamp")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
                     b.Property<DateTime?>("TemporaryPasswordExpiresAt")
                         .HasColumnType("datetime2");
 

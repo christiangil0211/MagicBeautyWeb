@@ -34,7 +34,7 @@ builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.Is
 // Integracion Alegra (desmontable): ver MagicBeauty.Store.Integrations.Alegra.
 builder.Services.AddAlegraIntegration(builder.Configuration);
 
-builder.Services.AddStoreAuthentication(builder.Environment);
+builder.Services.AddStoreAuthentication(builder.Environment, builder.Configuration);
 
 // Login, verificacion y cambio de contrasena terminan en 13 s como maximo.
 builder.Services.AddAuthRequestBudget();

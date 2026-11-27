@@ -24,6 +24,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(500)
             .IsRequired();
 
+        builder.Property(user => user.SecurityStamp)
+            .HasDefaultValueSql("NEWID()");
+
         builder.Property(user => user.CreatedAt)
             .IsRequired();
 

@@ -5,6 +5,9 @@ namespace MagicBeauty.Store.Application.Features.Accounts;
 
 public interface IAccountService
 {
+    /// <summary>Lee la identidad vigente para comprobar si el ticket puede seguir usándose.</summary>
+    Task<AuthenticatedAccount?> GetSessionAccountAsync(int userId, CancellationToken cancellationToken);
+
     /// <summary>
     /// Valida correo y contrasena. Si el correo aun no esta confirmado, envia un
     /// codigo y pide verificarlo antes de abrir la sesion.

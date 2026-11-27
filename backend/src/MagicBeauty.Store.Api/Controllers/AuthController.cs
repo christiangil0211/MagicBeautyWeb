@@ -135,7 +135,8 @@ public sealed class AuthController(
         {
             new(ClaimTypes.NameIdentifier, account.UserId.ToString()),
             new(ClaimTypes.Name, account.Email),
-            new(ClaimTypes.Email, account.Email)
+            new(ClaimTypes.Email, account.Email),
+            new(StoreSessionValidation.StampClaim, account.SecurityStamp.ToString("D"))
         };
 
         claims.AddRange(account.RoleCodes.Select(role => new Claim(ClaimTypes.Role, role)));
