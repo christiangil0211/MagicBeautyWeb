@@ -22,6 +22,7 @@ export class AdminLayoutComponent {
     { label: 'Clientes', icon: 'pi pi-id-card', path: '/admin/customers' },
     { label: 'Marcas', icon: 'pi pi-tag', path: '/admin/brands' },
     { label: 'Catálogos', icon: 'pi pi-book', path: '/admin/catalogs' },
+    { label: 'Banners del inicio', icon: 'pi pi-images', path: '/admin/home-banners' },
     { label: 'Administradores', icon: 'pi pi-users', path: '/admin/users' },
     { label: 'Inventario', icon: 'pi pi-box' }
   ];

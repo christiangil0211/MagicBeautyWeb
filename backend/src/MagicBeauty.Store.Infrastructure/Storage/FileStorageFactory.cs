@@ -8,6 +8,7 @@ public sealed class FileStorageFactory : IFileStorageFactory
     private readonly IFileStorage categories;
     private readonly IFileStorage catalogs;
     private readonly IFileStorage brands;
+    private readonly IFileStorage banners;
     public FileStorageFactory(IFileStorage products, AzureBlobStorageOptions azure, LocalFileStorageOptions? local, ILogger<AzureBlobFileStorage> logger)
     {
         this.products = products;
@@ -19,15 +20,21 @@ public sealed class FileStorageFactory : IFileStorageFactory
             if (string.IsNullOrWhiteSpace(azure.BrandContainerName) || new[] { azure.ContainerName, azure.CategoryContainerName, azure.CatalogContainerName }.Contains(azure.BrandContainerName)) throw new InvalidOperationException("Brands requiere un contenedor separado de Products, Categories y Catalogs.");
             catalogs = ForContainer(azure, azure.CatalogContainerName, azure.CatalogPublicBaseUrl, logger);
             brands = ForContainer(azure, azure.BrandContainerName, azure.BrandPublicBaseUrl, logger);
+            // Banners del inicio: contenedor propio si se configura; si no, el de categorías (también público), bajo home-banners/.
+            if (!string.IsNullOrWhiteSpace(azure.BannerContainerName) && new[] { azure.ContainerName, azure.CatalogContainerName, azure.BrandContainerName }.Contains(azure.BannerContainerName)) throw new InvalidOperationException("Banners requiere un contenedor separado de Products, Catalogs y Brands (o el de Categories).");
+            banners = string.IsNullOrWhiteSpace(azure.BannerContainerName) || azure.BannerContainerName == azure.CategoryContainerName
+                ? categories
+                : ForContainer(azure, azure.BannerContainerName, azure.BannerPublicBaseUrl, logger);
         }
         else
         {
             categories = local is null ? new UnconfiguredFileStorage() : new LocalFileStorage(local);
             catalogs = categories;
             brands = categories;
+            banners = categories;
         }
     }
-    public IFileStorage Get(FileStorageDestination destination) => destination switch { FileStorageDestination.Products => products, FileStorageDestination.Categories => categories, FileStorageDestination.Catalogs => catalogs, FileStorageDestination.Brands => brands, _ => throw new ArgumentOutOfRangeException(nameof(destination)) };
+    public IFileStorage Get(FileStorageDestination destination) => destination switch { FileStorageDestination.Products => products, FileStorageDestination.Categories => categories, FileStorageDestination.Catalogs => catalogs, FileStorageDestination.Brands => brands, FileStorageDestination.Banners => banners, _ => throw new ArgumentOutOfRangeException(nameof(destination)) };
 
     private static AzureBlobFileStorage ForContainer(AzureBlobStorageOptions azure, string containerName, string? publicBaseUrl, ILogger<AzureBlobFileStorage> logger)
         => new(new AzureBlobStorageOptions { ServiceUri = azure.ServiceUri, ConnectionString = azure.ConnectionString, ContainerName = containerName, PublicBaseUrl = publicBaseUrl }, logger);

@@ -166,7 +166,16 @@
       </div>
 
       <div class="section">
-        <h3>Logo</h3>
+        <div class="section__head">
+          <h3>Logo</h3>
+          <p-button
+            label="¿Cómo preparo el logo?"
+            icon="pi pi-info-circle"
+            severity="secondary"
+            [text]="true"
+            size="small"
+            (onClick)="logoPromptOpen.set(true)" />
+        </div>
         <div class="logo-field">
           <div class="logo-field__preview">
             @if (logoPreview(); as logo) {
@@ -196,7 +205,7 @@
             @if (removeLogo()) {
               <small>El logo se quitará al guardar.</small>
             }
-            <small class="hint">Una sola imagen: PNG, SVG o WebP, máximo 1 MB. Mejor con fondo transparente. Reemplazarlo borra el anterior.</small>
+            <small class="hint">Una sola imagen: PNG, SVG o WebP, máximo 1 MB. Estándar: PNG transparente de {{ logoSize }}. Reemplazarlo borra el anterior.</small>
           </div>
         </div>
       </div>
@@ -205,3 +214,36 @@
 
   <app-brand-products [brand]="selectedBrand() ?? null" (changed)="productsChanged()" />
 </section>
+
+<!-- Ayuda: prompt para limpiar y estandarizar el logo con IA. -->
+<p-dialog
+  [visible]="logoPromptOpen()"
+  (visibleChange)="logoPromptOpen.set($event)"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: 'min(52rem, 96vw)' }"
+  header="Preparar el logo con IA">
+  <div class="logo-prompt">
+    <p class="logo-prompt__intro">
+      Todos los logos de la tienda siguen el mismo estándar: <strong>PNG con fondo transparente de {{ logoSize }}</strong>,
+      centrado y con un margen pequeño. Así se ven del mismo tamaño en el carrusel del inicio y en /marcas.
+    </p>
+
+    <ol class="logo-prompt__steps">
+      <li>Descarga de internet la mejor imagen que encuentres del logo (la página oficial o las redes de la marca).</li>
+      <li>Abre ChatGPT, Gemini o Copilot, adjunta la imagen y pega este prompt.</li>
+      <li>
+        Revisa el resultado: mismo texto y colores que el original, sin manchas ni restos del fondo alrededor de las letras y sin
+        nada cortado en los bordes. Si algo falla, pídele que lo corrija.
+      </li>
+      <li>Súbelo aquí con «Subir logo». Debe pesar menos de 1 MB: si pesa más, comprímelo en tinypng.com o conviértelo a WebP.</li>
+    </ol>
+
+    <label class="logo-prompt__label" for="logo-prompt-text">Prompt para copiar</label>
+    <textarea id="logo-prompt-text" class="logo-prompt__text" readonly [value]="logoPrompt"></textarea>
+
+    <div class="logo-prompt__actions">
+      <p-button label="Copiar prompt" icon="pi pi-copy" size="small" (onClick)="copyLogoPrompt()" />
+    </div>
+  </div>
+</p-dialog>
