@@ -12,11 +12,14 @@ import { AUTH_WAIT_MESSAGES, AccountPanelComponent, SESSION_MESSAGES } from './a
 function setup(login: () => Observable<LoginOutcome>) {
   const loginSpy = vi.fn(login);
   const registerSpy = vi.fn(() => of(undefined));
+  const forgotSpy = vi.fn(() => of(undefined));
+  const resetSpy = vi.fn(() => of(undefined));
   TestBed.configureTestingModule({
     imports: [AccountPanelComponent],
     providers: [provideRouter([]), { provide: AuthService, useValue: {
       session: signal(null), canManageStore: signal(false), isAuthenticated: signal(false),
-      login: loginSpy, register: registerSpy, requestableRoles: () => of([])
+      login: loginSpy, register: registerSpy, requestableRoles: () => of([]),
+      forgotPassword: forgotSpy, resetPassword: resetSpy
     } }]
   });
   const fixture = TestBed.createComponent(AccountPanelComponent);
@@ -25,8 +28,24 @@ function setup(login: () => Observable<LoginOutcome>) {
   fixture.componentInstance.password.set('test-password');
   fixture.detectChanges();
 
-  return { fixture, panel: fixture.componentInstance, loginSpy, registerSpy };
+  return { fixture, panel: fixture.componentInstance, loginSpy, registerSpy, forgotSpy, resetSpy };
 }
+
+it('recovers a password without reporting account existence or logging in automatically', () => {
+  const { panel, forgotSpy, resetSpy, loginSpy } = setup(() => new Subject<LoginOutcome>());
+  panel.showForgotPassword();
+  panel.submitForgotPassword();
+  expect(forgotSpy).toHaveBeenCalledWith('test@example.invalid');
+  expect(panel.step()).toBe('reset-password');
+  expect(panel.info()).toContain('Si hay una cuenta activa');
+  panel.code.set('123456');
+  panel.newPassword.set('Mi-Nueva-Clave-123');
+  panel.confirmPassword.set('Mi-Nueva-Clave-123');
+  panel.submitNewPassword();
+  expect(resetSpy).toHaveBeenCalledWith('test@example.invalid', '123456', 'Mi-Nueva-Clave-123');
+  expect(loginSpy).not.toHaveBeenCalled();
+  expect(panel.step()).toBe('credentials');
+});
 
 it('starts registration with both consents unchecked and keeps the result generic', () => {
   const { fixture, panel, registerSpy } = setup(() => new Subject<LoginOutcome>());

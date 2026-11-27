@@ -33,13 +33,13 @@ public sealed class AuthController(
     public async Task<IActionResult> Register(
         RegisterCustomerRequest request,
         [FromServices] CustomerRegistrationService registration,
-        [FromServices] RegistrationCodeQueue queue,
+        [FromServices] AccountCodeQueue queue,
         [FromServices] ILogger<AuthController> logger,
         CancellationToken cancellationToken)
     {
         var userId = await registration.RegisterAsync(
             request, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken);
-        if (userId is { } id && !queue.TryEnqueue(id))
+        if (userId is { } id && !queue.TryEnqueueRegistration(id))
             logger.LogWarning("La cola de confirmación de altas está llena.");
 
         return Accepted();
@@ -51,6 +51,32 @@ public sealed class AuthController(
     public async Task<ActionResult<IReadOnlyList<RequestableRoleDto>>> GetRequestableRoles(
         [FromServices] CustomerRegistrationService registration, CancellationToken cancellationToken) =>
         Ok(await registration.GetRequestableRolesAsync(cancellationToken));
+
+    [HttpPost("forgot-password")]
+    [AuthRequestBudget]
+    [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
+    public IActionResult ForgotPassword(
+        ForgotPasswordRequest request, [FromServices] AccountCodeQueue queue,
+        [FromServices] ILogger<AuthController> logger, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!queue.TryEnqueueRecovery(EmailRules.RequireValid(request.Email)))
+            logger.LogWarning("La cola de recuperación de acceso está llena.");
+
+        return Accepted();
+    }
+
+    [HttpPost("reset-password")]
+    [AuthRequestBudget]
+    [EnableRateLimiting(AuthorizationPolicies.AuthRateLimit)]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        await accountService.ResetPasswordAsync(request.Email, request.Code, request.NewPassword, cancellationToken);
+        if (User.FindFirstValue(ClaimTypes.Email) == EmailRules.Normalize(request.Email))
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        return NoContent();
+    }
 
     [HttpPost("login")]
     [AuthRequestBudget]
