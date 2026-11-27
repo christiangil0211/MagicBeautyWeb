@@ -100,6 +100,12 @@ export const routes: Routes = [
         title: 'Administradores · Magic Beauty'
       },
       {
+        path: 'customers',
+        loadComponent: () =>
+          import('./features/admin/customers/admin-customers.component').then(m => m.AdminCustomersComponent),
+        title: 'Clientes · Magic Beauty'
+      },
+      {
         path: '',
         redirectTo: 'categories',
         pathMatch: 'full'
