@@ -18,32 +18,37 @@ public sealed class SalesImportsController(
     TimeProvider clock, IConfiguration configuration) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Start([FromQuery] Guid? resumeId, CancellationToken token, [FromQuery] bool refreshDetails = false)
+    public async Task<IActionResult> Start(
+        [FromQuery] Guid? resumeId, CancellationToken token, [FromQuery] bool refreshDetails = false,
+        [FromQuery] DateOnly? backfillFrom = null)
     {
         if (!queue.Ready.IsCompletedSuccessfully)
             return StatusCode(503, new { message = "La importación de ventas no está disponible." });
 
-        var active = await ActiveIdAsync(token);
-        if (active is not null) return AlreadyActive(active.Value);
+        var active = await ActiveAsync(token);
+        if (active is not null) return AlreadyActive(active);
 
         var source = sources.SingleOrDefault(x => x.IsEnabled);
         if (source is null)
             return StatusCode(503, new { message = "No hay una fuente de ventas habilitada." });
 
         var runId = resumeId ?? Guid.NewGuid();
+        var today = SalesCalendar.Today(clock);
+        if (backfillFrom > today || (backfillFrom is not null && resumeId is not null))
+            throw new ArgumentException("La fecha de recarga no es válida para esta importación.");
         try
         {
             if (resumeId is { } id)
             {
-                var failed = await db.Set<ImportRun>().AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, token);
+                var failed = await SalesRuns().SingleOrDefaultAsync(x => x.Id == id, token);
                 if (failed is null || failed.Source != source.Source || failed.Status != ImportStatus.Failed)
                 {
-                    active = await ActiveIdAsync(token);
-                    if (active is { } activeId) return AlreadyActive(activeId);
+                    active = await ActiveAsync(token);
+                    if (active is not null) return AlreadyActive(active);
                     return BadRequest(new { message = "La ejecución solicitada no se puede reanudar." });
                 }
 
-                var newer = await db.Set<ImportRun>().AnyAsync(
+                var newer = await SalesRuns().AnyAsync(
                     x => x.Source == failed.Source && x.StartedAt > failed.StartedAt, token);
                 if (newer) return Conflict(new { message = "Hay una importación posterior. Inicia una nueva carga." });
 
@@ -53,21 +58,21 @@ public sealed class SalesImportsController(
                         .SetProperty(x => x.Active, true)
                         .SetProperty(x => x.FinishedAt, (DateTimeOffset?)null)
                         .SetProperty(x => x.Error, (string?)null), token);
-                if (queued == 0) return AlreadyActive(id);
+                if (queued == 0) return AlreadyActive(failed);
             }
             else
             {
                 var last = await LastSuccessAsync(source.Source, token);
-                var watermark = await db.Set<ImportRun>()
+                var watermark = await SalesRuns()
                     .Where(x => x.Source == source.Source && x.Status == ImportStatus.Succeeded)
                     .MaxAsync(x => x.LastSaleDate, token);
-                var today = SalesCalendar.Today(clock);
                 var overlap = Math.Clamp(configuration.GetValue("Sales:OverlapDays", 7), 0, 90);
                 db.Add(new ImportRun
                 {
                     Id = runId,
                     Source = source.Source,
-                    From = last is null || refreshDetails ? today.AddMonths(-3) : (watermark ?? last.Through).AddDays(-overlap),
+                    From = backfillFrom ?? (last is null || refreshDetails
+                        ? today.AddMonths(-3) : (watermark ?? last.Through).AddDays(-overlap)),
                     Through = today,
                     StartedAt = clock.GetUtcNow(),
                     Status = ImportStatus.Queued,
@@ -78,8 +83,8 @@ public sealed class SalesImportsController(
         }
         catch (Exception exception) when (exception is SqlException { Number: 2601 or 2627 } || exception is DbUpdateException { InnerException: SqlException { Number: 2601 or 2627 } })
         {
-            active = await ActiveIdAsync(token);
-            return active is { } activeId ? AlreadyActive(activeId) : Conflict();
+            active = await ActiveAsync(token);
+            return active is not null ? AlreadyActive(active) : Conflict();
         }
 
         queue.Enqueue(runId);
@@ -89,14 +94,14 @@ public sealed class SalesImportsController(
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken token)
     {
-        var run = await db.Set<ImportRun>().AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, token);
+        var run = await SalesRuns().SingleOrDefaultAsync(x => x.Id == id, token);
         return await DescribeAsync(run, token);
     }
 
     [HttpGet("latest")]
     public async Task<IActionResult> Latest(CancellationToken token)
     {
-        var run = await db.Set<ImportRun>().AsNoTracking().OrderByDescending(x => x.Active)
+        var run = await SalesRuns().OrderByDescending(x => x.Active)
             .ThenByDescending(x => x.StartedAt).FirstOrDefaultAsync(token);
         return await DescribeAsync(run, token);
     }
@@ -137,12 +142,16 @@ public sealed class SalesImportsController(
     }
 
     private Task<ImportRun?> LastSuccessAsync(string source, CancellationToken token) =>
-        db.Set<ImportRun>().AsNoTracking().Where(x => x.Source == source && x.Status == ImportStatus.Succeeded)
+        SalesRuns().Where(x => x.Source == source && x.Status == ImportStatus.Succeeded)
             .OrderByDescending(x => x.FinishedAt).FirstOrDefaultAsync(token);
 
-    private Task<Guid?> ActiveIdAsync(CancellationToken token) =>
-        db.Set<ImportRun>().AsNoTracking().Where(x => x.Active == true).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(token);
+    private IQueryable<ImportRun> SalesRuns() =>
+        db.Set<ImportRun>().AsNoTracking().Where(x => x.Kind == ImportKind.Sales);
 
-    private ConflictObjectResult AlreadyActive(Guid id) =>
-        Conflict(new { id, statusUrl = Url.Action(nameof(Get), new { id }), message = "Ya hay una importación activa." });
+    private Task<ImportRun?> ActiveAsync(CancellationToken token) =>
+        db.Set<ImportRun>().AsNoTracking().SingleOrDefaultAsync(x => x.Active == true, token);
+
+    private ConflictObjectResult AlreadyActive(ImportRun run) => run.Kind == ImportKind.Sales
+        ? Conflict(new { id = run.Id, statusUrl = Url.Action(nameof(Get), new { id = run.Id }), message = "Ya hay una importación activa." })
+        : Conflict(new { message = "Ya se está ejecutando una importación de contactos." });
 }

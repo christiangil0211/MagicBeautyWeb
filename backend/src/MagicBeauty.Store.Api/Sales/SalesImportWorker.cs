@@ -1,5 +1,6 @@
 ﻿using MagicBeauty.Store.Application.Features.Sales;
 using MagicBeauty.Store.Domain.Entities;
+using MagicBeauty.Store.Application.Features.Customers;
 using MagicBeauty.Store.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -89,12 +90,30 @@ public sealed class SalesImportWorker(
     private async Task ImportAsync(Guid id, MagicBeautyDbContext db, IServiceProvider services, CancellationToken token)
     {
         var run = await db.Set<ImportRun>().AsNoTracking().SingleAsync(x => x.Id == id, token);
-        var source = services.GetServices<ISalesSource>()
-            .Single(x => x.Source == run.Source && x.IsEnabled);
         var started = await db.Set<ImportRun>().Where(x => x.Id == id && x.Status == ImportStatus.Queued)
             .ExecuteUpdateAsync(update => update.SetProperty(x => x.Status, ImportStatus.Running), token);
         if (started == 0) return;
 
+        if (run.Kind == ImportKind.Customers)
+        {
+            await ImportCustomersAsync(run, services, token);
+        }
+        else
+        {
+            await ImportSalesAsync(run, db, services, token);
+        }
+
+        await db.Set<ImportRun>().Where(x => x.Id == id && x.Status == ImportStatus.Running)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(x => x.Status, ImportStatus.Succeeded)
+                .SetProperty(x => x.Active, (bool?)null)
+                .SetProperty(x => x.FinishedAt, clock.GetUtcNow()), token);
+    }
+
+    private static async Task ImportSalesAsync(
+        ImportRun run, MagicBeautyDbContext db, IServiceProvider services, CancellationToken token)
+    {
+        var source = services.GetServices<ISalesSource>().Single(x => x.Source == run.Source && x.IsEnabled);
         await CopyMappingsAsync(db, source, token);
         var writer = services.GetRequiredService<ISalesBatchWriter>();
         var offset = run.NextOffset;
@@ -107,17 +126,31 @@ public sealed class SalesImportWorker(
                 if (batch.NextOffset < offset || batch.NextOffset == offset && !batch.Complete)
                     throw new InvalidOperationException("El origen no avanzó al leer el lote.");
 
-                await writer.WriteAsync(id, batch, token);
+                await writer.WriteAsync(run.Id, batch, token);
                 if (batch.Complete) break;
                 offset = batch.NextOffset;
             }
         }
 
-        await db.Set<ImportRun>().Where(x => x.Id == id && x.Status == ImportStatus.Running)
-            .ExecuteUpdateAsync(update => update
-                .SetProperty(x => x.Status, ImportStatus.Succeeded)
-                .SetProperty(x => x.Active, (bool?)null)
-                .SetProperty(x => x.FinishedAt, clock.GetUtcNow()), token);
+    }
+
+    private static async Task ImportCustomersAsync(ImportRun run, IServiceProvider services, CancellationToken token)
+    {
+        if (run.AllPagesRead) return;
+
+        var source = services.GetServices<ICustomerImportSource>().Single(x => x.Source == run.Source && x.IsEnabled);
+        var writer = services.GetRequiredService<ICustomerBatchWriter>();
+        var offset = run.NextOffset;
+        while (true)
+        {
+            var batch = await source.ReadAsync(offset, token);
+            if (batch.NextOffset < offset || batch.NextOffset == offset && !batch.Complete)
+                throw new InvalidOperationException("El origen no avanzó al leer los contactos.");
+
+            await writer.WriteAsync(run.Id, batch, token);
+            if (batch.Complete) return;
+            offset = batch.NextOffset;
+        }
     }
 
     private static async Task CopyMappingsAsync(MagicBeautyDbContext db, ISalesSource source, CancellationToken token)

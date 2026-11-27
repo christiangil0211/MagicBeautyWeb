@@ -4,6 +4,7 @@ using System.Text;
 using MagicBeauty.Store.Api.Controllers;
 using MagicBeauty.Store.Api.Sales;
 using MagicBeauty.Store.Application.Features.Catalog;
+using MagicBeauty.Store.Application.Features.Customers;
 using MagicBeauty.Store.Application.Features.Sales;
 using MagicBeauty.Store.Contracts.Catalog.Responses;
 using MagicBeauty.Store.Domain.Entities;
@@ -50,6 +51,55 @@ public sealed class SalesTests
         Assert.Equal(SaleStatus.Voided, updated.Status);
         Assert.Equal(2, updated.Lines.Count);
         Assert.Equal(2, await db.Set<SaleLine>().CountAsync());
+    }
+
+    [Fact]
+    public async Task ReimportLinksInvoicesOnlyToMatchingCustomersFromTheirSource()
+    {
+        await using var db = CreateDatabase();
+        var customer = new Customer { Source = "test", ExternalId = "contact", DocumentNumber = "1234567", Name = "Local" };
+        db.Customers.AddRange(customer, new Customer
+        {
+            Source = "other", ExternalId = "contact", DocumentNumber = "1234567", Name = "Otra fuente"
+        });
+        await db.SaveChangesAsync();
+        var writer = new SalesBatchWriter(db, Clock);
+        var run = await AddRunAsync(db);
+        await writer.WriteAsync(run, Batch(
+            Document("matching", SaleStatus.Open, 1) with { CustomerExternalId = "contact", CustomerDocumentNumber = "1.234.567" },
+            Document("conflicting", SaleStatus.Open, 1) with { CustomerExternalId = "contact", CustomerDocumentNumber = "998877" }),
+            default);
+
+        var sales = await db.Sales.ToDictionaryAsync(sale => sale.ExternalId);
+        Assert.Equal(customer.Id, sales["matching"].CustomerId);
+        Assert.Null(sales["conflicting"].CustomerId);
+        Assert.Equal("1234567", sales["matching"].CustomerDocumentNumber);
+        Assert.Empty(db.Users);
+    }
+
+    [Fact]
+    public async Task ContactImportIsIdempotentAndDoesNotCreateWebAccounts()
+    {
+        await using var db = CreateDatabase();
+        var runId = await AddRunAsync(db);
+        var run = await db.Set<ImportRun>().SingleAsync();
+        run.Kind = ImportKind.Customers;
+        await db.SaveChangesAsync();
+        var writer = new CustomerBatchWriter(db);
+        var page = new CustomerBatch(
+            [new("contact", "001.234", "Contacto", null, null, null, null),
+             new("collision", "001234", "Otro", null, null, null, null)], 2, true);
+        await writer.WriteAsync(runId, page, default);
+        await writer.WriteAsync(runId, page, default);
+
+        var customer = await db.Customers.SingleAsync();
+        Assert.Equal("001234", customer.DocumentNumber);
+        Assert.Equal("contact", customer.ExternalId);
+        Assert.Empty(db.Users);
+        var completed = await db.Set<ImportRun>().SingleAsync();
+        Assert.Equal(1, completed.Pages);
+        Assert.Equal(1, completed.Contacts);
+        Assert.Equal(1, completed.SkippedContacts);
     }
 
     [Fact]

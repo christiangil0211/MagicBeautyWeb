@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
 import { DialogModule } from 'primeng/dialog';
 import { EMPTY, Subscription, catchError, exhaustMap, timer } from 'rxjs';
 
@@ -11,7 +12,7 @@ import { LoaderComponent } from '../../../shared/components/loader/loader.compon
 
 @Component({
   selector: 'app-sales-import',
-  imports: [ButtonModule, DatePipe, DecimalPipe, DialogModule, LoaderComponent],
+  imports: [ButtonModule, DatePipe, DecimalPipe, DialogModule, InputTextModule, LoaderComponent],
   templateUrl: './sales-import.component.html',
   styleUrl: './sales-import.component.scss'
 })
@@ -26,6 +27,7 @@ export class SalesImportComponent {
   readonly open = signal(false);
   readonly step = signal<'confirm' | 'running' | 'result' | 'error'>('confirm');
   readonly refreshDetails = signal(false);
+  readonly backfillFrom = signal('');
   readonly checking = signal(true);
   readonly error = signal('');
   readonly busy = computed(() => this.step() === 'running');
@@ -54,6 +56,7 @@ export class SalesImportComponent {
     if (this.busy()) return;
     this.error.set('');
     this.refreshDetails.set(false);
+    this.backfillFrom.set('');
     this.step.set(this.run()?.status === 'Failed' ? 'result' : 'confirm');
     this.open.set(true);
   }
@@ -66,7 +69,9 @@ export class SalesImportComponent {
     if (this.busy()) return;
     this.step.set('running');
     this.error.set('');
-    (this.refreshDetails() && !resumeId ? this.api.start(undefined, true) : this.api.start(resumeId)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const request = this.backfillFrom() && !resumeId ? this.api.start(undefined, false, this.backfillFrom())
+      : this.refreshDetails() && !resumeId ? this.api.start(undefined, true) : this.api.start(resumeId);
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ id }) => {
         this.run.set(null);
         this.watch(id);

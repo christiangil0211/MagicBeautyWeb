@@ -16,6 +16,7 @@ import { environment } from '../../../../environments/environment';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { formatCop } from '../../../shared/utils/currency';
 import { SalesImportComponent } from './sales-import.component';
+import { CustomerImportComponent } from './customer-import.component';
 
 interface SaleRow {
   id: number;
@@ -46,7 +47,7 @@ interface SaleLine {
 
 @Component({
   selector: 'app-admin-sales',
-  imports: [ButtonModule, DialogModule, DecimalPipe, FormsModule, InputTextModule, SelectModule, TableModule, TagModule, LoaderComponent, PageHeaderComponent, SalesImportComponent],
+  imports: [ButtonModule, DialogModule, DecimalPipe, FormsModule, InputTextModule, SelectModule, TableModule, TagModule, LoaderComponent, PageHeaderComponent, SalesImportComponent, CustomerImportComponent],
   templateUrl: './admin-sales.component.html',
   styleUrl: './admin-sales.component.scss'
 })
