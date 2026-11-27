@@ -14,6 +14,7 @@ using MagicBeauty.Store.Infrastructure.Persistence;
 using MagicBeauty.Store.Infrastructure.Persistence.Repositories;
 using MagicBeauty.Store.Infrastructure.Services;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -93,20 +94,23 @@ public sealed class AuthBudgetHttpTests
     [Fact]
     public async Task ClosingTheRequestCancelsTheLoginWhileTheConnectionIsOpening()
     {
-        // Angular corta a los 15 s; aqui el "navegador" corta a los 0,5 s, con el
-        // presupuesto del API (13 s) y el Connect Timeout (30 s) aun lejos.
         await using var sql = new UnresponsiveServer();
         var loginEnded = new TaskCompletionSource<(Exception? Failure, TimeSpan Elapsed)>();
-        var watch = Stopwatch.StartNew();
+        var watch = new Stopwatch();
 
         await using var api = await TestApi.StartAsync(
             () => sql.CreateContext(DatabaseRetryPolicy.Default, connectTimeoutSeconds: 30),
             AuthRequestBudget.Default,
             inner => ObserveLogin(inner, loginEnded, watch));
-        using var browserTimeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        using var browserCancellation = new CancellationTokenSource();
+        var login = api.Client.PostAsJsonAsync("/api/auth/login", new { email = Email, password = Password }, browserCancellation.Token);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            api.Client.PostAsJsonAsync("/api/auth/login", new { email = Email, password = Password }, browserTimeout.Token));
+        // Cancela cuando SqlClient ya abrió el socket y todavía espera a SQL.
+        // El arranque de Kestrel y la primera consulta de EF no cuentan como latencia de cancelación.
+        await sql.FirstConnection.WaitAsync(TimeSpan.FromSeconds(5));
+        watch.Start();
+        browserCancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => login);
 
         var (failure, elapsed) = await loginEnded.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.IsAssignableFrom<OperationCanceledException>(failure);
@@ -209,6 +213,8 @@ public sealed class AuthBudgetHttpTests
             builder.Logging.ClearProviders();
 
             builder.Services.AddControllers().AddApplicationPart(typeof(AuthController).Assembly);
+            // El ticket se protege de verdad con claves aisladas del perfil de Windows.
+            builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
             builder.Services.AddStoreAuthentication(builder.Environment);
             builder.Services.AddAuthRequestBudget(budget);
             builder.Services.AddScoped(_ => database());
